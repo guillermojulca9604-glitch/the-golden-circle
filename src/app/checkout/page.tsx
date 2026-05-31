@@ -1,5 +1,6 @@
 import { headers } from "next/headers"
 import { PRICES } from "@/lib/pricing"
+import { ActivateAccessButton } from "./activate-access-button"
 
 type Props = {
   searchParams: Promise<{
@@ -22,11 +23,6 @@ export default async function CheckoutPage({ searchParams }: Props) {
 
   const prices = isPeru ? PRICES.peru : PRICES.international
   const plan = prices[planId]
-
-  const paymentUrl =
-    planId === "quarterly"
-      ? process.env.NEXT_PUBLIC_MP_QUARTERLY_URL
-      : process.env.NEXT_PUBLIC_MP_MONTHLY_URL
 
   return (
     <main className="min-h-dvh bg-background px-5 py-8 text-foreground md:px-6">
@@ -89,18 +85,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
                   {plan.price}
                 </div>
 
-                {paymentUrl ? (
-                  <a
-                    href={paymentUrl}
-                    className="telegram-button subscription-premium-button flex w-full items-center justify-center rounded-2xl px-6 py-4 text-xs uppercase tracking-[0.25em]"
-                  >
-                    Activar acceso
-                  </a>
-                ) : (
-                  <p className="text-sm text-red-300">
-                    Falta configurar el enlace de pago.
-                  </p>
-                )}
+                <ActivateAccessButton plan={planId} />
 
                 <p className="mt-5 text-xs leading-6 text-muted-foreground">
                   Serás redirigido para completar la operación de forma segura.

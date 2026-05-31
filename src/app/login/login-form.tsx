@@ -1,6 +1,5 @@
 "use client"
 
-import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Dispatch, SetStateAction, useState } from "react"
 
@@ -10,12 +9,16 @@ type Props = {
   mode: Mode
   setMode: Dispatch<SetStateAction<Mode>>
   onlyLogin?: boolean
+  next?: string
 }
 
-export function LoginForm({ mode, setMode, onlyLogin = false }: Props) {
+export function LoginForm({
+  mode,
+  setMode,
+  onlyLogin = false,
+  next = "/pricing",
+}: Props) {
   const supabase = createClient()
-  const searchParams = useSearchParams()
-  const next = searchParams.get("next") ?? "/pricing"
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -59,11 +62,11 @@ export function LoginForm({ mode, setMode, onlyLogin = false }: Props) {
     }
 
     if (email.toLowerCase() === "guillermojulca9604@gmail.com") {
-  window.location.href = "/admin"
-  return
-}
+      window.location.href = "/admin"
+      return
+    }
 
-window.location.href = next
+    window.location.href = next
   }
 
   const handleForgotPassword = async () => {

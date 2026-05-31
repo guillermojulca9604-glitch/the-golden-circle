@@ -1,11 +1,19 @@
 "use client"
 
+import { useState } from "react"
+
 type Props = {
   plan: "monthly" | "quarterly"
 }
 
 export function ActivateAccessButton({ plan }: Props) {
+  const [disabled, setDisabled] = useState(false)
+
   const handleClick = async () => {
+    if (disabled) return
+
+    setDisabled(true)
+
     const response = await fetch("/api/mercadopago/create-preference", {
       method: "POST",
       headers: {
@@ -23,14 +31,18 @@ export function ActivateAccessButton({ plan }: Props) {
 
     if (data.url) {
       window.location.href = data.url
+      return
     }
+
+    setDisabled(false)
   }
 
   return (
     <button
       type="button"
       onClick={handleClick}
-      className="telegram-button subscription-premium-button flex w-full items-center justify-center rounded-2xl px-6 py-4 text-xs uppercase tracking-[0.25em]"
+      disabled={disabled}
+      className="telegram-button subscription-premium-button flex w-full items-center justify-center rounded-2xl px-6 py-4 text-xs uppercase tracking-[0.25em] disabled:cursor-wait disabled:opacity-70"
     >
       Activar acceso
     </button>

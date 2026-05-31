@@ -11,10 +11,7 @@ export async function POST(request: Request) {
   const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN
 
   if (!accessToken) {
-    return NextResponse.json(
-      { error: "Falta MERCADO_PAGO_ACCESS_TOKEN" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Falta token" }, { status: 500 })
   }
 
   const url = new URL(request.url)
@@ -26,14 +23,18 @@ export async function POST(request: Request) {
     url.searchParams.get("data.id") ||
     url.searchParams.get("id")
 
-  const eventType =
-    body?.type ||
-    body?.topic ||
-    url.searchParams.get("type") ||
-    url.searchParams.get("topic")
-
-  if (!paymentId || (eventType && !String(eventType).includes("payment"))) {
+  if (!paymentId) {
     return NextResponse.json({ received: true })
+  }
+
+  const existing = await supabaseAdmin
+    .from("memberships")
+    .select("id")
+    .eq("mercado_pago_payment_id", String(paymentId))
+    .maybeSingle()
+
+  if (existing.data) {
+    return NextResponse.json({ received: true, duplicated: true })
   }
 
   const paymentResponse = await fetch(
@@ -49,10 +50,7 @@ export async function POST(request: Request) {
   const payment = await paymentResponse.json()
 
   if (!paymentResponse.ok) {
-    return NextResponse.json(
-      { error: "No se pudo consultar el pago", details: payment },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "No se pudo consultar el pago" }, { status: 500 })
   }
 
   if (payment.status !== "approved") {
@@ -73,13 +71,18 @@ export async function POST(request: Request) {
   }
 
   if (!reference?.user_id || !reference?.email || !reference?.plan) {
-    return NextResponse.json(
-      { error: "Referencia inválida" },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: "Referencia inválida" }, { status: 400 })
   }
 
-  const expiresAt = addDays(reference.days)
+  await supabaseAdmin
+    .from("memberships")
+    .update({
+      status: "disabled",
+      deactivated_reason: "replaced_by_new_payment",
+      deactivated_at: new Date().toISOString(),
+    })
+    .eq("user_id", reference.user_id)
+    .eq("status", "active")
 
   await supabaseAdmin.from("memberships").insert({
     user_id: reference.user_id,
@@ -87,7 +90,8 @@ export async function POST(request: Request) {
     plan: reference.plan,
     status: "active",
     starts_at: new Date().toISOString(),
-    expires_at: expiresAt,
+    expires_at: addDays(reference.days),
+    mercado_pago_payment_id: String(paymentId),
   })
 
   await supabaseAdmin.from("admin_logs").insert({

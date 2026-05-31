@@ -1,10 +1,10 @@
 "use client"
 
+import { Suspense, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { useState } from "react"
 import { LoginForm } from "./login-form"
 
-export default function LoginPage() {
+function LoginContent() {
   const searchParams = useSearchParams()
   const source = searchParams.get("source")
   const onlyLogin = source === "header"
@@ -34,5 +34,13 @@ export default function LoginPage() {
         <LoginForm mode={mode} setMode={setMode} onlyLogin={onlyLogin} />
       </div>
     </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
   )
 }

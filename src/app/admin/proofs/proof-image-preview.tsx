@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useState } from "react"
 
 type Props = {
@@ -58,15 +59,22 @@ export function ProofImagePreview({ url }: Props) {
             </div>
           )}
 
-          <img
-            src={url}
-            alt="Comprobante de pago"
+          <div
             onClick={(event) => event.stopPropagation()}
-            onLoad={() => setLoading(false)}
-            className={`max-h-[90vh] max-w-[90vw] object-contain transition-opacity duration-300 ${
-              loading ? "opacity-0" : "opacity-100"
-            }`}
-          />
+            className="relative h-[90vh] w-[90vw]"
+          >
+            <Image
+              src={url}
+              alt="Comprobante de pago"
+              fill
+              sizes="90vw"
+              unoptimized
+              onLoad={() => setLoading(false)}
+              className={`object-contain transition-opacity duration-300 ${
+                loading ? "opacity-0" : "opacity-100"
+              }`}
+            />
+          </div>
         </div>
       )}
     </>

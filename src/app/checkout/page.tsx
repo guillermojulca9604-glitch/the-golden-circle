@@ -1,5 +1,7 @@
 import { headers } from "next/headers"
+import { redirect } from "next/navigation"
 import { PRICES } from "@/lib/pricing"
+import { createClient } from "@/lib/supabase/server"
 import { ActivateAccessButton } from "./activate-access-button"
 
 type Props = {
@@ -11,6 +13,27 @@ type Props = {
 
 export default async function CheckoutPage({ searchParams }: Props) {
   const params = await searchParams
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (user) {
+    const { data: activeMembership } = await supabase
+      .from("memberships")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .gt("expires_at", new Date().toISOString())
+      .limit(1)
+      .maybeSingle()
+
+    if (activeMembership) {
+      redirect("/vip")
+    }
+  }
+
   const headerList = await headers()
 
   const countryFromIp =

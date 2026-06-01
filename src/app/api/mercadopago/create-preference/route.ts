@@ -25,6 +25,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
+  const { data: activeMembership } = await supabase
+    .from("memberships")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .gt("expires_at", new Date().toISOString())
+    .limit(1)
+    .maybeSingle()
+
+  if (activeMembership) {
+    return NextResponse.json({ url: "/vip" })
+  }
+
   const body = await request.json().catch(() => null)
   const planId = body?.plan === "quarterly" ? "quarterly" : "monthly"
   const plan = PLANS[planId]
@@ -32,10 +45,7 @@ export async function POST(request: Request) {
   const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN
 
   if (!accessToken) {
-    return NextResponse.json(
-      { error: "Falta MERCADO_PAGO_ACCESS_TOKEN" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Falta token" }, { status: 500 })
   }
 
   const siteUrl =

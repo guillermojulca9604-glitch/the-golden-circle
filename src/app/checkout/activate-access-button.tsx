@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 type Props = {
   plan: "monthly" | "quarterly"
@@ -11,14 +11,6 @@ export function ActivateAccessButton({ plan }: Props) {
   const intervalRef = useRef<number | null>(null)
   const [waiting, setWaiting] = useState(false)
 
-  const closePaymentWindow = () => {
-    if (paymentWindowRef.current && !paymentWindowRef.current.closed) {
-      paymentWindowRef.current.close()
-    }
-
-    paymentWindowRef.current = null
-  }
-
   const stopWatching = () => {
     if (intervalRef.current) {
       window.clearInterval(intervalRef.current)
@@ -26,12 +18,17 @@ export function ActivateAccessButton({ plan }: Props) {
     }
   }
 
-  const reloadCheckoutClean = () => {
-    stopWatching()
-    closePaymentWindow()
-    setWaiting(false)
+  const closePaymentWindow = () => {
+    if (paymentWindowRef.current && !paymentWindowRef.current.closed) {
+      paymentWindowRef.current.close()
+    }
+    paymentWindowRef.current = null
+  }
 
-    window.location.replace(window.location.href)
+  const resetCheckout = () => {
+    stopWatching()
+    setWaiting(false)
+    paymentWindowRef.current = null
   }
 
   const checkMembership = async () => {
@@ -55,22 +52,24 @@ export function ActivateAccessButton({ plan }: Props) {
     window.location.replace("/vip")
   }
 
-  const protectBackButton = () => {
-    window.history.pushState(
-      { tgcPaymentValidation: true },
-      "",
-      window.location.href
-    )
+  useEffect(() => {
+    if (!waiting) return
 
-    const handleBack = () => {
-      window.removeEventListener("popstate", handleBack)
-      reloadCheckoutClean()
+    const closeOnLeave = () => {
+      closePaymentWindow()
+      stopWatching()
     }
 
-    window.addEventListener("popstate", handleBack)
-  }
+    window.addEventListener("pagehide", closeOnLeave)
+    window.addEventListener("beforeunload", closeOnLeave)
 
-  const startWatchingPayment = () => {
+    return () => {
+      window.removeEventListener("pagehide", closeOnLeave)
+      window.removeEventListener("beforeunload", closeOnLeave)
+    }
+  }, [waiting])
+
+  const startWatching = () => {
     stopWatching()
 
     intervalRef.current = window.setInterval(async () => {
@@ -90,7 +89,7 @@ export function ActivateAccessButton({ plan }: Props) {
           if (activeAfterClose) {
             goVip()
           } else {
-            reloadCheckoutClean()
+            resetCheckout()
           }
         }, 1500)
       }
@@ -130,9 +129,7 @@ export function ActivateAccessButton({ plan }: Props) {
 
       paymentWindowRef.current = popup
       setWaiting(true)
-
-      protectBackButton()
-      startWatchingPayment()
+      startWatching()
     }
   }
 

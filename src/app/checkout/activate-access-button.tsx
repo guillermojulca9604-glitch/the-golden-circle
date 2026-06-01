@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 type Props = {
   plan: "monthly" | "quarterly"
@@ -8,37 +8,84 @@ type Props = {
 
 export function ActivateAccessButton({ plan }: Props) {
   const paymentWindowRef = useRef<Window | null>(null)
+  const intervalRef = useRef<number | null>(null)
   const [waiting, setWaiting] = useState(false)
 
   const checkMembership = async () => {
-    const response = await fetch("/api/membership/status", {
-      cache: "no-store",
-    })
+    try {
+      const response = await fetch("/api/membership/status", {
+        cache: "no-store",
+      })
 
-    if (!response.ok) return false
+      if (!response.ok) return false
 
-    const data = await response.json()
-    return Boolean(data.active)
+      const data = await response.json()
+      return Boolean(data.active)
+    } catch {
+      return false
+    }
   }
 
+  const stopWatching = () => {
+    if (intervalRef.current) {
+      window.clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+  }
+
+  const closePaymentWindow = () => {
+    if (paymentWindowRef.current && !paymentWindowRef.current.closed) {
+      paymentWindowRef.current.close()
+    }
+  }
+
+  const goPricing = () => {
+    stopWatching()
+    closePaymentWindow()
+    window.location.replace("/pricing")
+  }
+
+  const goVip = () => {
+    stopWatching()
+    closePaymentWindow()
+    window.location.replace("/vip")
+  }
+
+  useEffect(() => {
+    if (!waiting) return
+
+    window.history.pushState({ paymentWaiting: true }, "", window.location.href)
+
+    const handleBack = () => {
+      goPricing()
+    }
+
+    window.addEventListener("popstate", handleBack)
+
+    return () => {
+      window.removeEventListener("popstate", handleBack)
+    }
+  }, [waiting])
+
   const startWatching = () => {
-    const interval = window.setInterval(async () => {
+    stopWatching()
+
+    intervalRef.current = window.setInterval(async () => {
       const isActive = await checkMembership()
 
       if (isActive) {
-        window.clearInterval(interval)
-        window.location.replace("/vip")
+        goVip()
         return
       }
 
       if (paymentWindowRef.current?.closed) {
-        window.clearInterval(interval)
+        stopWatching()
 
         setTimeout(async () => {
           const activeAfterClose = await checkMembership()
 
           if (activeAfterClose) {
-            window.location.replace("/vip")
+            goVip()
           } else {
             window.location.replace("/pricing")
           }
@@ -69,7 +116,7 @@ export function ActivateAccessButton({ plan }: Props) {
     }
 
     if (data?.url) {
-      const popup = window.open(data.url, "_blank", "noopener,noreferrer")
+      const popup = window.open(data.url, "_blank")
 
       if (!popup) {
         window.location.href = data.url
@@ -104,7 +151,8 @@ export function ActivateAccessButton({ plan }: Props) {
             </h2>
 
             <p className="text-sm leading-7 text-muted-foreground">
-              Completa el pago en la ventana abierta. Si el pago se confirma, ingresarás automáticamente al contenido VIP.
+              Completa el pago en la ventana abierta. Si el pago se confirma,
+              ingresarás automáticamente al contenido VIP.
             </p>
           </div>
         </div>

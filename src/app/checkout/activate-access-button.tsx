@@ -64,9 +64,12 @@ export function ActivateAccessButton({ plan }: Props) {
     window.addEventListener("beforeunload", closeOnLeave)
 
     return () => {
-      window.removeEventListener("pagehide", closeOnLeave)
-      window.removeEventListener("beforeunload", closeOnLeave)
+        closePaymentWindow()
+        stopWatching()
+        window.removeEventListener("pagehide", closeOnLeave)
+        window.removeEventListener("beforeunload", closeOnLeave)
     }
+    
   }, [waiting])
 
   const startWatching = () => {

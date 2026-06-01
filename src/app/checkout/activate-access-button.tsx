@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 
 type Props = {
   plan: "monthly" | "quarterly"
@@ -13,8 +13,12 @@ export function ActivateAccessButton({ plan }: Props) {
 
   const checkMembership = async () => {
     try {
-      const response = await fetch("/api/membership/status", { cache: "no-store" })
+      const response = await fetch("/api/membership/status", {
+        cache: "no-store",
+      })
+
       if (!response.ok) return false
+
       const data = await response.json()
       return Boolean(data.active)
     } catch {
@@ -35,10 +39,10 @@ export function ActivateAccessButton({ plan }: Props) {
     }
   }
 
-  const resetCheckout = () => {
+  const resetToCheckout = () => {
     stopWatching()
-    closePaymentWindow()
     setWaiting(false)
+    paymentWindowRef.current = null
   }
 
   const goVip = () => {
@@ -46,22 +50,6 @@ export function ActivateAccessButton({ plan }: Props) {
     closePaymentWindow()
     window.location.replace("/vip")
   }
-
-  useEffect(() => {
-    if (!waiting) return
-
-    window.history.pushState({ paymentWaiting: true }, "", window.location.href)
-
-    const handleBack = () => {
-      resetCheckout()
-    }
-
-    window.addEventListener("popstate", handleBack)
-
-    return () => {
-      window.removeEventListener("popstate", handleBack)
-    }
-  }, [waiting])
 
   const startWatching = () => {
     stopWatching()
@@ -83,7 +71,7 @@ export function ActivateAccessButton({ plan }: Props) {
           if (activeAfterClose) {
             goVip()
           } else {
-            setWaiting(false)
+            resetToCheckout()
           }
         }, 1500)
       }
@@ -91,9 +79,13 @@ export function ActivateAccessButton({ plan }: Props) {
   }
 
   const handleClick = async () => {
+    if (waiting) return
+
     const response = await fetch("/api/mercadopago/create-preference", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ plan }),
     })
 

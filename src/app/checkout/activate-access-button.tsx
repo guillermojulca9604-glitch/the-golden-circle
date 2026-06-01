@@ -13,12 +13,8 @@ export function ActivateAccessButton({ plan }: Props) {
 
   const checkMembership = async () => {
     try {
-      const response = await fetch("/api/membership/status", {
-        cache: "no-store",
-      })
-
+      const response = await fetch("/api/membership/status", { cache: "no-store" })
       if (!response.ok) return false
-
       const data = await response.json()
       return Boolean(data.active)
     } catch {
@@ -39,10 +35,10 @@ export function ActivateAccessButton({ plan }: Props) {
     }
   }
 
-  const goPricing = () => {
+  const resetCheckout = () => {
     stopWatching()
     closePaymentWindow()
-    window.location.replace("/pricing")
+    setWaiting(false)
   }
 
   const goVip = () => {
@@ -57,7 +53,7 @@ export function ActivateAccessButton({ plan }: Props) {
     window.history.pushState({ paymentWaiting: true }, "", window.location.href)
 
     const handleBack = () => {
-      goPricing()
+      resetCheckout()
     }
 
     window.addEventListener("popstate", handleBack)
@@ -87,7 +83,7 @@ export function ActivateAccessButton({ plan }: Props) {
           if (activeAfterClose) {
             goVip()
           } else {
-            window.location.replace("/pricing")
+            setWaiting(false)
           }
         }, 1500)
       }
@@ -97,9 +93,7 @@ export function ActivateAccessButton({ plan }: Props) {
   const handleClick = async () => {
     const response = await fetch("/api/mercadopago/create-preference", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ plan }),
     })
 
@@ -140,8 +134,10 @@ export function ActivateAccessButton({ plan }: Props) {
       </button>
 
       {waiting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 px-6 text-center backdrop-blur-md">
-          <div className="checkout-premium-card max-w-xl rounded-[34px] bg-black p-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 px-6 text-center backdrop-blur-sm">
+          <div className="relative max-w-xl rounded-[34px] border border-gold/40 bg-black p-8 shadow-[0_0_45px_rgba(212,175,55,0.16)]">
+            <div className="pointer-events-none absolute inset-0 rounded-[34px] border border-white/5" />
+
             <span className="pricing-label mb-4 block">
               Verificación
             </span>

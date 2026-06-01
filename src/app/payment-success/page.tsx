@@ -1,6 +1,6 @@
-import Link from "next/link"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { PaymentWaiter } from "./payment-waiter"
 
 export default async function PaymentSuccessPage() {
   const supabase = await createClient()
@@ -35,19 +35,14 @@ export default async function PaymentSuccessPage() {
           </span>
 
           <h1 className="checkout-premium-title mb-4 text-5xl font-light">
-            Acceso en proceso
+            Activando acceso
           </h1>
 
           <p className="text-sm leading-7 text-muted-foreground">
-            Si el pago ya fue aprobado, tu acceso se activará automáticamente en unos instantes.
+            Tu pago fue aprobado. Estamos habilitando tu acceso privado.
           </p>
 
-          <Link
-            href="/vip"
-            className="telegram-button subscription-premium-button mt-8 inline-flex w-full items-center justify-center rounded-2xl px-6 py-4 text-xs uppercase tracking-[0.25em]"
-          >
-            Ir a VIP
-          </Link>
+          <PaymentWaiter />
         </div>
       </section>
     </main>

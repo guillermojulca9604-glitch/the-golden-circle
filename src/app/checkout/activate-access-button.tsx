@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 
 type Props = {
   plan: "monthly" | "quarterly"
@@ -15,6 +15,7 @@ export function ActivateAccessButton({ plan }: Props) {
     if (paymentWindowRef.current && !paymentWindowRef.current.closed) {
       paymentWindowRef.current.close()
     }
+
     paymentWindowRef.current = null
   }
 
@@ -23,6 +24,14 @@ export function ActivateAccessButton({ plan }: Props) {
       window.clearInterval(intervalRef.current)
       intervalRef.current = null
     }
+  }
+
+  const reloadCheckoutClean = () => {
+    stopWatching()
+    closePaymentWindow()
+    setWaiting(false)
+
+    window.location.replace(window.location.href)
   }
 
   const checkMembership = async () => {
@@ -46,30 +55,22 @@ export function ActivateAccessButton({ plan }: Props) {
     window.location.replace("/vip")
   }
 
-  const resetToCheckout = () => {
-    stopWatching()
-    closePaymentWindow()
-    setWaiting(false)
+  const protectBackButton = () => {
+    window.history.pushState(
+      { tgcPaymentValidation: true },
+      "",
+      window.location.href
+    )
+
+    const handleBack = () => {
+      window.removeEventListener("popstate", handleBack)
+      reloadCheckoutClean()
+    }
+
+    window.addEventListener("popstate", handleBack)
   }
 
-  useEffect(() => {
-    if (!waiting) return
-
-    const handleLeavingPage = () => {
-      closePaymentWindow()
-      stopWatching()
-    }
-
-    window.addEventListener("pagehide", handleLeavingPage)
-    window.addEventListener("beforeunload", handleLeavingPage)
-
-    return () => {
-      window.removeEventListener("pagehide", handleLeavingPage)
-      window.removeEventListener("beforeunload", handleLeavingPage)
-    }
-  }, [waiting])
-
-  const startWatching = () => {
+  const startWatchingPayment = () => {
     stopWatching()
 
     intervalRef.current = window.setInterval(async () => {
@@ -89,7 +90,7 @@ export function ActivateAccessButton({ plan }: Props) {
           if (activeAfterClose) {
             goVip()
           } else {
-            resetToCheckout()
+            reloadCheckoutClean()
           }
         }, 1500)
       }
@@ -129,7 +130,9 @@ export function ActivateAccessButton({ plan }: Props) {
 
       paymentWindowRef.current = popup
       setWaiting(true)
-      startWatching()
+
+      protectBackButton()
+      startWatchingPayment()
     }
   }
 

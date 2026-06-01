@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 type Props = {
   plan: "monthly" | "quarterly"
@@ -9,6 +9,7 @@ type Props = {
 export function ActivateAccessButton({ plan }: Props) {
   const paymentWindowRef = useRef<Window | null>(null)
   const intervalRef = useRef<number | null>(null)
+  const pushedHistoryRef = useRef(false)
   const [waiting, setWaiting] = useState(false)
 
   const checkMembership = async () => {
@@ -37,18 +38,48 @@ export function ActivateAccessButton({ plan }: Props) {
     if (paymentWindowRef.current && !paymentWindowRef.current.closed) {
       paymentWindowRef.current.close()
     }
+    paymentWindowRef.current = null
   }
 
   const resetToCheckout = () => {
     stopWatching()
+    closePaymentWindow()
     setWaiting(false)
-    paymentWindowRef.current = null
   }
 
   const goVip = () => {
     stopWatching()
     closePaymentWindow()
     window.location.replace("/vip")
+  }
+
+  useEffect(() => {
+    if (!waiting) return
+
+    if (!pushedHistoryRef.current) {
+      pushedHistoryRef.current = true
+      window.history.pushState({ tgcPaymentOverlay: true }, "", window.location.href)
+    }
+
+    const handleBack = () => {
+      pushedHistoryRef.current = false
+      resetToCheckout()
+    }
+
+    window.addEventListener("popstate", handleBack)
+
+    return () => {
+      window.removeEventListener("popstate", handleBack)
+    }
+  }, [waiting])
+
+  const removeOverlayHistory = () => {
+    if (pushedHistoryRef.current) {
+      pushedHistoryRef.current = false
+      window.history.back()
+    } else {
+      setWaiting(false)
+    }
   }
 
   const startWatching = () => {
@@ -71,7 +102,9 @@ export function ActivateAccessButton({ plan }: Props) {
           if (activeAfterClose) {
             goVip()
           } else {
-            resetToCheckout()
+            closePaymentWindow()
+            setWaiting(false)
+            removeOverlayHistory()
           }
         }, 1500)
       }
@@ -130,9 +163,7 @@ export function ActivateAccessButton({ plan }: Props) {
           <div className="relative max-w-xl rounded-[34px] border border-gold/40 bg-black p-8 shadow-[0_0_45px_rgba(212,175,55,0.16)]">
             <div className="pointer-events-none absolute inset-0 rounded-[34px] border border-white/5" />
 
-            <span className="pricing-label mb-4 block">
-              Verificación
-            </span>
+            <span className="pricing-label mb-4 block">Verificación</span>
 
             <h2 className="checkout-premium-title mb-4 text-4xl font-light">
               Validando acceso

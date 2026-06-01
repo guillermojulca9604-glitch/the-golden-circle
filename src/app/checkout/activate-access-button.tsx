@@ -9,8 +9,21 @@ type Props = {
 export function ActivateAccessButton({ plan }: Props) {
   const paymentWindowRef = useRef<Window | null>(null)
   const intervalRef = useRef<number | null>(null)
-  const pushedHistoryRef = useRef(false)
   const [waiting, setWaiting] = useState(false)
+
+  const closePaymentWindow = () => {
+    if (paymentWindowRef.current && !paymentWindowRef.current.closed) {
+      paymentWindowRef.current.close()
+    }
+    paymentWindowRef.current = null
+  }
+
+  const stopWatching = () => {
+    if (intervalRef.current) {
+      window.clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+  }
 
   const checkMembership = async () => {
     try {
@@ -27,18 +40,10 @@ export function ActivateAccessButton({ plan }: Props) {
     }
   }
 
-  const stopWatching = () => {
-    if (intervalRef.current) {
-      window.clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-  }
-
-  const closePaymentWindow = () => {
-    if (paymentWindowRef.current && !paymentWindowRef.current.closed) {
-      paymentWindowRef.current.close()
-    }
-    paymentWindowRef.current = null
+  const goVip = () => {
+    stopWatching()
+    closePaymentWindow()
+    window.location.replace("/vip")
   }
 
   const resetToCheckout = () => {
@@ -47,40 +52,22 @@ export function ActivateAccessButton({ plan }: Props) {
     setWaiting(false)
   }
 
-  const goVip = () => {
-    stopWatching()
-    closePaymentWindow()
-    window.location.replace("/vip")
-  }
-
   useEffect(() => {
     if (!waiting) return
 
-    if (!pushedHistoryRef.current) {
-      pushedHistoryRef.current = true
-      window.history.pushState({ tgcPaymentOverlay: true }, "", window.location.href)
+    const handleLeavingPage = () => {
+      closePaymentWindow()
+      stopWatching()
     }
 
-    const handleBack = () => {
-      pushedHistoryRef.current = false
-      resetToCheckout()
-    }
-
-    window.addEventListener("popstate", handleBack)
+    window.addEventListener("pagehide", handleLeavingPage)
+    window.addEventListener("beforeunload", handleLeavingPage)
 
     return () => {
-      window.removeEventListener("popstate", handleBack)
+      window.removeEventListener("pagehide", handleLeavingPage)
+      window.removeEventListener("beforeunload", handleLeavingPage)
     }
   }, [waiting])
-
-  const removeOverlayHistory = () => {
-    if (pushedHistoryRef.current) {
-      pushedHistoryRef.current = false
-      window.history.back()
-    } else {
-      setWaiting(false)
-    }
-  }
 
   const startWatching = () => {
     stopWatching()
@@ -102,9 +89,7 @@ export function ActivateAccessButton({ plan }: Props) {
           if (activeAfterClose) {
             goVip()
           } else {
-            closePaymentWindow()
-            setWaiting(false)
-            removeOverlayHistory()
+            resetToCheckout()
           }
         }, 1500)
       }
@@ -163,7 +148,9 @@ export function ActivateAccessButton({ plan }: Props) {
           <div className="relative max-w-xl rounded-[34px] border border-gold/40 bg-black p-8 shadow-[0_0_45px_rgba(212,175,55,0.16)]">
             <div className="pointer-events-none absolute inset-0 rounded-[34px] border border-white/5" />
 
-            <span className="pricing-label mb-4 block">Verificación</span>
+            <span className="pricing-label mb-4 block">
+              Verificación
+            </span>
 
             <h2 className="checkout-premium-title mb-4 text-4xl font-light">
               Validando acceso

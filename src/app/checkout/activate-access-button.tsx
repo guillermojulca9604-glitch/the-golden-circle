@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 type Props = {
   plan: "monthly" | "quarterly"
@@ -11,28 +11,22 @@ export function ActivateAccessButton({ plan }: Props) {
   const intervalRef = useRef<number | null>(null)
   const [waiting, setWaiting] = useState(false)
 
-  const stopWatching = () => {
+  const stopWatching = useCallback(() => {
     if (intervalRef.current) {
       window.clearInterval(intervalRef.current)
       intervalRef.current = null
     }
-  }
+  }, [])
 
-  const closePaymentWindow = () => {
+  const closePaymentWindow = useCallback(() => {
     if (paymentWindowRef.current && !paymentWindowRef.current.closed) {
       paymentWindowRef.current.close()
     }
 
     paymentWindowRef.current = null
-  }
+  }, [])
 
-  const resetCheckout = () => {
-    stopWatching()
-    setWaiting(false)
-    paymentWindowRef.current = null
-  }
-
-  const checkMembership = async () => {
+  const checkMembership = useCallback(async () => {
     try {
       const response = await fetch("/api/membership/status", {
         cache: "no-store",
@@ -45,13 +39,19 @@ export function ActivateAccessButton({ plan }: Props) {
     } catch {
       return false
     }
-  }
+  }, [])
 
-  const goVip = () => {
+  const resetCheckout = useCallback(() => {
+    stopWatching()
+    setWaiting(false)
+    paymentWindowRef.current = null
+  }, [stopWatching])
+
+  const goVip = useCallback(() => {
     stopWatching()
     closePaymentWindow()
     window.location.replace("/vip")
-  }
+  }, [stopWatching, closePaymentWindow])
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -67,7 +67,7 @@ export function ActivateAccessButton({ plan }: Props) {
     return () => {
       window.removeEventListener("message", handleMessage)
     }
-  }, [])
+  }, [goVip])
 
   useEffect(() => {
     if (!waiting) return
@@ -87,9 +87,9 @@ export function ActivateAccessButton({ plan }: Props) {
       window.removeEventListener("pagehide", closeOnLeave)
       window.removeEventListener("beforeunload", closeOnLeave)
     }
-  }, [waiting])
+  }, [waiting, closePaymentWindow, stopWatching])
 
-  const startWatching = () => {
+  const startWatching = useCallback(() => {
     stopWatching()
 
     intervalRef.current = window.setInterval(async () => {
@@ -114,7 +114,7 @@ export function ActivateAccessButton({ plan }: Props) {
         }, 1500)
       }
     }, 1000)
-  }
+  }, [checkMembership, goVip, resetCheckout, stopWatching])
 
   const handleClick = async () => {
     if (waiting) return

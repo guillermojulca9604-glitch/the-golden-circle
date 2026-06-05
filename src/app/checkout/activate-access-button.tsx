@@ -22,6 +22,7 @@ export function ActivateAccessButton({ plan }: Props) {
     if (paymentWindowRef.current && !paymentWindowRef.current.closed) {
       paymentWindowRef.current.close()
     }
+
     paymentWindowRef.current = null
   }
 
@@ -53,6 +54,22 @@ export function ActivateAccessButton({ plan }: Props) {
   }
 
   useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return
+
+      if (event.data?.type === "TGC_PAYMENT_ACTIVE") {
+        goVip()
+      }
+    }
+
+    window.addEventListener("message", handleMessage)
+
+    return () => {
+      window.removeEventListener("message", handleMessage)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!waiting) return
 
     const closeOnLeave = () => {
@@ -64,12 +81,12 @@ export function ActivateAccessButton({ plan }: Props) {
     window.addEventListener("beforeunload", closeOnLeave)
 
     return () => {
-        closePaymentWindow()
-        stopWatching()
-        window.removeEventListener("pagehide", closeOnLeave)
-        window.removeEventListener("beforeunload", closeOnLeave)
+      closePaymentWindow()
+      stopWatching()
+
+      window.removeEventListener("pagehide", closeOnLeave)
+      window.removeEventListener("beforeunload", closeOnLeave)
     }
-    
   }, [waiting])
 
   const startWatching = () => {

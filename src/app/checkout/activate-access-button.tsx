@@ -22,18 +22,13 @@ export function ActivateAccessButton({ plan }: Props) {
     if (paymentWindowRef.current && !paymentWindowRef.current.closed) {
       paymentWindowRef.current.close()
     }
-
     paymentWindowRef.current = null
   }, [])
 
   const checkMembership = useCallback(async () => {
     try {
-      const response = await fetch("/api/membership/status", {
-        cache: "no-store",
-      })
-
+      const response = await fetch("/api/membership/status", { cache: "no-store" })
       if (!response.ok) return false
-
       const data = await response.json()
       return Boolean(data.active)
     } catch {
@@ -54,36 +49,20 @@ export function ActivateAccessButton({ plan }: Props) {
   }, [stopWatching])
 
   useEffect(() => {
-    const handleSuccess = async () => {
-      const active = await checkMembership()
-
-      if (active) {
-        goVip()
-      }
-    }
-
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return
 
       if (event.data?.type === "TGC_PAYMENT_ACTIVE") {
-        handleSuccess()
-      }
-    }
-
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === "tgc_payment_active") {
-        handleSuccess()
+        goVip()
       }
     }
 
     window.addEventListener("message", handleMessage)
-    window.addEventListener("storage", handleStorage)
 
     return () => {
       window.removeEventListener("message", handleMessage)
-      window.removeEventListener("storage", handleStorage)
     }
-  }, [checkMembership, goVip])
+  }, [goVip])
 
   const startWatching = useCallback(() => {
     stopWatching()
@@ -115,6 +94,8 @@ export function ActivateAccessButton({ plan }: Props) {
   const handleClick = async () => {
     if (waiting) return
 
+    setWaiting(true)
+
     const response = await fetch("/api/mercadopago/create-preference", {
       method: "POST",
       headers: {
@@ -124,6 +105,7 @@ export function ActivateAccessButton({ plan }: Props) {
     })
 
     if (response.status === 401) {
+      setWaiting(false)
       window.location.href = `/login?next=/checkout?plan=${plan}&country=pe`
       return
     }
@@ -131,22 +113,25 @@ export function ActivateAccessButton({ plan }: Props) {
     const data = await response.json()
 
     if (data?.url === "/vip") {
-      window.location.replace("/vip")
+      goVip()
       return
     }
 
-    if (data?.url) {
-      const popup = window.open(data.url, "_blank")
-
-      if (!popup) {
-        window.location.href = data.url
-        return
-      }
-
-      paymentWindowRef.current = popup
-      setWaiting(true)
-      startWatching()
+    if (!data?.url) {
+      setWaiting(false)
+      return
     }
+
+    const popup = window.open(data.url, "_blank")
+
+    if (!popup) {
+      setWaiting(false)
+      window.location.href = data.url
+      return
+    }
+
+    paymentWindowRef.current = popup
+    startWatching()
   }
 
   return (

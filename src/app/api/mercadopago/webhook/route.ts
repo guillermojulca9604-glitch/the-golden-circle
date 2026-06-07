@@ -27,16 +27,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true })
   }
 
-  const existing = await supabaseAdmin
-    .from("memberships")
-    .select("id")
-    .eq("mercado_pago_payment_id", String(paymentId))
-    .maybeSingle()
-
-  if (existing.data) {
-    return NextResponse.json({ received: true, duplicated: true })
-  }
-
   const paymentResponse = await fetch(
     `https://api.mercadopago.com/v1/payments/${paymentId}`,
     {
@@ -50,11 +40,21 @@ export async function POST(request: Request) {
   const payment = await paymentResponse.json()
 
   if (!paymentResponse.ok) {
-    return NextResponse.json({ error: "No se pudo consultar el pago" }, { status: 500 })
+    return NextResponse.json({ error: "No se pudo consultar pago" }, { status: 500 })
   }
 
   if (payment.status !== "approved") {
     return NextResponse.json({ received: true, status: payment.status })
+  }
+
+  const { data: existing } = await supabaseAdmin
+    .from("memberships")
+    .select("id")
+    .eq("mercado_pago_payment_id", String(paymentId))
+    .maybeSingle()
+
+  if (existing) {
+    return NextResponse.json({ received: true, duplicated: true })
   }
 
   let reference: {
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
   await supabaseAdmin.from("admin_logs").insert({
     user_id: reference.user_id,
     action: `mercadopago_approved_${reference.plan}`,
-    note: `payment_id:${payment.id}`,
+    note: `payment_id:${paymentId}`,
   })
 
   return NextResponse.json({ received: true, activated: true })

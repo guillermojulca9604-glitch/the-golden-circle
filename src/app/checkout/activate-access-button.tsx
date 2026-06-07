@@ -83,7 +83,6 @@ export function ActivateAccessButton({ plan }: Props) {
     return () => {
       closePaymentWindow()
       stopWatching()
-
       window.removeEventListener("pagehide", closeOnLeave)
       window.removeEventListener("beforeunload", closeOnLeave)
     }
@@ -168,9 +167,7 @@ export function ActivateAccessButton({ plan }: Props) {
           <div className="relative max-w-xl rounded-[34px] border border-gold/40 bg-black p-8 shadow-[0_0_45px_rgba(212,175,55,0.16)]">
             <div className="pointer-events-none absolute inset-0 rounded-[34px] border border-white/5" />
 
-            <span className="pricing-label mb-4 block">
-              Verificación
-            </span>
+            <span className="pricing-label mb-4 block">Verificación</span>
 
             <h2 className="checkout-premium-title mb-4 text-4xl font-light">
               Validando acceso

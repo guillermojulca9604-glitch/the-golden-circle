@@ -2,16 +2,8 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
 const PLANS = {
-  monthly: {
-    title: "TGC Access M",
-    price: 30,
-    days: 30,
-  },
-  quarterly: {
-    title: "TGC Access T",
-    price: 90,
-    days: 90,
-  },
+  monthly: { title: "TGC Access M", price: 30, days: 30 },
+  quarterly: { title: "TGC Access T", price: 90, days: 90 },
 } as const
 
 export async function POST(request: Request) {
@@ -82,7 +74,7 @@ export async function POST(request: Request) {
         external_reference: externalReference,
         back_urls: {
           success: `${siteUrl}/payment-success`,
-          failure: `${siteUrl}/pricing`,
+          failure: `${siteUrl}/checkout?plan=${planId}&country=pe`,
           pending: `${siteUrl}/payment-success`,
         },
         auto_return: "approved",
@@ -100,7 +92,5 @@ export async function POST(request: Request) {
     )
   }
 
-  return NextResponse.json({
-    url: data.init_point,
-  })
+  return NextResponse.json({ url: data.init_point })
 }

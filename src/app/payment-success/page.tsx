@@ -5,6 +5,7 @@ import { PaymentWaiter } from "./payment-waiter"
 type Props = {
   searchParams: Promise<{
     payment_id?: string
+    collection_id?: string
   }>
 }
 
@@ -20,6 +21,8 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
     redirect("/login?next=/vip")
   }
 
+  const paymentId = params.payment_id || params.collection_id || ""
+
   return (
     <main className="min-h-dvh bg-background px-6 py-24 text-foreground">
       <section className="mx-auto max-w-xl text-center">
@@ -34,7 +37,7 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
             Tu pago fue aprobado. Estamos habilitando tu acceso privado.
           </p>
 
-          <PaymentWaiter paymentId={params.payment_id ?? ""} />
+          <PaymentWaiter paymentId={paymentId} />
         </div>
       </section>
     </main>

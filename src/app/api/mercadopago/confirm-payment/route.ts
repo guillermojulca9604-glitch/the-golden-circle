@@ -10,7 +10,10 @@ function addDays(days: number) {
 export async function GET(request: Request) {
   const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN
   const url = new URL(request.url)
-  const paymentId = url.searchParams.get("payment_id")
+
+  const paymentId =
+    url.searchParams.get("payment_id") ||
+    url.searchParams.get("collection_id")
 
   if (!accessToken || !paymentId) {
     return NextResponse.json({ active: false })
@@ -19,7 +22,7 @@ export async function GET(request: Request) {
   const { data: existing } = await supabaseAdmin
     .from("memberships")
     .select("id")
-    .eq("mercado_pago_payment_id", paymentId)
+    .eq("mercado_pago_payment_id", String(paymentId))
     .maybeSingle()
 
   if (existing) {
@@ -42,7 +45,32 @@ export async function GET(request: Request) {
     return NextResponse.json({ active: false })
   }
 
-  const reference = JSON.parse(payment.external_reference)
+  let reference: {
+    user_id: string
+    email: string
+    plan: "monthly" | "quarterly"
+    days: number
+  } | null = null
+
+  try {
+    reference = JSON.parse(payment.external_reference)
+  } catch {
+    reference = null
+  }
+
+  if (!reference?.user_id || !reference?.email || !reference?.plan) {
+    return NextResponse.json({ active: false })
+  }
+
+  await supabaseAdmin
+    .from("memberships")
+    .update({
+      status: "disabled",
+      deactivated_reason: "replaced_by_new_payment",
+      deactivated_at: new Date().toISOString(),
+    })
+    .eq("user_id", reference.user_id)
+    .eq("status", "active")
 
   await supabaseAdmin.from("memberships").insert({
     user_id: reference.user_id,
@@ -51,7 +79,7 @@ export async function GET(request: Request) {
     status: "active",
     starts_at: new Date().toISOString(),
     expires_at: addDays(reference.days),
-    mercado_pago_payment_id: paymentId,
+    mercado_pago_payment_id: String(paymentId),
   })
 
   return NextResponse.json({ active: true })

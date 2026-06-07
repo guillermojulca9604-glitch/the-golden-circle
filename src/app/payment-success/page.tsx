@@ -2,7 +2,14 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { PaymentWaiter } from "./payment-waiter"
 
-export default async function PaymentSuccessPage() {
+type Props = {
+  searchParams: Promise<{
+    payment_id?: string
+  }>
+}
+
+export default async function PaymentSuccessPage({ searchParams }: Props) {
+  const params = await searchParams
   const supabase = await createClient()
 
   const {
@@ -13,26 +20,11 @@ export default async function PaymentSuccessPage() {
     redirect("/login?next=/vip")
   }
 
-  const { data: activeMembership } = await supabase
-    .from("memberships")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("status", "active")
-    .gt("expires_at", new Date().toISOString())
-    .limit(1)
-    .maybeSingle()
-
-  if (activeMembership) {
-    redirect("/vip")
-  }
-
   return (
     <main className="min-h-dvh bg-background px-6 py-24 text-foreground">
       <section className="mx-auto max-w-xl text-center">
         <div className="featured-card checkout-premium-card rounded-[34px] bg-black p-8">
-          <span className="pricing-label mb-4 block">
-            Verificación
-          </span>
+          <span className="pricing-label mb-4 block">Verificación</span>
 
           <h1 className="checkout-premium-title mb-4 text-5xl font-light">
             Activando acceso
@@ -42,7 +34,7 @@ export default async function PaymentSuccessPage() {
             Tu pago fue aprobado. Estamos habilitando tu acceso privado.
           </p>
 
-          <PaymentWaiter />
+          <PaymentWaiter paymentId={params.payment_id ?? ""} />
         </div>
       </section>
     </main>

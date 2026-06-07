@@ -41,60 +41,57 @@ export function ActivateAccessButton({ plan }: Props) {
     }
   }, [])
 
-  const resetCheckout = useCallback(() => {
-    stopWatching()
-    setWaiting(false)
-    paymentWindowRef.current = null
-  }, [stopWatching])
-
   const goVip = useCallback(() => {
     stopWatching()
     closePaymentWindow()
     window.location.replace("/vip")
   }, [stopWatching, closePaymentWindow])
 
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return
+  const resetCheckout = useCallback(() => {
+    stopWatching()
+    setWaiting(false)
+    paymentWindowRef.current = null
+  }, [stopWatching])
 
-      if (event.data?.type === "TGC_PAYMENT_ACTIVE") {
+  useEffect(() => {
+    const handleSuccess = async () => {
+      const active = await checkMembership()
+
+      if (active) {
         goVip()
       }
     }
 
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return
+
+      if (event.data?.type === "TGC_PAYMENT_ACTIVE") {
+        handleSuccess()
+      }
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "tgc_payment_active") {
+        handleSuccess()
+      }
+    }
+
     window.addEventListener("message", handleMessage)
+    window.addEventListener("storage", handleStorage)
 
     return () => {
       window.removeEventListener("message", handleMessage)
+      window.removeEventListener("storage", handleStorage)
     }
-  }, [goVip])
-
-  useEffect(() => {
-    if (!waiting) return
-
-    const closeOnLeave = () => {
-      closePaymentWindow()
-      stopWatching()
-    }
-
-    window.addEventListener("pagehide", closeOnLeave)
-    window.addEventListener("beforeunload", closeOnLeave)
-
-    return () => {
-      closePaymentWindow()
-      stopWatching()
-      window.removeEventListener("pagehide", closeOnLeave)
-      window.removeEventListener("beforeunload", closeOnLeave)
-    }
-  }, [waiting, closePaymentWindow, stopWatching])
+  }, [checkMembership, goVip])
 
   const startWatching = useCallback(() => {
     stopWatching()
 
     intervalRef.current = window.setInterval(async () => {
-      const isActive = await checkMembership()
+      const active = await checkMembership()
 
-      if (isActive) {
+      if (active) {
         goVip()
         return
       }

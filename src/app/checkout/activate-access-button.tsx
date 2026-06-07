@@ -22,9 +22,14 @@ export function ActivateAccessButton({ plan }: Props) {
     if (paymentWindowRef.current && !paymentWindowRef.current.closed) {
       paymentWindowRef.current.close()
     }
-
     paymentWindowRef.current = null
   }, [])
+
+  const resetCheckout = useCallback(() => {
+    stopWatching()
+    setWaiting(false)
+    paymentWindowRef.current = null
+  }, [stopWatching])
 
   const checkMembership = useCallback(async () => {
     try {
@@ -41,16 +46,11 @@ export function ActivateAccessButton({ plan }: Props) {
     }
   }, [])
 
-  const goVip = useCallback(() => {
-    stopWatching()
-    closePaymentWindow()
-    window.location.replace("/vip")
-  }, [stopWatching, closePaymentWindow])
-
-  const resetCheckout = useCallback(() => {
+  const goHomeAfterPayment = useCallback(() => {
     stopWatching()
     setWaiting(false)
     paymentWindowRef.current = null
+    window.location.replace("/")
   }, [stopWatching])
 
   useEffect(() => {
@@ -58,13 +58,13 @@ export function ActivateAccessButton({ plan }: Props) {
       if (event.origin !== window.location.origin) return
 
       if (event.data?.type === "TGC_PAYMENT_ACTIVE") {
-        goVip()
+        goHomeAfterPayment()
       }
     }
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key === "tgc_payment_active") {
-        goVip()
+        goHomeAfterPayment()
       }
     }
 
@@ -75,7 +75,7 @@ export function ActivateAccessButton({ plan }: Props) {
       window.removeEventListener("message", handleMessage)
       window.removeEventListener("storage", handleStorage)
     }
-  }, [goVip])
+  }, [goHomeAfterPayment])
 
   useEffect(() => {
     if (!waiting) return
@@ -91,7 +91,6 @@ export function ActivateAccessButton({ plan }: Props) {
     return () => {
       closePaymentWindow()
       stopWatching()
-
       window.removeEventListener("pagehide", closeOnLeave)
       window.removeEventListener("beforeunload", closeOnLeave)
     }
@@ -104,7 +103,7 @@ export function ActivateAccessButton({ plan }: Props) {
       const active = await checkMembership()
 
       if (active) {
-        goVip()
+        goHomeAfterPayment()
         return
       }
 
@@ -112,12 +111,22 @@ export function ActivateAccessButton({ plan }: Props) {
         resetCheckout()
       }
     }, 700)
-  }, [checkMembership, goVip, resetCheckout, stopWatching])
+  }, [checkMembership, goHomeAfterPayment, resetCheckout, stopWatching])
 
   const handleClick = async () => {
     if (waiting) return
 
     setWaiting(true)
+
+    const popup = window.open("", "_blank")
+
+    if (!popup) {
+      setWaiting(false)
+      return
+    }
+
+    paymentWindowRef.current = popup
+    popup.document.write("Cargando pago seguro...")
 
     try {
       const response = await fetch("/api/mercadopago/create-preference", {
@@ -129,6 +138,7 @@ export function ActivateAccessButton({ plan }: Props) {
       })
 
       if (response.status === 401) {
+        closePaymentWindow()
         setWaiting(false)
         window.location.href = `/login?next=/checkout?plan=${plan}&country=pe`
         return
@@ -137,26 +147,21 @@ export function ActivateAccessButton({ plan }: Props) {
       const data = await response.json()
 
       if (data?.url === "/vip") {
-        goVip()
+        closePaymentWindow()
+        window.location.replace("/vip")
         return
       }
 
       if (!data?.url) {
+        closePaymentWindow()
         setWaiting(false)
         return
       }
 
-      const popup = window.open(data.url, "_blank")
-
-      if (!popup) {
-        setWaiting(false)
-        window.location.href = data.url
-        return
-      }
-
-      paymentWindowRef.current = popup
+      popup.location.href = data.url
       startWatching()
     } catch {
+      closePaymentWindow()
       setWaiting(false)
     }
   }
@@ -184,7 +189,7 @@ export function ActivateAccessButton({ plan }: Props) {
 
             <p className="text-sm leading-7 text-muted-foreground">
               Completa el pago en la ventana abierta. Si el pago se confirma,
-              ingresarás automáticamente al contenido VIP.
+              esta página volverá al inicio automáticamente.
             </p>
           </div>
         </div>

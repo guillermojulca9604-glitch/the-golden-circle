@@ -13,7 +13,7 @@ export function PaymentWaiter({ paymentId }: Props) {
     let attempts = 0
     let cancelled = false
 
-    const notifyAndClose = () => {
+    const notifyCheckoutAndGoVip = () => {
       localStorage.setItem("tgc_payment_active", String(Date.now()))
 
       window.opener?.postMessage(
@@ -21,10 +21,7 @@ export function PaymentWaiter({ paymentId }: Props) {
         window.location.origin
       )
 
-      setTimeout(() => {
-        window.close()
-        window.location.replace("/vip")
-      }, 500)
+      window.location.replace("/vip")
     }
 
     const check = async () => {
@@ -46,7 +43,7 @@ export function PaymentWaiter({ paymentId }: Props) {
         const data = await response.json()
 
         if (data.active) {
-          notifyAndClose()
+          notifyCheckoutAndGoVip()
           return
         }
       } catch {}

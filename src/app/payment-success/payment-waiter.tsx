@@ -13,7 +13,7 @@ export function PaymentWaiter({ paymentId }: Props) {
     let attempts = 0
     let cancelled = false
 
-    const notifyCheckoutAndGoVip = () => {
+    const finish = () => {
       localStorage.setItem("tgc_payment_active", String(Date.now()))
 
       window.opener?.postMessage(
@@ -43,7 +43,7 @@ export function PaymentWaiter({ paymentId }: Props) {
         const data = await response.json()
 
         if (data.active) {
-          notifyCheckoutAndGoVip()
+          finish()
           return
         }
       } catch {}

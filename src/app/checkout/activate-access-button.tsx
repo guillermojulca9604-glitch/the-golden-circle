@@ -1,117 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useState } from "react"
 
 type Props = {
   plan: "monthly" | "quarterly"
 }
 
 export function ActivateAccessButton({ plan }: Props) {
-  const paymentWindowRef = useRef<Window | null>(null)
-  const intervalRef = useRef<number | null>(null)
   const [waiting, setWaiting] = useState(false)
-
-  const stopWatching = useCallback(() => {
-    if (intervalRef.current) {
-      window.clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-  }, [])
-
-  const closePaymentWindow = useCallback(() => {
-    if (paymentWindowRef.current && !paymentWindowRef.current.closed) {
-      paymentWindowRef.current.close()
-    }
-    paymentWindowRef.current = null
-  }, [])
-
-  const resetCheckout = useCallback(() => {
-    stopWatching()
-    setWaiting(false)
-    paymentWindowRef.current = null
-  }, [stopWatching])
-
-  const checkMembership = useCallback(async () => {
-    try {
-      const response = await fetch("/api/membership/status", {
-        cache: "no-store",
-      })
-
-      if (!response.ok) return false
-
-      const data = await response.json()
-      return Boolean(data.active)
-    } catch {
-      return false
-    }
-  }, [])
-
-  const goHome = useCallback(() => {
-    stopWatching()
-    setWaiting(false)
-    paymentWindowRef.current = null
-    window.location.replace("/")
-  }, [stopWatching])
-
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return
-
-      if (event.data?.type === "TGC_PAYMENT_ACTIVE") {
-        goHome()
-      }
-    }
-
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === "tgc_payment_active") {
-        goHome()
-      }
-    }
-
-    window.addEventListener("message", handleMessage)
-    window.addEventListener("storage", handleStorage)
-
-    return () => {
-      window.removeEventListener("message", handleMessage)
-      window.removeEventListener("storage", handleStorage)
-    }
-  }, [goHome])
-
-  useEffect(() => {
-    if (!waiting) return
-
-    const closeOnLeave = () => {
-      closePaymentWindow()
-      stopWatching()
-    }
-
-    window.addEventListener("pagehide", closeOnLeave)
-    window.addEventListener("beforeunload", closeOnLeave)
-
-    return () => {
-      closePaymentWindow()
-      stopWatching()
-      window.removeEventListener("pagehide", closeOnLeave)
-      window.removeEventListener("beforeunload", closeOnLeave)
-    }
-  }, [waiting, closePaymentWindow, stopWatching])
-
-  const startWatching = useCallback(() => {
-    stopWatching()
-
-    intervalRef.current = window.setInterval(async () => {
-      const active = await checkMembership()
-
-      if (active) {
-        goHome()
-        return
-      }
-
-      if (paymentWindowRef.current?.closed) {
-        resetCheckout()
-      }
-    }, 800)
-  }, [checkMembership, goHome, resetCheckout, stopWatching])
 
   const handleClick = async () => {
     if (waiting) return
@@ -128,7 +24,6 @@ export function ActivateAccessButton({ plan }: Props) {
       })
 
       if (response.status === 401) {
-        setWaiting(false)
         window.location.href = `/login?next=/checkout?plan=${plan}&country=pe`
         return
       }
@@ -140,21 +35,12 @@ export function ActivateAccessButton({ plan }: Props) {
         return
       }
 
-      if (!data?.url) {
-        setWaiting(false)
-        return
-      }
-
-      const popup = window.open(data.url, "_blank")
-
-      if (!popup) {
-        setWaiting(false)
+      if (data?.url) {
         window.location.href = data.url
         return
       }
 
-      paymentWindowRef.current = popup
-      startWatching()
+      setWaiting(false)
     } catch {
       setWaiting(false)
     }
@@ -165,7 +51,8 @@ export function ActivateAccessButton({ plan }: Props) {
       <button
         type="button"
         onClick={handleClick}
-        className="telegram-button subscription-premium-button flex w-full items-center justify-center rounded-2xl px-6 py-4 text-xs uppercase tracking-[0.25em] transition duration-150 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97]"
+        disabled={waiting}
+        className="telegram-button subscription-premium-button flex w-full items-center justify-center rounded-2xl px-6 py-4 text-xs uppercase tracking-[0.25em] transition duration-150 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-80"
       >
         Activar acceso
       </button>
@@ -175,15 +62,14 @@ export function ActivateAccessButton({ plan }: Props) {
           <div className="relative max-w-xl rounded-[34px] border border-gold/40 bg-black p-8 shadow-[0_0_45px_rgba(212,175,55,0.16)]">
             <div className="pointer-events-none absolute inset-0 rounded-[34px] border border-white/5" />
 
-            <span className="pricing-label mb-4 block">Verificación</span>
+            <span className="pricing-label mb-4 block">Redirección segura</span>
 
             <h2 className="checkout-premium-title mb-4 text-4xl font-light">
-              Validando acceso
+              Abriendo Mercado Pago
             </h2>
 
             <p className="text-sm leading-7 text-muted-foreground">
-              Completa el pago en la ventana abierta. Si el pago se confirma,
-              esta página volverá al inicio automáticamente.
+              Serás redirigido para completar el pago de forma segura.
             </p>
           </div>
         </div>

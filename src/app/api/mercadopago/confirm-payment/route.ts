@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
 import { supabaseAdmin } from "@/lib/supabase/admin"
 
 function addDays(days: number) {
@@ -19,13 +20,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ active: false })
   }
 
-  const { data: existing } = await supabaseAdmin
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const existing = await supabaseAdmin
     .from("memberships")
     .select("id")
     .eq("mercado_pago_payment_id", String(paymentId))
     .maybeSingle()
 
-  if (existing) {
+  if (existing.data) {
     return NextResponse.json({ active: true })
   }
 
@@ -46,19 +53,24 @@ export async function GET(request: Request) {
   }
 
   let reference: {
-    user_id: string
-    email: string
-    plan: "monthly" | "quarterly"
-    days: number
-  } | null = null
+    user_id?: string
+    email?: string
+    plan?: "monthly" | "quarterly"
+    days?: number
+  } = {}
 
   try {
-    reference = JSON.parse(payment.external_reference)
+    reference = JSON.parse(payment.external_reference || "{}")
   } catch {
-    reference = null
+    reference = {}
   }
 
-  if (!reference?.user_id || !reference?.email || !reference?.plan) {
+  const userId = reference.user_id || user?.id
+  const email = reference.email || user?.email
+  const plan = reference.plan || "monthly"
+  const days = reference.days || 30
+
+  if (!userId || !email) {
     return NextResponse.json({ active: false })
   }
 
@@ -69,16 +81,16 @@ export async function GET(request: Request) {
       deactivated_reason: "replaced_by_new_payment",
       deactivated_at: new Date().toISOString(),
     })
-    .eq("user_id", reference.user_id)
+    .eq("user_id", userId)
     .eq("status", "active")
 
   await supabaseAdmin.from("memberships").insert({
-    user_id: reference.user_id,
-    email: reference.email,
-    plan: reference.plan,
+    user_id: userId,
+    email,
+    plan,
     status: "active",
     starts_at: new Date().toISOString(),
-    expires_at: addDays(reference.days),
+    expires_at: addDays(days),
     mercado_pago_payment_id: String(paymentId),
   })
 

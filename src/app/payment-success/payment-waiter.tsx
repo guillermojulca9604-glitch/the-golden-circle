@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useState } from "react"
 
 type Props = {
@@ -8,6 +9,7 @@ type Props = {
 
 export function PaymentWaiter({ paymentId }: Props) {
   const [seconds, setSeconds] = useState(0)
+  const [showButton, setShowButton] = useState(false)
 
   useEffect(() => {
     let attempts = 0
@@ -50,8 +52,10 @@ export function PaymentWaiter({ paymentId }: Props) {
 
       setSeconds(attempts)
 
-      if (attempts < 30) {
+      if (attempts < 20) {
         setTimeout(check, 1000)
+      } else {
+        setShowButton(true)
       }
     }
 
@@ -63,8 +67,19 @@ export function PaymentWaiter({ paymentId }: Props) {
   }, [paymentId])
 
   return (
-    <p className="mt-6 text-xs leading-6 text-muted-foreground">
-      Validando acceso automáticamente... {seconds}s
-    </p>
+    <>
+      <p className="mt-6 text-xs leading-6 text-muted-foreground">
+        Validando acceso automáticamente... {seconds}s
+      </p>
+
+      {showButton && (
+        <Link
+          href="/vip"
+          className="telegram-button subscription-premium-button mt-6 inline-flex w-full items-center justify-center rounded-2xl px-6 py-4 text-xs uppercase tracking-[0.25em]"
+        >
+          Ir a VIP
+        </Link>
+      )}
+    </>
   )
 }

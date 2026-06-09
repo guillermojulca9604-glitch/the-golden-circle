@@ -2,97 +2,145 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { supabaseAdmin } from "@/lib/supabase/admin"
 
-function addDays(days: number) {
+const PLANS = {
+  monthly: { title: "TGC Access M", price: 30, days: 30 },
+  quarterly: { title: "TGC Access T", price: 90, days: 90 },
+} as const
+
+function addMinutes(minutes: number) {
   const date = new Date()
-  date.setDate(date.getDate() + days)
+  date.setMinutes(date.getMinutes() + minutes)
   return date.toISOString()
 }
 
-export async function GET(request: Request) {
-  const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN
-  const url = new URL(request.url)
-
-  const paymentId =
-    url.searchParams.get("payment_id") ||
-    url.searchParams.get("collection_id")
-
-  if (!accessToken || !paymentId) {
-    return NextResponse.json({ active: false })
-  }
-
+export async function POST(request: Request) {
   const supabase = await createClient()
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const existing = await supabaseAdmin
-    .from("memberships")
-    .select("id")
-    .eq("mercado_pago_payment_id", String(paymentId))
-    .maybeSingle()
-
-  if (existing.data) {
-    return NextResponse.json({ active: true })
+  if (!user || !user.email) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  const paymentResponse = await fetch(
-    `https://api.mercadopago.com/v1/payments/${paymentId}`,
+  const now = new Date().toISOString()
+
+  const { data: activeMembership } = await supabaseAdmin
+    .from("memberships")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .gt("expires_at", now)
+    .limit(1)
+    .maybeSingle()
+
+  if (activeMembership) {
+    return NextResponse.json({ url: "/vip" })
+  }
+
+  const { data: pendingAttempt } = await supabaseAdmin
+    .from("payment_attempts")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("status", "pending")
+    .gt("expires_at", now)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (pendingAttempt) {
+    return NextResponse.json({
+      url: `/payment-pending?attempt_id=${pendingAttempt.id}`,
+    })
+  }
+
+  const body = await request.json().catch(() => null)
+  const planId = body?.plan === "quarterly" ? "quarterly" : "monthly"
+  const plan = PLANS[planId]
+
+  const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN
+
+  if (!accessToken) {
+    return NextResponse.json({ error: "Falta token" }, { status: 500 })
+  }
+
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "https://the-golden-circle-149p.vercel.app"
+
+  const { data: attempt, error: attemptError } = await supabaseAdmin
+    .from("payment_attempts")
+    .insert({
+      user_id: user.id,
+      email: user.email,
+      plan: planId,
+      status: "pending",
+      expires_at: addMinutes(20),
+    })
+    .select("id")
+    .single()
+
+  if (attemptError || !attempt) {
+    return NextResponse.json({ error: "No se pudo crear intento" }, { status: 500 })
+  }
+
+  const externalReference = JSON.stringify({
+    attempt_id: attempt.id,
+    user_id: user.id,
+    email: user.email,
+    plan: planId,
+    days: plan.days,
+  })
+
+  const response = await fetch(
+    "https://api.mercadopago.com/checkout/preferences",
     {
+      method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        items: [
+          {
+            title: plan.title,
+            quantity: 1,
+            unit_price: plan.price,
+            currency_id: "PEN",
+          },
+        ],
+        payer: { email: user.email },
+        external_reference: externalReference,
+        back_urls: {
+          success: `${siteUrl}/payment-success`,
+          failure: `${siteUrl}/checkout?plan=${planId}&country=pe`,
+          pending: `${siteUrl}/payment-pending?attempt_id=${attempt.id}`,
+        },
+        auto_return: "approved",
+        notification_url: `${siteUrl}/api/mercadopago/webhook`,
+      }),
     }
   )
 
-  const payment = await paymentResponse.json()
+  const data = await response.json()
 
-  if (!paymentResponse.ok || payment.status !== "approved") {
-    return NextResponse.json({ active: false })
-  }
+  if (!response.ok) {
+    await supabaseAdmin
+      .from("payment_attempts")
+      .update({ status: "failed" })
+      .eq("id", attempt.id)
 
-  let reference: {
-    user_id?: string
-    email?: string
-    plan?: "monthly" | "quarterly"
-    days?: number
-  } = {}
-
-  try {
-    reference = JSON.parse(payment.external_reference || "{}")
-  } catch {
-    reference = {}
-  }
-
-  const userId = reference.user_id || user?.id
-  const email = reference.email || user?.email
-  const plan = reference.plan || "monthly"
-  const days = reference.days || 30
-
-  if (!userId || !email) {
-    return NextResponse.json({ active: false })
+    return NextResponse.json({ error: "No se pudo crear pago" }, { status: 500 })
   }
 
   await supabaseAdmin
-    .from("memberships")
+    .from("payment_attempts")
     .update({
-      status: "disabled",
-      deactivated_reason: "replaced_by_new_payment",
-      deactivated_at: new Date().toISOString(),
+      payment_url: data.init_point,
+      preference_id: data.id,
     })
-    .eq("user_id", userId)
-    .eq("status", "active")
+    .eq("id", attempt.id)
 
-  await supabaseAdmin.from("memberships").insert({
-    user_id: userId,
-    email,
-    plan,
-    status: "active",
-    starts_at: new Date().toISOString(),
-    expires_at: addDays(days),
-    mercado_pago_payment_id: String(paymentId),
-  })
-
-  return NextResponse.json({ active: true })
+  return NextResponse.json({ url: data.init_point })
 }

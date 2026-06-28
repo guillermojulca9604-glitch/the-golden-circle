@@ -17,7 +17,7 @@ const catalogItems: CatalogItem[] = [
   {
     id: 1,
     type: "image",
-    thumbnail: "/photo_2026-05-17_12-49-24.jpg",
+    thumbnail: "/WhatsApp Image 2026-05-10 at 1.26.49 PM.jpg",
     title: "Colección Exclusiva",
     description: "Contenido premium disponible para miembros",
   },
@@ -32,14 +32,14 @@ const catalogItems: CatalogItem[] = [
   {
     id: 3,
     type: "image",
-    thumbnail: "/photo_2026-05-17_12-53-57.jpg",
+    thumbnail: "/signal-2026-02-03-094246.jpeg",
     title: "Galería Premium",
     description: "Acceso a galería completa vía Telegram",
   },
   {
     id: 4,
     type: "image",
-    thumbnail: "/photo_2026-05-17_13-03-48.jpg",
+    thumbnail: "/photo_2026-05-17_12-53-50.jpg",
     title: "Colección Especial",
     description: "Contenido de edición limitada",
   },
@@ -55,7 +55,7 @@ const catalogItems: CatalogItem[] = [
   {
     id: 6,
     type: "image",
-    thumbnail: "/photo_2026-05-17_12-53-50.jpg",
+    thumbnail: "/photo_2026-05-17_12-49-24.jpg",
     title: "Novedades",
     description: "Lo más reciente de la colección",
   },

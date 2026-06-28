@@ -17,7 +17,7 @@ const catalogItems: CatalogItem[] = [
   {
     id: 1,
     type: "image",
-    thumbnail: "/WhatsApp Image 2026-05-10 at 1.26.49 PM.jpg",
+    thumbnail: "/Image 2026-05-10 at 1.26.49 PM.jpg",
     title: "Colección Exclusiva",
     description: "Contenido premium disponible para miembros",
   },

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 type Props = {
   plan: "monthly" | "quarterly"
@@ -8,6 +8,35 @@ type Props = {
 
 export function ActivateAccessButton({ plan }: Props) {
   const [loading, setLoading] = useState(false)
+  const checkTimerRef = useRef<number | null>(null)
+
+  const stopChecking = () => {
+    if (checkTimerRef.current) {
+      window.clearInterval(checkTimerRef.current)
+      checkTimerRef.current = null
+    }
+  }
+
+  const checkMembership = async () => {
+    try {
+      const response = await fetch("/api/membership-status", {
+        cache: "no-store",
+      })
+
+      if (!response.ok) return false
+
+      const data = await response.json()
+      return Boolean(data.active)
+    } catch {
+      return false
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      stopChecking()
+    }
+  }, [])
 
   const handleClick = async () => {
     if (loading) return
@@ -30,12 +59,46 @@ export function ActivateAccessButton({ plan }: Props) {
 
       const data = await response.json()
 
-      if (data?.url) {
+      if (data?.url === "/vip") {
+        window.location.replace("/vip")
+        return
+      }
+
+      if (!data?.url) {
+        setLoading(false)
+        return
+      }
+
+      const paymentWindow = window.open(data.url, "_blank")
+
+      if (!paymentWindow) {
         window.location.href = data.url
         return
       }
 
-      setLoading(false)
+      stopChecking()
+
+      checkTimerRef.current = window.setInterval(async () => {
+        const active = await checkMembership()
+
+        if (active) {
+          stopChecking()
+          window.location.replace("/vip")
+          return
+        }
+
+        if (paymentWindow.closed) {
+          stopChecking()
+
+          const activeAfterClose = await checkMembership()
+
+          if (activeAfterClose) {
+            window.location.replace("/vip")
+          } else {
+            setLoading(false)
+          }
+        }
+      }, 700)
     } catch {
       setLoading(false)
     }

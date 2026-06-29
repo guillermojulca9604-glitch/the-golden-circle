@@ -7,16 +7,19 @@ type Props = {
 }
 
 export function ActivateAccessButton({ plan }: Props) {
-  const [waiting, setWaiting] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const handleClick = async () => {
-    if (waiting) return
-    setWaiting(true)
+    if (loading) return
+
+    setLoading(true)
 
     try {
       const response = await fetch("/api/mercadopago/create-preference", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ plan }),
       })
 
@@ -32,9 +35,9 @@ export function ActivateAccessButton({ plan }: Props) {
         return
       }
 
-      setWaiting(false)
+      setLoading(false)
     } catch {
-      setWaiting(false)
+      setLoading(false)
     }
   }
 
@@ -42,10 +45,10 @@ export function ActivateAccessButton({ plan }: Props) {
     <button
       type="button"
       onClick={handleClick}
-      disabled={waiting}
-      className="telegram-button subscription-premium-button flex w-full items-center justify-center rounded-2xl px-6 py-4 text-xs uppercase tracking-[0.25em] transition duration-150 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] disabled:opacity-80"
+      disabled={loading}
+      className="telegram-button subscription-premium-button flex w-full items-center justify-center rounded-2xl px-6 py-4 text-xs uppercase tracking-[0.25em] transition duration-150 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-75"
     >
-      Activar acceso
+      {loading ? "Redirigiendo..." : "Activar acceso"}
     </button>
   )
 }

@@ -1,77 +1,89 @@
-import Link from "next/link"
-import { headers } from "next/headers"
+import { redirect } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
 import { PRICES } from "@/lib/pricing"
 
-type Props = {
-  searchParams: Promise<{
-    country?: string
-  }>
-}
+export default async function PricingPage() {
+  const supabase = await createClient()
 
-export default async function PricingPage({ searchParams }: Props) {
-  const params = await searchParams
-  const headerList = await headers()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  const countryFromIp =
-    headerList.get("x-vercel-ip-country") ||
-    headerList.get("cf-ipcountry") ||
-    "PE"
+  if (user) {
+    const { data: membership } = await supabase
+      .from("memberships")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .gt("expires_at", new Date().toISOString())
+      .limit(1)
+      .maybeSingle()
 
-  const isPeru =
-    params.country === "pe" ||
-    countryFromIp === "PE"
+    if (membership) {
+      redirect("/vip")
+    }
+  }
 
-  const pricing = isPeru
-    ? PRICES.peru
-    : PRICES.international
+  const monthly = PRICES.peru.monthly
+  const quarterly = PRICES.peru.quarterly
 
   return (
-    <main className="min-h-dvh bg-background px-6 py-24 text-foreground">
+    <main className="min-h-dvh bg-background px-6 py-20 text-foreground">
       <section className="mx-auto max-w-6xl text-center">
-        <span className="pricing-label mb-4 block">
+        <span className="pricing-label mb-5 block">
           Membresía privada
         </span>
 
-        <h1 className="pricing-title mb-6">
-          The Golden Circle
+        <h1 className="checkout-premium-title text-5xl font-light md:text-7xl">
+          Elige tu acceso
         </h1>
 
-        <p className="mx-auto mb-16 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
-          Accede al contenido VIP, material exclusivo y futuras actualizaciones privadas.
+        <p className="mx-auto mt-6 max-w-xl text-sm leading-7 text-muted-foreground">
+          Selecciona una membresía para continuar con el acceso privado.
         </p>
 
-        <div className="grid gap-8 md:grid-cols-2">
-          {Object.entries(pricing).map(([id, plan]) => (
-            <div
-              key={id}
-              className="featured-card checkout-premium-card rounded-[34px] bg-black p-8"
-            >
-              <p className="checkout-premium-label text-xs uppercase tracking-widest">
-                Membresía
-              </p>
+        <div className="mt-12 grid gap-6 md:grid-cols-2">
+          <a
+            href="/checkout?plan=monthly&country=pe"
+            className="checkout-premium-card rounded-[34px] bg-black p-8 text-left transition hover:-translate-y-1"
+          >
+            <p className="pricing-label mb-4 block">
+              Mensual
+            </p>
 
-              <h2 className="checkout-premium-text mt-4 text-4xl">
-                {plan.label}
-              </h2>
+            <h2 className="text-4xl font-light">
+              {monthly.label}
+            </h2>
 
-              <div className="checkout-premium-price mt-8 text-6xl font-light">
-                {plan.price}
-              </div>
+            <p className="mt-4 text-sm leading-7 text-muted-foreground">
+              Acceso privado durante un mes.
+            </p>
 
-              <p className="mt-6 text-sm text-muted-foreground">
-                {id === "monthly"
-                  ? "Acceso privado durante 1 mes."
-                  : "Acceso privado durante 3 meses."}
-              </p>
+            <p className="mt-8 text-5xl font-light text-gold">
+              {monthly.price}
+            </p>
+          </a>
 
-              <Link
-                href={`/checkout?plan=${id}&country=${isPeru ? "pe" : "intl"}`}
-                className="telegram-button subscription-premium-button mt-10 inline-flex w-full items-center justify-center rounded-2xl px-6 py-4 text-xs uppercase tracking-[0.25em]"
-              >
-                Continuar
-              </Link>
-            </div>
-          ))}
+          <a
+            href="/checkout?plan=quarterly&country=pe"
+            className="checkout-premium-card rounded-[34px] bg-black p-8 text-left transition hover:-translate-y-1"
+          >
+            <p className="pricing-label mb-4 block">
+              Trimestral
+            </p>
+
+            <h2 className="text-4xl font-light">
+              {quarterly.label}
+            </h2>
+
+            <p className="mt-4 text-sm leading-7 text-muted-foreground">
+              Acceso privado durante tres meses.
+            </p>
+
+            <p className="mt-8 text-5xl font-light text-gold">
+              {quarterly.price}
+            </p>
+          </a>
         </div>
       </section>
     </main>

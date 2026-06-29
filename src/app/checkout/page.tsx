@@ -19,19 +19,21 @@ export default async function CheckoutPage({ searchParams }: Props) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (user) {
-    const { data: activeMembership } = await supabase
-      .from("memberships")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .gt("expires_at", new Date().toISOString())
-      .limit(1)
-      .maybeSingle()
+  if (!user) {
+    redirect(`/login?next=/checkout?plan=${params.plan || "monthly"}&country=pe`)
+  }
 
-    if (activeMembership) {
-      redirect("/vip")
-    }
+  const { data: membership } = await supabase
+    .from("memberships")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .gt("expires_at", new Date().toISOString())
+    .limit(1)
+    .maybeSingle()
+
+  if (membership) {
+    redirect("/vip")
   }
 
   const headerList = await headers()
@@ -52,7 +54,9 @@ export default async function CheckoutPage({ searchParams }: Props) {
       <section className="mx-auto flex min-h-[calc(100dvh-64px)] max-w-5xl items-center">
         <div className="w-full">
           <div className="mb-8 text-center">
-            <span className="pricing-label mb-3 block">Checkout</span>
+            <span className="pricing-label mb-3 block">
+              Checkout
+            </span>
 
             <h1 className="checkout-premium-title text-4xl font-light leading-none md:text-6xl">
               CONFIRMAR COMPRA
@@ -71,7 +75,9 @@ export default async function CheckoutPage({ searchParams }: Props) {
                     Membresía
                   </p>
 
-                  <h2 className="mt-3 text-3xl font-light">{plan.label}</h2>
+                  <h2 className="mt-3 text-3xl font-light">
+                    {plan.label}
+                  </h2>
 
                   <p className="mt-3 text-sm text-muted-foreground">
                     {planId === "monthly"
@@ -107,7 +113,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
                 <ActivateAccessButton plan={planId} />
 
                 <p className="mt-5 text-xs leading-6 text-muted-foreground">
-                  Serás redirigido para completar la operación de forma segura.
+                  Serás redirigido a Mercado Pago para completar la operación.
                 </p>
               </aside>
             </div>

@@ -27,26 +27,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true })
   }
 
-  const paymentResponse = await fetch(
-    `https://api.mercadopago.com/v1/payments/${paymentId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-    }
-  )
-
-  const payment = await paymentResponse.json()
-
-  if (!paymentResponse.ok) {
-    return NextResponse.json({ error: "No se pudo consultar pago" }, { status: 500 })
-  }
-
-  if (payment.status !== "approved") {
-    return NextResponse.json({ received: true, status: payment.status })
-  }
-
   const { data: existing } = await supabaseAdmin
     .from("memberships")
     .select("id")
@@ -57,6 +37,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true, duplicated: true })
   }
 
+  const paymentResponse = await fetch(
+    `https://api.mercadopago.com/v1/payments/${paymentId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  )
+
+  const payment = await paymentResponse.json()
+
+  if (!paymentResponse.ok || payment.status !== "approved") {
+    return NextResponse.json({ received: true, status: payment.status })
+  }
+
   let reference: {
     user_id: string
     email: string
@@ -65,7 +60,7 @@ export async function POST(request: Request) {
   } | null = null
 
   try {
-    reference = JSON.parse(payment.external_reference)
+    reference = JSON.parse(payment.external_reference || "{}")
   } catch {
     reference = null
   }
@@ -78,8 +73,6 @@ export async function POST(request: Request) {
     .from("memberships")
     .update({
       status: "disabled",
-      deactivated_reason: "replaced_by_new_payment",
-      deactivated_at: new Date().toISOString(),
     })
     .eq("user_id", reference.user_id)
     .eq("status", "active")

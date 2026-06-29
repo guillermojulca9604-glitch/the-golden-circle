@@ -2,8 +2,16 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
 const PLANS = {
-  monthly: { title: "TGC Access M", price: 30, days: 30 },
-  quarterly: { title: "TGC Access T", price: 90, days: 90 },
+  monthly: {
+    title: "TGC Access M",
+    price: 30,
+    days: 30,
+  },
+  quarterly: {
+    title: "TGC Access T",
+    price: 90,
+    days: 90,
+  },
 } as const
 
 export async function POST(request: Request) {
@@ -37,7 +45,7 @@ export async function POST(request: Request) {
   const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN
 
   if (!accessToken) {
-    return NextResponse.json({ error: "Falta token" }, { status: 500 })
+    return NextResponse.json({ error: "Falta MERCADO_PAGO_ACCESS_TOKEN" }, { status: 500 })
   }
 
   const siteUrl =
@@ -92,5 +100,7 @@ export async function POST(request: Request) {
     )
   }
 
-  return NextResponse.json({ url: data.init_point })
+  return NextResponse.json({
+    url: data.init_point,
+  })
 }

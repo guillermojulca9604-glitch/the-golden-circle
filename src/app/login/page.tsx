@@ -7,7 +7,6 @@ import { LoginForm } from "./login-form"
 function LoginContent() {
   const searchParams = useSearchParams()
   const source = searchParams.get("source")
-  const next = searchParams.get("next") ?? "/pricing"
   const onlyLogin = source === "header"
 
   const [mode, setMode] = useState<"login" | "register" | "forgot">("login")
@@ -32,12 +31,7 @@ function LoginContent() {
             "Ingresa tu correo y te enviaremos un enlace para crear una nueva contraseña."}
         </p>
 
-        <LoginForm
-          mode={mode}
-          setMode={setMode}
-          onlyLogin={onlyLogin}
-          next={next}
-        />
+        <LoginForm mode={mode} setMode={setMode} onlyLogin={onlyLogin} />
       </div>
     </main>
   )

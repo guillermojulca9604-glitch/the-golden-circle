@@ -1,7 +1,7 @@
 "use client"
 
-import { createClient } from "@/lib/supabase/client"
 import { Dispatch, SetStateAction, useState } from "react"
+import { createClient } from "@/lib/supabase/client"
 
 type Mode = "login" | "register" | "forgot"
 
@@ -9,15 +9,9 @@ type Props = {
   mode: Mode
   setMode: Dispatch<SetStateAction<Mode>>
   onlyLogin?: boolean
-  next?: string
 }
 
-export function LoginForm({
-  mode,
-  setMode,
-  onlyLogin = false,
-  next = "/pricing",
-}: Props) {
+export function LoginForm({ mode, setMode, onlyLogin = false }: Props) {
   const supabase = createClient()
 
   const [email, setEmail] = useState("")
@@ -38,7 +32,7 @@ export function LoginForm({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/login?next=${next}`,
+          emailRedirectTo: `${window.location.origin}/login`,
         },
       })
 
@@ -66,7 +60,18 @@ export function LoginForm({
       return
     }
 
-    window.location.href = next
+    const statusResponse = await fetch("/api/membership-status", {
+      cache: "no-store",
+    })
+
+    const statusData = await statusResponse.json()
+
+    if (statusData.active) {
+      window.location.href = "/vip"
+      return
+    }
+
+    window.location.href = "/pricing"
   }
 
   const handleForgotPassword = async () => {

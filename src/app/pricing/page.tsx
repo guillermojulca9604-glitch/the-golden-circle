@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import { AuthTopbarSimple } from "@/components/auth-topbar-simple"
 import { createClient } from "@/lib/supabase/server"
 import { PRICES } from "@/lib/pricing"
 
@@ -28,11 +29,11 @@ export default async function PricingPage() {
   const quarterly = PRICES.peru.quarterly
 
   return (
-    <main className="min-h-dvh bg-background px-6 py-20 text-foreground">
+    <main className="min-h-dvh bg-background px-6 py-24 text-foreground">
+      {user && <AuthTopbarSimple />}
+
       <section className="mx-auto max-w-6xl text-center">
-        <span className="pricing-label mb-5 block">
-          Membresía privada
-        </span>
+        <span className="pricing-label mb-5 block">Membresía privada</span>
 
         <h1 className="checkout-premium-title text-5xl font-light md:text-7xl">
           Elige tu acceso
@@ -47,13 +48,9 @@ export default async function PricingPage() {
             href="/checkout?plan=monthly&country=pe"
             className="checkout-premium-card rounded-[34px] bg-black p-8 text-left transition hover:-translate-y-1"
           >
-            <p className="pricing-label mb-4 block">
-              Mensual
-            </p>
+            <p className="pricing-label mb-4 block">Mensual</p>
 
-            <h2 className="text-4xl font-light">
-              {monthly.label}
-            </h2>
+            <h2 className="text-4xl font-light">{monthly.label}</h2>
 
             <p className="mt-4 text-sm leading-7 text-muted-foreground">
               Acceso privado durante un mes.
@@ -68,13 +65,9 @@ export default async function PricingPage() {
             href="/checkout?plan=quarterly&country=pe"
             className="checkout-premium-card rounded-[34px] bg-black p-8 text-left transition hover:-translate-y-1"
           >
-            <p className="pricing-label mb-4 block">
-              Trimestral
-            </p>
+            <p className="pricing-label mb-4 block">Trimestral</p>
 
-            <h2 className="text-4xl font-light">
-              {quarterly.label}
-            </h2>
+            <h2 className="text-4xl font-light">{quarterly.label}</h2>
 
             <p className="mt-4 text-sm leading-7 text-muted-foreground">
               Acceso privado durante tres meses.

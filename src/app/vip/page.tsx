@@ -10,7 +10,7 @@ export default async function VipPage() {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect("/login?next=/vip")
+    redirect("/")
   }
 
   const { data: membership } = await supabase

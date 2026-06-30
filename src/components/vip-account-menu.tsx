@@ -14,7 +14,7 @@ export function VipAccountMenu({ email }: Props) {
 
   const logout = async () => {
     await supabase.auth.signOut()
-    window.location.replace("/login")
+    window.location.replace("/")
   }
 
   return (

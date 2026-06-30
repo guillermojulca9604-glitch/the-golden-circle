@@ -1,25 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { LoginForm } from "./login-form"
 
 export function LoginClient() {
   const [mode, setMode] = useState<"login" | "register" | "forgot">("login")
-
-  useEffect(() => {
-    window.history.replaceState({ loginPage: true }, "", "/login")
-    window.history.pushState({ loginGuard: true }, "", "/login")
-
-    const handleBack = () => {
-      window.location.replace("/")
-    }
-
-    window.addEventListener("popstate", handleBack)
-
-    return () => {
-      window.removeEventListener("popstate", handleBack)
-    }
-  }, [])
 
   return (
     <main className="min-h-dvh bg-background px-6 py-20 text-foreground">

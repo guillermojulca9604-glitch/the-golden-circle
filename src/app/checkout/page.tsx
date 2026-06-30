@@ -4,6 +4,7 @@ import { AuthTopbarSimple } from "@/components/auth-topbar-simple"
 import { PRICES } from "@/lib/pricing"
 import { createClient } from "@/lib/supabase/server"
 import { ActivateAccessButton } from "./activate-access-button"
+import { SessionGuard } from "@/components/session-guard"
 
 type Props = {
   searchParams: Promise<{
@@ -52,6 +53,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
 
   return (
     <main className="min-h-dvh bg-background px-5 py-24 text-foreground md:px-6">
+      <SessionGuard mode="checkout" />
       <AuthTopbarSimple />
 
       <section className="mx-auto flex min-h-[calc(100dvh-96px)] max-w-5xl items-center">

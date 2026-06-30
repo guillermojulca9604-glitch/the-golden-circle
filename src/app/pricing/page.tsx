@@ -3,6 +3,7 @@ import { AuthTopbarSimple } from "@/components/auth-topbar-simple"
 import { ReplaceLink } from "@/components/replace-link"
 import { createClient } from "@/lib/supabase/server"
 import { PRICES } from "@/lib/pricing"
+import { SessionGuard } from "@/components/session-guard"
 
 export default async function PricingPage() {
   const supabase = await createClient()
@@ -33,6 +34,7 @@ export default async function PricingPage() {
 
   return (
     <main className="min-h-dvh bg-background px-6 py-24 text-foreground">
+      <SessionGuard mode="pricing" />
       <AuthTopbarSimple />
 
       <section className="mx-auto max-w-6xl text-center">

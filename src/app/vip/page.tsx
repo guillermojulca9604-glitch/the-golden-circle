@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { VipAccountMenu } from "@/components/vip-account-menu"
 import { createClient } from "@/lib/supabase/server"
+import { SessionGuard } from "@/components/session-guard"
 
 export default async function VipPage() {
   const supabase = await createClient()
@@ -28,6 +29,7 @@ export default async function VipPage() {
 
   return (
     <main className="min-h-dvh bg-background px-6 py-24 text-foreground">
+      <SessionGuard mode="vip" />
       <VipAccountMenu email={user.email} />
 
       <section className="mx-auto flex min-h-[calc(100dvh-160px)] max-w-4xl items-center justify-center text-center">

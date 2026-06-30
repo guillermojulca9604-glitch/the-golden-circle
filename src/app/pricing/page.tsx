@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation"
 import { AuthTopbarSimple } from "@/components/auth-topbar-simple"
 import { ReplaceLink } from "@/components/replace-link"
+import { SessionGuard } from "@/components/session-guard"
 import { createClient } from "@/lib/supabase/server"
 import { PRICES } from "@/lib/pricing"
-import { SessionGuard } from "@/components/session-guard"
 
 export default async function PricingPage() {
   const supabase = await createClient()
@@ -13,7 +13,7 @@ export default async function PricingPage() {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect("/")
+    redirect("/login?next=/pricing")
   }
 
   const { data: membership } = await supabase
@@ -70,7 +70,9 @@ export default async function PricingPage() {
             <p className="mt-4 text-sm leading-7 text-muted-foreground">
               Acceso privado durante tres meses.
             </p>
-            <p className="mt-8 text-5xl font-light text-gold">{quarterly.price}</p>
+            <p className="mt-8 text-5xl font-light text-gold">
+              {quarterly.price}
+            </p>
           </ReplaceLink>
         </div>
       </section>

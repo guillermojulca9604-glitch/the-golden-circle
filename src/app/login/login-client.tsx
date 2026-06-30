@@ -3,7 +3,11 @@
 import { useState } from "react"
 import { LoginForm } from "./login-form"
 
-export function LoginClient() {
+type Props = {
+  nextPath: string
+}
+
+export function LoginClient({ nextPath }: Props) {
   const [mode, setMode] = useState<"login" | "register" | "forgot">("login")
 
   return (
@@ -20,13 +24,18 @@ export function LoginClient() {
         </h1>
 
         <p className="mb-8 text-sm leading-relaxed text-muted-foreground">
-          {mode === "login" && "Inicia sesión para continuar con tu membresía."}
-          {mode === "register" && "Regístrate para acceder a la membresía."}
+          {mode === "login" && "Inicia sesión para continuar."}
+          {mode === "register" && "Crea tu cuenta para continuar."}
           {mode === "forgot" &&
-            "Ingresa tu correo y te enviaremos un enlace para crear una nueva contraseña."}
+            "Ingresa tu correo y te enviaremos un enlace de recuperación."}
         </p>
 
-        <LoginForm mode={mode} setMode={setMode} onlyLogin={false} />
+        <LoginForm
+          mode={mode}
+          setMode={setMode}
+          onlyLogin={false}
+          nextPath={nextPath}
+        />
       </div>
     </main>
   )

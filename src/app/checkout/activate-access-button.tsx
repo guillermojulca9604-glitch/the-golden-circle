@@ -16,6 +16,10 @@ export function ActivateAccessButton({ plan }: Props) {
           cache: "no-store",
         })
 
+        if (response.status === 401) {
+          return
+        }
+
         const data = await response.json()
 
         if (data.active) {

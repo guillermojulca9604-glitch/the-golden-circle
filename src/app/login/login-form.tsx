@@ -9,15 +9,23 @@ type Props = {
   mode: Mode
   setMode: Dispatch<SetStateAction<Mode>>
   onlyLogin?: boolean
+  nextPath?: string
 }
 
-export function LoginForm({ mode, setMode, onlyLogin = false }: Props) {
+export function LoginForm({
+  mode,
+  setMode,
+  onlyLogin = false,
+  nextPath = "/entry",
+}: Props) {
   const supabase = createClient()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [message, setMessage] = useState("")
+
+  const safeNext = nextPath.startsWith("/") ? nextPath : "/entry"
 
   const handleSubmit = async () => {
     if (!email || !password) {
@@ -32,7 +40,9 @@ export function LoginForm({ mode, setMode, onlyLogin = false }: Props) {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/login`,
+          emailRedirectTo: `${window.location.origin}/login?next=${encodeURIComponent(
+            safeNext
+          )}`,
         },
       })
 
@@ -60,7 +70,7 @@ export function LoginForm({ mode, setMode, onlyLogin = false }: Props) {
       return
     }
 
-    window.location.replace("/entry")
+    window.location.replace(safeNext)
   }
 
   const handleForgotPassword = async () => {
@@ -106,7 +116,7 @@ export function LoginForm({ mode, setMode, onlyLogin = false }: Props) {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-lg text-gold/60 transition duration-300 hover:scale-110 hover:text-gold"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-lg text-gold/60 transition hover:text-gold"
           >
             {showPassword ? "◉" : "◌"}
           </button>

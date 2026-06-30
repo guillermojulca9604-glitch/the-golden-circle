@@ -2,7 +2,14 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { LoginClient } from "./login-client"
 
-export default async function LoginPage() {
+type Props = {
+  searchParams: Promise<{
+    next?: string
+  }>
+}
+
+export default async function LoginPage({ searchParams }: Props) {
+  const params = await searchParams
   const supabase = await createClient()
 
   const {
@@ -10,8 +17,8 @@ export default async function LoginPage() {
   } = await supabase.auth.getUser()
 
   if (user) {
-    redirect("/entry")
+    redirect(params.next || "/entry")
   }
 
-  return <LoginClient />
+  return <LoginClient nextPath={params.next || "/entry"} />
 }

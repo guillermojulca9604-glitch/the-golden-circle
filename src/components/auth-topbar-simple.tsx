@@ -8,7 +8,7 @@ export function AuthTopbarSimple() {
 
   const logout = async () => {
     await supabase.auth.signOut()
-    window.location.replace("/")
+    window.location.replace("/login")
   }
 
   return (

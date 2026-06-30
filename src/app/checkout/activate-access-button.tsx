@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 type Props = {
   plan: "monthly" | "quarterly"
@@ -9,8 +9,38 @@ type Props = {
 export function ActivateAccessButton({ plan }: Props) {
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    const resetOrRedirect = async () => {
+      try {
+        const response = await fetch("/api/membership-status", {
+          cache: "no-store",
+        })
+
+        const data = await response.json()
+
+        if (data.active) {
+          window.location.replace("/vip")
+          return
+        }
+
+        setLoading(false)
+      } catch {
+        setLoading(false)
+      }
+    }
+
+    window.addEventListener("pageshow", resetOrRedirect)
+    window.addEventListener("focus", resetOrRedirect)
+
+    return () => {
+      window.removeEventListener("pageshow", resetOrRedirect)
+      window.removeEventListener("focus", resetOrRedirect)
+    }
+  }, [])
+
   const handleClick = async () => {
     if (loading) return
+
     setLoading(true)
 
     try {

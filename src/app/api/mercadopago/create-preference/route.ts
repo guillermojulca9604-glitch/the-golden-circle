@@ -41,18 +41,17 @@ export async function POST(request: Request) {
 
   const { data: pendingAttempt } = await supabaseAdmin
     .from("payment_attempts")
-    .select("id")
+    .select("id, payment_url")
     .eq("user_id", user.id)
     .eq("status", "pending")
     .gt("expires_at", now)
+    .not("payment_url", "is", null)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle()
 
-  if (pendingAttempt) {
-    return NextResponse.json({
-      url: `/payment-pending?attempt_id=${pendingAttempt.id}`,
-    })
+  if (pendingAttempt?.payment_url) {
+    return NextResponse.json({ url: pendingAttempt.payment_url })
   }
 
   const body = await request.json().catch(() => null)
@@ -82,7 +81,10 @@ export async function POST(request: Request) {
     .single()
 
   if (attemptError || !attempt) {
-    return NextResponse.json({ error: "No se pudo crear intento" }, { status: 500 })
+    return NextResponse.json(
+      { error: "No se pudo crear intento" },
+      { status: 500 }
+    )
   }
 
   const externalReference = JSON.stringify({
@@ -113,7 +115,7 @@ export async function POST(request: Request) {
       back_urls: {
         success: `${siteUrl}/payment-success`,
         failure: `${siteUrl}/checkout?plan=${planId}&country=pe`,
-        pending: `${siteUrl}/payment-pending?attempt_id=${attempt.id}`,
+        pending: `${siteUrl}/checkout?plan=${planId}&country=pe`,
       },
       auto_return: "approved",
       notification_url: `${siteUrl}/api/mercadopago/webhook`,
@@ -128,7 +130,10 @@ export async function POST(request: Request) {
       .update({ status: "failed" })
       .eq("id", attempt.id)
 
-    return NextResponse.json({ error: "No se pudo crear pago" }, { status: 500 })
+    return NextResponse.json(
+      { error: "No se pudo crear pago" },
+      { status: 500 }
+    )
   }
 
   await supabaseAdmin

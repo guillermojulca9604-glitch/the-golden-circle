@@ -56,22 +56,11 @@ export function LoginForm({ mode, setMode, onlyLogin = false }: Props) {
     }
 
     if (email.toLowerCase() === "guillermojulca9604@gmail.com") {
-      window.location.href = "/admin"
+      window.location.replace("/admin")
       return
     }
 
-    const statusResponse = await fetch("/api/membership-status", {
-      cache: "no-store",
-    })
-
-    const statusData = await statusResponse.json()
-
-    if (statusData.active) {
-      window.location.href = "/vip"
-      return
-    }
-
-    window.location.href = "/pricing"
+    window.location.replace("/entry")
   }
 
   const handleForgotPassword = async () => {

@@ -51,14 +51,14 @@ export function ActivateAccessButton({ plan }: Props) {
       })
 
       if (response.status === 401) {
-        window.location.href = `/login?next=/checkout?plan=${plan}&country=pe`
+        window.location.replace(`/login?next=/checkout?plan=${plan}&country=pe`)
         return
       }
 
       const data = await response.json()
 
       if (data?.url) {
-        window.location.href = data.url
+        window.location.replace(data.url)
         return
       }
 

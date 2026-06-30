@@ -7,30 +7,17 @@ export function LoginClient() {
   const [mode, setMode] = useState<"login" | "register" | "forgot">("login")
 
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const response = await fetch("/api/membership-status", {
-          cache: "no-store",
-        })
+    window.history.replaceState({ loginPage: true }, "", "/login")
+    window.history.pushState({ loginGuard: true }, "", "/login")
 
-        if (response.status === 401) return
-
-        const data = await response.json()
-
-        if (data.active) {
-          window.location.replace("/vip")
-        } else {
-          window.location.replace("/pricing")
-        }
-      } catch {}
+    const handleBack = () => {
+      window.location.replace("/")
     }
 
-    window.addEventListener("pageshow", checkSession)
-    window.addEventListener("focus", checkSession)
+    window.addEventListener("popstate", handleBack)
 
     return () => {
-      window.removeEventListener("pageshow", checkSession)
-      window.removeEventListener("focus", checkSession)
+      window.removeEventListener("popstate", handleBack)
     }
   }, [])
 

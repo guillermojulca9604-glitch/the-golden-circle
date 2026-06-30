@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { LogoutButton } from "../logout-button"
 
 export default async function VipPage() {
   const supabase = await createClient()
@@ -29,9 +30,7 @@ export default async function VipPage() {
     <main className="min-h-dvh bg-background px-6 py-24 text-foreground">
       <section className="mx-auto flex min-h-[calc(100dvh-160px)] max-w-4xl items-center justify-center text-center">
         <div className="checkout-premium-card w-full rounded-[34px] bg-black p-8 md:p-12">
-          <span className="pricing-label mb-5 block">
-            The Golden Circle
-          </span>
+          <span className="pricing-label mb-5 block">The Golden Circle</span>
 
           <h1 className="checkout-premium-title text-5xl font-light leading-none md:text-7xl">
             Acceso VIP activado
@@ -46,14 +45,14 @@ export default async function VipPage() {
               Estado
             </p>
 
-            <p className="mt-3 text-2xl text-gold">
-              Membresía activa
-            </p>
+            <p className="mt-3 text-2xl text-gold">Membresía activa</p>
 
             <p className="mt-4 text-sm text-muted-foreground">
               Plan: {membership.plan === "quarterly" ? "Trimestral" : "Mensual"}
             </p>
           </div>
+
+          <LogoutButton />
         </div>
       </section>
     </main>

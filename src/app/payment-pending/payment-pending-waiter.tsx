@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 
-export function PaymentSuccessWaiter() {
+export function PaymentPendingWaiter() {
   const [seconds, setSeconds] = useState(0)
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export function PaymentSuccessWaiter() {
       if (attempts < 90) {
         setTimeout(check, 1000)
       } else {
-        window.location.replace("/payment-pending")
+        window.location.replace("/pricing")
       }
     }
 
@@ -45,7 +45,7 @@ export function PaymentSuccessWaiter() {
 
   return (
     <p className="mt-6 text-xs leading-6 text-muted-foreground">
-      Activando acceso... {seconds}s
+      Verificando pago... {seconds}s
     </p>
   )
 }

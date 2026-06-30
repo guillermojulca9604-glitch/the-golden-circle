@@ -53,6 +53,7 @@ export async function POST(request: Request) {
   }
 
   let reference: {
+    attempt_id?: string
     user_id: string
     email: string
     plan: "monthly" | "quarterly"
@@ -69,11 +70,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Referencia inválida" }, { status: 400 })
   }
 
+  if (reference.attempt_id) {
+    await supabaseAdmin
+      .from("payment_attempts")
+      .update({ status: "approved" })
+      .eq("id", reference.attempt_id)
+  }
+
   await supabaseAdmin
     .from("memberships")
-    .update({
-      status: "disabled",
-    })
+    .update({ status: "disabled" })
     .eq("user_id", reference.user_id)
     .eq("status", "active")
 

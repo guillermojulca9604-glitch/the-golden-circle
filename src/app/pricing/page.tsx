@@ -1,6 +1,6 @@
+import Link from "next/link"
 import { redirect } from "next/navigation"
 import { AuthTopbarSimple } from "@/components/auth-topbar-simple"
-import { ReplaceLink } from "@/components/replace-link"
 import { SessionGuard } from "@/components/session-guard"
 import { createClient } from "@/lib/supabase/server"
 import { PRICES } from "@/lib/pricing"
@@ -49,7 +49,7 @@ export default async function PricingPage() {
         </p>
 
         <div className="mt-12 grid gap-6 md:grid-cols-2">
-          <ReplaceLink
+          <Link
             href="/checkout?plan=monthly&country=pe"
             className="checkout-premium-card rounded-[34px] bg-black p-8 text-left transition hover:-translate-y-1"
           >
@@ -59,9 +59,9 @@ export default async function PricingPage() {
               Acceso privado durante un mes.
             </p>
             <p className="mt-8 text-5xl font-light text-gold">{monthly.price}</p>
-          </ReplaceLink>
+          </Link>
 
-          <ReplaceLink
+          <Link
             href="/checkout?plan=quarterly&country=pe"
             className="checkout-premium-card rounded-[34px] bg-black p-8 text-left transition hover:-translate-y-1"
           >
@@ -73,7 +73,7 @@ export default async function PricingPage() {
             <p className="mt-8 text-5xl font-light text-gold">
               {quarterly.price}
             </p>
-          </ReplaceLink>
+          </Link>
         </div>
       </section>
     </main>

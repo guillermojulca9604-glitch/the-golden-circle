@@ -16,9 +16,7 @@ export function ActivateAccessButton({ plan }: Props) {
           cache: "no-store",
         })
 
-        if (response.status === 401) {
-          return
-        }
+        if (response.status === 401) return
 
         const data = await response.json()
 
@@ -61,8 +59,13 @@ export function ActivateAccessButton({ plan }: Props) {
 
       const data = await response.json()
 
+      if (data?.url === "/vip") {
+        window.location.replace("/vip")
+        return
+      }
+
       if (data?.url) {
-        window.location.replace(data.url)
+        window.location.href = data.url
         return
       }
 

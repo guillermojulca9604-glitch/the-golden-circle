@@ -114,8 +114,8 @@ export async function POST(request: Request) {
       external_reference: externalReference,
       back_urls: {
         success: `${siteUrl}/payment-success`,
-        failure: `${siteUrl}/checkout?plan=${planId}&country=pe`,
-        pending: `${siteUrl}/checkout?plan=${planId}&country=pe`,
+        failure: `${siteUrl}/access?step=checkout&plan=${planId}`,
+        pending: `${siteUrl}/payment-success`,
       },
       auto_return: "approved",
       notification_url: `${siteUrl}/api/mercadopago/webhook`,

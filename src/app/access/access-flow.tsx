@@ -189,9 +189,8 @@ export function AccessFlow({ initialStep, initialPlan, initialEmail }: Props) {
     await supabase.auth.signOut()
     setEmail("")
     setPassword("")
-    replace("login")
+    window.location.href = "/access?step=login"
   }
-
   const pay = async () => {
     if (loading) return
 

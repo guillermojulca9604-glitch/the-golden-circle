@@ -1,3 +1,5 @@
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { AccessFlow } from "./access-flow"
 
@@ -11,10 +13,17 @@ type Props = {
 export default async function AccessPage({ searchParams }: Props) {
   const params = await searchParams
   const supabase = await createClient()
+  const cookieStore = await cookies()
+
+  const loggedOut = cookieStore.get("tgc_logged_out")?.value === "1"
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
+
+  if (!user && loggedOut && params.step !== "login") {
+    redirect("/")
+  }
 
   let initialStep = params.step || "login"
 

@@ -147,6 +147,8 @@ export function AccessFlow({ initialStep, initialPlan, initialEmail }: Props) {
       return
     }
 
+    document.cookie = "tgc_logged_out=; path=/; max-age=0"
+
     const statusResponse = await fetch("/api/membership-status", {
       cache: "no-store",
     })
@@ -186,11 +188,13 @@ export function AccessFlow({ initialStep, initialPlan, initialEmail }: Props) {
   }
 
   const logout = async () => {
+    document.cookie = "tgc_logged_out=1; path=/; max-age=120"
     await supabase.auth.signOut()
     setEmail("")
     setPassword("")
     window.location.href = "/access?step=login"
   }
+
   const pay = async () => {
     if (loading) return
 

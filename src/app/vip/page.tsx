@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation"
 import { VipAccountMenu } from "@/components/vip-account-menu"
 import { createClient } from "@/lib/supabase/server"
-import { SessionGuard } from "@/components/session-guard"
 
 export default async function VipPage() {
   const supabase = await createClient()
@@ -11,7 +10,7 @@ export default async function VipPage() {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect("/")
+    redirect("/access?step=login")
   }
 
   const { data: membership } = await supabase
@@ -24,12 +23,11 @@ export default async function VipPage() {
     .maybeSingle()
 
   if (!membership) {
-    redirect("/pricing")
+    redirect("/access?step=pricing")
   }
 
   return (
     <main className="min-h-dvh bg-background px-6 py-24 text-foreground">
-      <SessionGuard mode="vip" />
       <VipAccountMenu email={user.email} />
 
       <section className="mx-auto flex min-h-[calc(100dvh-160px)] max-w-4xl items-center justify-center text-center">
@@ -53,6 +51,11 @@ export default async function VipPage() {
 
             <p className="mt-4 text-sm text-muted-foreground">
               Plan: {membership.plan === "quarterly" ? "Trimestral" : "Mensual"}
+            </p>
+
+            <p className="mt-2 text-sm text-muted-foreground">
+              Válido hasta:{" "}
+              {new Date(membership.expires_at).toLocaleDateString("es-PE")}
             </p>
           </div>
         </div>

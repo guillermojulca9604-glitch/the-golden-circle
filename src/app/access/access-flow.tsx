@@ -1,9 +1,21 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react"
+
 import { createClient } from "@/lib/supabase/client"
 
-type Step = "login" | "register" | "pricing" | "checkout" | "vip"
+type Step =
+  | "login"
+  | "register"
+  | "pricing"
+  | "checkout"
+  | "vip"
+
 type Plan = "monthly" | "quarterly"
 
 type Props = {
@@ -11,6 +23,20 @@ type Props = {
   initialPlan: Plan
   initialEmail: string | null
 }
+
+type FlowHistoryState = {
+  __tgcFlow?: true
+  flowIndex?: number
+  step?: Step
+  plan?: Plan
+  [key: string]: unknown
+}
+
+const FLOW_FROM_HOME_KEY =
+  "tgc:flow-from-home"
+
+const LOGOUT_CLEANUP_KEY =
+  "tgc:logout-cleanup"
 
 const prices = {
   monthly: {
@@ -31,6 +57,15 @@ const validSteps: Step[] = [
   "vip",
 ]
 
+function isValidStep(
+  value: string | null
+): value is Step {
+  return Boolean(
+    value &&
+      validSteps.includes(value as Step)
+  )
+}
+
 export function AccessFlow({
   initialStep,
   initialPlan,
@@ -38,20 +73,48 @@ export function AccessFlow({
 }: Props) {
   const supabase = createClient()
 
-  const [step, setStep] = useState<Step>(
+  const normalizedInitialStep: Step =
     validSteps.includes(initialStep as Step)
       ? (initialStep as Step)
       : "login"
+
+  const [step, setStep] = useState<Step>(
+    normalizedInitialStep
   )
 
-  const [plan, setPlan] = useState<Plan>(initialPlan)
-  const [email, setEmail] = useState(initialEmail || "")
-  const [password, setPassword] = useState("")
-  const [message, setMessage] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [plan, setPlan] =
+    useState<Plan>(initialPlan)
+
+  const [email, setEmail] = useState(
+    initialEmail || ""
+  )
+
+  const [password, setPassword] =
+    useState("")
+
+  const [message, setMessage] =
+    useState("")
+
+  const [loading, setLoading] =
+    useState(false)
+
+  /*
+   * Índice 0:
+   * Login o Precios.
+   *
+   * Índice 1:
+   * Checkout.
+   *
+   * Cuando agreguemos más pasos,
+   * continuarán con 2, 3, etc.
+   */
+  const flowIndexRef = useRef(0)
 
   const buildUrl = useCallback(
-    (nextStep: Step, nextPlan: Plan) => {
+    (
+      nextStep: Step,
+      nextPlan: Plan
+    ) => {
       if (nextStep === "checkout") {
         return `/access?step=checkout&plan=${nextPlan}`
       }
@@ -61,126 +124,309 @@ export function AccessFlow({
     []
   )
 
+  const writeHistory = useCallback(
+    (
+      mode: "push" | "replace",
+      nextStep: Step,
+      nextPlan: Plan,
+      nextIndex: number
+    ) => {
+      const currentState =
+        (window.history.state ||
+          {}) as FlowHistoryState
+
+      const nextState: FlowHistoryState = {
+        ...currentState,
+        __tgcFlow: true,
+        flowIndex: nextIndex,
+        step: nextStep,
+        plan: nextPlan,
+      }
+
+      const nextUrl = buildUrl(
+        nextStep,
+        nextPlan
+      )
+
+      if (mode === "push") {
+        window.history.pushState(
+          nextState,
+          "",
+          nextUrl
+        )
+      } else {
+        window.history.replaceState(
+          nextState,
+          "",
+          nextUrl
+        )
+      }
+
+      flowIndexRef.current = nextIndex
+    },
+    [buildUrl]
+  )
+
   /*
-   * Todos los pasos internos usan replaceState.
+   * Reemplaza el paso actual.
    *
-   * Login → Precios → Checkout
+   * Lo usamos especialmente para:
    *
-   * no crean nuevas entradas dentro del historial.
+   * Login → Precios
+   *
+   * Así Login desaparece mientras
+   * la sesión está iniciada.
    */
-  const replace = useCallback(
-    (nextStep: Step, nextPlan: Plan = plan) => {
+  const replaceStep = useCallback(
+    (
+      nextStep: Step,
+      nextPlan: Plan = plan
+    ) => {
       setStep(nextStep)
       setPlan(nextPlan)
       setMessage("")
       setLoading(false)
 
-      window.history.replaceState(
-        {
-          step: nextStep,
-          plan: nextPlan,
-        },
-        "",
-        buildUrl(nextStep, nextPlan)
+      writeHistory(
+        "replace",
+        nextStep,
+        nextPlan,
+        flowIndexRef.current
       )
     },
-    [buildUrl, plan]
+    [plan, writeHistory]
   )
 
   /*
-   * Mantiene sincronizada la pantalla cuando el usuario
-   * utiliza las flechas del navegador.
+   * Agrega un nuevo paso al historial.
+   *
+   * Lo usamos para:
+   *
+   * Precios → Checkout
+   */
+  const pushStep = useCallback(
+    (
+      nextStep: Step,
+      nextPlan: Plan = plan
+    ) => {
+      const nextIndex =
+        flowIndexRef.current + 1
+
+      setStep(nextStep)
+      setPlan(nextPlan)
+      setMessage("")
+      setLoading(false)
+
+      writeHistory(
+        "push",
+        nextStep,
+        nextPlan,
+        nextIndex
+      )
+    },
+    [plan, writeHistory]
+  )
+
+  /*
+   * Marca la primera posición del flujo.
    */
   useEffect(() => {
-    const onPopState = () => {
-      const params = new URLSearchParams(window.location.search)
+    const currentState =
+      (window.history.state ||
+        {}) as FlowHistoryState
 
-      const urlStep = params.get("step") as Step | null
+    const existingIndex =
+      currentState.__tgcFlow &&
+      Number.isInteger(
+        currentState.flowIndex
+      )
+        ? Number(currentState.flowIndex)
+        : 0
+
+    flowIndexRef.current =
+      existingIndex
+
+    writeHistory(
+      "replace",
+      normalizedInitialStep,
+      initialPlan,
+      existingIndex
+    )
+  }, [
+    initialPlan,
+    normalizedInitialStep,
+    writeHistory,
+  ])
+
+  /*
+   * Controla las flechas Atrás y Adelante.
+   */
+  useEffect(() => {
+    const onPopState = (
+      event: PopStateEvent
+    ) => {
+      const params =
+        new URLSearchParams(
+          window.location.search
+        )
+
+      const urlStep =
+        params.get("step")
 
       const urlPlan: Plan =
-        params.get("plan") === "quarterly"
+        params.get("plan") ===
+        "quarterly"
           ? "quarterly"
           : "monthly"
+
+      const historyState =
+        (event.state ||
+          {}) as FlowHistoryState
+
+      if (
+        historyState.__tgcFlow &&
+        Number.isInteger(
+          historyState.flowIndex
+        )
+      ) {
+        flowIndexRef.current =
+          Number(
+            historyState.flowIndex
+          )
+      }
+
+      setStep(
+        isValidStep(urlStep)
+          ? urlStep
+          : "login"
+      )
 
       setPlan(urlPlan)
       setMessage("")
       setLoading(false)
-
-      if (urlStep && validSteps.includes(urlStep)) {
-        setStep(urlStep)
-        return
-      }
-
-      setStep("login")
     }
 
-    window.addEventListener("popstate", onPopState)
+    window.addEventListener(
+      "popstate",
+      onPopState
+    )
 
     return () => {
-      window.removeEventListener("popstate", onPopState)
+      window.removeEventListener(
+        "popstate",
+        onPopState
+      )
     }
   }, [])
 
   /*
-   * Comprueba la sesión cuando la página carga,
-   * recupera el foco o reaparece desde el historial.
+   * Comprueba la sesión al cargar,
+   * volver con las flechas o recuperar
+   * el foco de la pestaña.
    */
   useEffect(() => {
-    const checkMembership = async () => {
-      try {
-        const response = await fetch("/api/membership-status", {
-          cache: "no-store",
-        })
+    const checkMembership =
+      async () => {
+        try {
+          const response =
+            await fetch(
+              "/api/membership-status",
+              {
+                cache: "no-store",
+              }
+            )
 
-        if (response.status === 401) {
-          if (step !== "login" && step !== "register") {
-            replace("login")
+          if (
+            response.status === 401
+          ) {
+            if (
+              step !== "login" &&
+              step !== "register"
+            ) {
+              replaceStep("login")
+            }
+
+            return
           }
 
-          return
+          const data =
+            await response.json()
+
+          if (data.active) {
+            window.location.replace(
+              "/vip"
+            )
+
+            return
+          }
+
+          setLoading(false)
+        } catch {
+          setLoading(false)
         }
-
-        const data = await response.json()
-
-        if (data.active) {
-          window.location.replace("/vip")
-          return
-        }
-
-        setLoading(false)
-      } catch {
-        setLoading(false)
       }
-    }
 
-    window.addEventListener("pageshow", checkMembership)
-    window.addEventListener("focus", checkMembership)
+    window.addEventListener(
+      "pageshow",
+      checkMembership
+    )
+
+    window.addEventListener(
+      "focus",
+      checkMembership
+    )
 
     checkMembership()
 
     return () => {
-      window.removeEventListener("pageshow", checkMembership)
-      window.removeEventListener("focus", checkMembership)
+      window.removeEventListener(
+        "pageshow",
+        checkMembership
+      )
+
+      window.removeEventListener(
+        "focus",
+        checkMembership
+      )
     }
-  }, [replace, step])
+  }, [replaceStep, step])
+
+  useEffect(() => {
+    if (step === "vip") {
+      window.location.replace("/vip")
+    }
+  }, [step])
 
   const login = async () => {
-    if (!email.trim() || !password) {
-      setMessage("Completa correo y contraseña.")
+    if (
+      !email.trim() ||
+      !password
+    ) {
+      setMessage(
+        "Completa correo y contraseña."
+      )
+
       return
     }
 
     setLoading(true)
     setMessage("Procesando...")
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    })
+    const { error } =
+      await supabase.auth.signInWithPassword(
+        {
+          email: email.trim(),
+          password,
+        }
+      )
 
     if (error) {
       setLoading(false)
-      setMessage("Correo o contraseña incorrectos.")
+
+      setMessage(
+        "Correo o contraseña incorrectos."
+      )
+
       return
     }
 
@@ -188,23 +434,39 @@ export function AccessFlow({
       "tgc_logged_out=; path=/; max-age=0; samesite=lax"
 
     try {
-      const statusResponse = await fetch(
-        "/api/membership-status",
-        {
-          cache: "no-store",
-        }
-      )
+      const statusResponse =
+        await fetch(
+          "/api/membership-status",
+          {
+            cache: "no-store",
+          }
+        )
 
-      const statusData = await statusResponse.json()
+      const statusData =
+        await statusResponse.json()
 
       if (statusData.active) {
-        window.location.replace("/vip")
+        window.location.replace(
+          "/vip"
+        )
+
         return
       }
 
-      replace("pricing")
+      /*
+       * El paso Login se reemplaza
+       * por el paso Precios.
+       *
+       * Queda:
+       *
+       * Página externa
+       * → Inicio
+       * → Precios
+       */
+      replaceStep("pricing")
     } catch {
       setLoading(false)
+
       setMessage(
         "La sesión inició, pero no se pudo comprobar la membresía."
       )
@@ -212,41 +474,60 @@ export function AccessFlow({
   }
 
   const register = async () => {
-    if (!email.trim() || !password) {
-      setMessage("Completa correo y contraseña.")
+    if (
+      !email.trim() ||
+      !password
+    ) {
+      setMessage(
+        "Completa correo y contraseña."
+      )
+
       return
     }
 
     setLoading(true)
     setMessage("Creando cuenta...")
 
-    const { error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/access?step=pricing`,
-      },
-    })
+    const { error } =
+      await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          emailRedirectTo:
+            `${window.location.origin}/access?step=pricing`,
+        },
+      })
 
     if (error) {
       setLoading(false)
-      setMessage("No se pudo crear la cuenta.")
+
+      setMessage(
+        "No se pudo crear la cuenta."
+      )
+
       return
     }
 
     setLoading(false)
+
     setMessage(
       "Cuenta creada. Revisa tu correo para confirmarla."
     )
   }
 
   /*
-   * Cerrar sesión reemplaza la pantalla actual.
+   * Al cerrar sesión:
    *
-   * No agrega otra página al historial.
+   * 1. Cerramos Supabase.
+   * 2. Retrocedemos hasta Inicio.
+   * 3. Inicio crea nuevamente Login.
+   * 4. El navegador elimina Precios
+   *    y Checkout de la flecha Adelante.
    */
   const logout = async () => {
-    if (loading) return
+    if (loading) {
+      return
+    }
 
     setLoading(true)
 
@@ -259,74 +540,151 @@ export function AccessFlow({
     setPassword("")
     setMessage("")
 
-    window.location.replace("/access?step=login")
+    const flowStartedFromHome =
+      sessionStorage.getItem(
+        FLOW_FROM_HOME_KEY
+      ) === "1"
+
+    /*
+     * Cuando el usuario entró directamente
+     * a Login sin pasar por Inicio, no podemos
+     * asegurar que Inicio esté detrás.
+     *
+     * En ese caso simplemente reemplazamos
+     * la pantalla por Login.
+     */
+    if (!flowStartedFromHome) {
+      sessionStorage.removeItem(
+        LOGOUT_CLEANUP_KEY
+      )
+
+      window.location.replace(
+        "/access?step=login"
+      )
+
+      return
+    }
+
+    /*
+     * Inicio leerá esta señal
+     * cuando vuelva a aparecer.
+     */
+    sessionStorage.setItem(
+      LOGOUT_CLEANUP_KEY,
+      "1"
+    )
+
+    /*
+     * Desde Precios:
+     *
+     * índice 0 + 1 = retroceder 1.
+     *
+     * Desde Checkout:
+     *
+     * índice 1 + 1 = retroceder 2.
+     */
+    const stepsBackToHome =
+      Math.max(
+        1,
+        flowIndexRef.current + 1
+      )
+
+    window.history.go(
+      -stepsBackToHome
+    )
   }
 
-  /*
-   * Salimos hacia Mercado Pago usando replace.
-   *
-   * Así checkout no queda como una entrada adicional
-   * detrás de Mercado Pago.
-   */
+  const returnToHome = () => {
+    const flowStartedFromHome =
+      sessionStorage.getItem(
+        FLOW_FROM_HOME_KEY
+      ) === "1"
+
+    if (!flowStartedFromHome) {
+      window.location.assign("/")
+      return
+    }
+
+    const stepsBackToHome =
+      Math.max(
+        1,
+        flowIndexRef.current + 1
+      )
+
+    window.history.go(
+      -stepsBackToHome
+    )
+  }
+
   const pay = async () => {
-    if (loading) return
+    if (loading) {
+      return
+    }
 
     setLoading(true)
     setMessage("")
 
     try {
-      const response = await fetch(
-        "/api/mercadopago/create-preference",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            plan,
-          }),
-        }
-      )
+      const response =
+        await fetch(
+          "/api/mercadopago/create-preference",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              plan,
+            }),
+          }
+        )
 
-      if (response.status === 401) {
-        replace("login")
+      if (
+        response.status === 401
+      ) {
+        replaceStep("login")
         return
       }
 
-      const data = await response.json()
+      const data =
+        await response.json()
 
       if (data?.url === "/vip") {
-        window.location.replace("/vip")
+        window.location.replace(
+          "/vip"
+        )
+
         return
       }
 
       if (data?.url) {
-        window.location.replace(data.url)
+        /*
+         * Mercado Pago es externo.
+         * Esta parte se probará después
+         * de confirmar el flujo interno.
+         */
+        window.location.assign(
+          data.url
+        )
+
         return
       }
 
       setLoading(false)
+
       setMessage(
         data?.error ||
           "No se pudo preparar el pago. Inténtalo nuevamente."
       )
     } catch {
       setLoading(false)
+
       setMessage(
         "No se pudo conectar con el sistema de pagos."
       )
     }
   }
-
-  /*
-   * El paso VIP no se dibuja dentro de AccessFlow.
-   * Se reemplaza por la ruta real /vip.
-   */
-  useEffect(() => {
-    if (step === "vip") {
-      window.location.replace("/vip")
-    }
-  }, [step])
 
   if (step === "vip") {
     return null
@@ -334,11 +692,12 @@ export function AccessFlow({
 
   return (
     <main className="min-h-dvh bg-background px-6 py-24 text-foreground">
-      {(step === "pricing" || step === "checkout") && (
+      {(step === "pricing" ||
+        step === "checkout") && (
         <header className="fixed left-0 top-0 z-50 flex w-full items-center justify-between border-b border-gold/10 bg-black/80 px-6 py-4 backdrop-blur-md">
           <button
             type="button"
-            onClick={() => window.location.replace("/")}
+            onClick={returnToHome}
             className="text-xs uppercase tracking-[0.35em] text-gold"
           >
             The Golden Circle
@@ -355,7 +714,8 @@ export function AccessFlow({
         </header>
       )}
 
-      {(step === "login" || step === "register") && (
+      {(step === "login" ||
+        step === "register") && (
         <section className="mx-auto max-w-md">
           <div className="featured-card rounded-[34px] bg-black p-8 text-center md:p-10">
             <span className="mb-5 block text-xs uppercase tracking-[0.45em] text-gold">
@@ -381,11 +741,17 @@ export function AccessFlow({
                 placeholder="Correo electrónico"
                 value={email}
                 onChange={(event) =>
-                  setEmail(event.target.value)
+                  setEmail(
+                    event.target.value
+                  )
                 }
                 onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    if (step === "login") {
+                  if (
+                    event.key === "Enter"
+                  ) {
+                    if (
+                      step === "login"
+                    ) {
                       login()
                     } else {
                       register()
@@ -406,11 +772,17 @@ export function AccessFlow({
                 placeholder="Contraseña"
                 value={password}
                 onChange={(event) =>
-                  setPassword(event.target.value)
+                  setPassword(
+                    event.target.value
+                  )
                 }
                 onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    if (step === "login") {
+                  if (
+                    event.key === "Enter"
+                  ) {
+                    if (
+                      step === "login"
+                    ) {
                       login()
                     } else {
                       register()
@@ -444,7 +816,7 @@ export function AccessFlow({
                 onClick={() => {
                   setMessage("")
 
-                  replace(
+                  replaceStep(
                     step === "login"
                       ? "register"
                       : "login"
@@ -476,15 +848,19 @@ export function AccessFlow({
           </h1>
 
           <p className="mx-auto mt-6 max-w-xl text-sm leading-7 text-muted-foreground">
-            Selecciona una membresía para continuar con el
-            acceso privado.
+            Selecciona una membresía
+            para continuar con el acceso
+            privado.
           </p>
 
           <div className="mt-12 grid gap-6 md:grid-cols-2">
             <button
               type="button"
               onClick={() =>
-                replace("checkout", "monthly")
+                pushStep(
+                  "checkout",
+                  "monthly"
+                )
               }
               disabled={loading}
               className="checkout-premium-card rounded-[34px] bg-black p-8 text-left transition hover:-translate-y-1 disabled:pointer-events-none disabled:opacity-60"
@@ -498,7 +874,8 @@ export function AccessFlow({
               </h2>
 
               <p className="mt-4 text-sm leading-7 text-muted-foreground">
-                Acceso privado durante un mes.
+                Acceso privado durante un
+                mes.
               </p>
 
               <p className="mt-8 text-5xl font-light text-gold">
@@ -509,7 +886,10 @@ export function AccessFlow({
             <button
               type="button"
               onClick={() =>
-                replace("checkout", "quarterly")
+                pushStep(
+                  "checkout",
+                  "quarterly"
+                )
               }
               disabled={loading}
               className="checkout-premium-card rounded-[34px] bg-black p-8 text-left transition hover:-translate-y-1 disabled:pointer-events-none disabled:opacity-60"
@@ -523,7 +903,8 @@ export function AccessFlow({
               </h2>
 
               <p className="mt-4 text-sm leading-7 text-muted-foreground">
-                Acceso privado durante tres meses.
+                Acceso privado durante tres
+                meses.
               </p>
 
               <p className="mt-8 text-5xl font-light text-gold">
@@ -553,7 +934,8 @@ export function AccessFlow({
               </h1>
 
               <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
-                Revisa tu membresía antes de continuar.
+                Revisa tu membresía antes
+                de continuar.
               </p>
             </div>
 
@@ -566,11 +948,15 @@ export function AccessFlow({
                     </p>
 
                     <h2 className="mt-3 text-3xl font-light">
-                      {prices[plan].label}
+                      {
+                        prices[plan]
+                          .label
+                      }
                     </h2>
 
                     <p className="mt-3 text-sm text-muted-foreground">
-                      {plan === "monthly"
+                      {plan ===
+                      "monthly"
                         ? "Acceso privado durante 1 mes."
                         : "Acceso privado durante 3 meses."}
                     </p>
@@ -586,14 +972,17 @@ export function AccessFlow({
                     </p>
 
                     <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      Acceso privado y futuras actualizaciones
+                      Acceso privado y
+                      futuras actualizaciones
                       exclusivas.
                     </p>
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => replace("pricing")}
+                    onClick={() =>
+                      window.history.back()
+                    }
                     disabled={loading}
                     className="text-sm text-gold/70 transition hover:text-gold disabled:pointer-events-none disabled:opacity-50"
                   >
@@ -607,7 +996,10 @@ export function AccessFlow({
                   </p>
 
                   <div className="checkout-premium-price mb-6 text-5xl font-light">
-                    {prices[plan].price}
+                    {
+                      prices[plan]
+                        .price
+                    }
                   </div>
 
                   <button
@@ -622,7 +1014,8 @@ export function AccessFlow({
                   </button>
 
                   <p className="mt-5 text-xs leading-6 text-muted-foreground">
-                    Serás redirigido a Mercado Pago para
+                    Serás redirigido a
+                    Mercado Pago para
                     completar la operación.
                   </p>
 

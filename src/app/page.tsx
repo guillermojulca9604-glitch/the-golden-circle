@@ -10,17 +10,11 @@ export default function HomePage() {
   return (
     <main className="overflow-x-hidden bg-background text-foreground">
       <HomeHistoryController />
-
       <EntryGate />
-
       <HeroSection />
-
       <CatalogSection />
-
       <FeaturedSection />
-
       <ContactSection />
-
       <Footer />
     </main>
   )

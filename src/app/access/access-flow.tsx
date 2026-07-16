@@ -24,25 +24,27 @@ type Props = {
   initialEmail: string | null
 }
 
-type FlowHistoryState = {
+type FlowHistoryState = Record<string, unknown> & {
   __tgcFlow?: true
-  flowIndex?: number
   step?: Step
   plan?: Plan
-  [key: string]: unknown
 }
 
-const FLOW_FROM_HOME_KEY =
-  "tgc:flow-from-home"
+const FLOW_FROM_HOME_KEY = "tgc:flow-from-home"
+const LOGOUT_CLEANUP_KEY = "tgc:logout-cleanup"
 
-const LOGOUT_CLEANUP_KEY =
-  "tgc:logout-cleanup"
-
-const prices = {
+const prices: Record<
+  Plan,
+  {
+    label: string
+    price: string
+  }
+> = {
   monthly: {
     label: "Mensual",
     price: "S/ 30",
   },
+
   quarterly: {
     label: "Trimestral",
     price: "S/ 90",
@@ -58,11 +60,29 @@ const validSteps: Step[] = [
 ]
 
 function isValidStep(
-  value: string | null
+  value: string | null | undefined
 ): value is Step {
   return Boolean(
     value &&
       validSteps.includes(value as Step)
+  )
+}
+
+function isObject(
+  value: unknown
+): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+function cleanupIsRunning() {
+  const value =
+    window.sessionStorage.getItem(
+      LOGOUT_CLEANUP_KEY
+    )
+
+  return (
+    value === "pending" ||
+    value === "finishing"
   )
 }
 
@@ -74,20 +94,18 @@ export function AccessFlow({
   const supabase = createClient()
 
   const normalizedInitialStep: Step =
-    validSteps.includes(initialStep as Step)
-      ? (initialStep as Step)
+    isValidStep(initialStep)
+      ? initialStep
       : "login"
 
-  const [step, setStep] = useState<Step>(
-    normalizedInitialStep
-  )
+  const [step, setStep] =
+    useState<Step>(normalizedInitialStep)
 
   const [plan, setPlan] =
     useState<Plan>(initialPlan)
 
-  const [email, setEmail] = useState(
-    initialEmail || ""
-  )
+  const [email, setEmail] =
+    useState(initialEmail ?? "")
 
   const [password, setPassword] =
     useState("")
@@ -98,17 +116,8 @@ export function AccessFlow({
   const [loading, setLoading] =
     useState(false)
 
-  /*
-   * Índice 0:
-   * Login o Precios.
-   *
-   * Índice 1:
-   * Checkout.
-   *
-   * Cuando agreguemos más pasos,
-   * continuarán con 2, 3, etc.
-   */
-  const flowIndexRef = useRef(0)
+  const logoutFallbackRef =
+    useRef<number | null>(null)
 
   const buildUrl = useCallback(
     (
@@ -128,25 +137,30 @@ export function AccessFlow({
     (
       mode: "push" | "replace",
       nextStep: Step,
-      nextPlan: Plan,
-      nextIndex: number
+      nextPlan: Plan
     ) => {
-      const currentState =
-        (window.history.state ||
-          {}) as FlowHistoryState
+      /*
+       * No reemplazamos completamente history.state.
+       *
+       * Next.js guarda información interna en este objeto,
+       * por lo que debemos conservarla.
+       */
+      const currentState: FlowHistoryState =
+        isObject(window.history.state)
+          ? {
+              ...window.history.state,
+            }
+          : {}
 
       const nextState: FlowHistoryState = {
         ...currentState,
         __tgcFlow: true,
-        flowIndex: nextIndex,
         step: nextStep,
         plan: nextPlan,
       }
 
-      const nextUrl = buildUrl(
-        nextStep,
-        nextPlan
-      )
+      const nextUrl =
+        buildUrl(nextStep, nextPlan)
 
       if (mode === "push") {
         window.history.pushState(
@@ -161,21 +175,15 @@ export function AccessFlow({
           nextUrl
         )
       }
-
-      flowIndexRef.current = nextIndex
     },
     [buildUrl]
   )
 
   /*
-   * Reemplaza el paso actual.
+   * Login → Pricing usa replace.
    *
-   * Lo usamos especialmente para:
-   *
-   * Login → Precios
-   *
-   * Así Login desaparece mientras
-   * la sesión está iniciada.
+   * Login deja de aparecer en el historial
+   * mientras la sesión continúa iniciada.
    */
   const replaceStep = useCallback(
     (
@@ -190,28 +198,23 @@ export function AccessFlow({
       writeHistory(
         "replace",
         nextStep,
-        nextPlan,
-        flowIndexRef.current
+        nextPlan
       )
     },
     [plan, writeHistory]
   )
 
   /*
-   * Agrega un nuevo paso al historial.
+   * Pricing → Checkout usa push.
    *
-   * Lo usamos para:
-   *
-   * Precios → Checkout
+   * Así se puede navegar correctamente
+   * entre estas dos pantallas.
    */
   const pushStep = useCallback(
     (
       nextStep: Step,
       nextPlan: Plan = plan
     ) => {
-      const nextIndex =
-        flowIndexRef.current + 1
-
       setStep(nextStep)
       setPlan(nextPlan)
       setMessage("")
@@ -220,37 +223,46 @@ export function AccessFlow({
       writeHistory(
         "push",
         nextStep,
-        nextPlan,
-        nextIndex
+        nextPlan
       )
     },
     [plan, writeHistory]
   )
 
   /*
-   * Marca la primera posición del flujo.
+   * Configuración inicial del flujo.
    */
   useEffect(() => {
-    const currentState =
-      (window.history.state ||
-        {}) as FlowHistoryState
-
-    const existingIndex =
-      currentState.__tgcFlow &&
-      Number.isInteger(
-        currentState.flowIndex
+    const params =
+      new URLSearchParams(
+        window.location.search
       )
-        ? Number(currentState.flowIndex)
-        : 0
 
-    flowIndexRef.current =
-      existingIndex
+    if (params.get("from") === "home") {
+      window.sessionStorage.setItem(
+        FLOW_FROM_HOME_KEY,
+        "1"
+      )
+    }
+
+    /*
+     * El cierre de sesión ya terminó.
+     * Quitamos todas las señales temporales.
+     */
+    if (params.get("from") === "logout") {
+      window.sessionStorage.removeItem(
+        LOGOUT_CLEANUP_KEY
+      )
+
+      window.sessionStorage.removeItem(
+        FLOW_FROM_HOME_KEY
+      )
+    }
 
     writeHistory(
       "replace",
       normalizedInitialStep,
-      initialPlan,
-      existingIndex
+      initialPlan
     )
   }, [
     initialPlan,
@@ -259,12 +271,39 @@ export function AccessFlow({
   ])
 
   /*
-   * Controla las flechas Atrás y Adelante.
+   * Control de las flechas Atrás y Adelante.
    */
   useEffect(() => {
-    const onPopState = (
+    const handlePopState = (
       event: PopStateEvent
     ) => {
+      /*
+       * Durante el cierre de sesión:
+       *
+       * Checkout ← Pricing ← Inicio
+       *
+       * Si después de retroceder seguimos en /access,
+       * retrocedemos una vez más.
+       */
+      if (cleanupIsRunning()) {
+        if (
+          window.location.pathname ===
+          "/access"
+        ) {
+          window.setTimeout(() => {
+            if (
+              window.location.pathname ===
+                "/access" &&
+              cleanupIsRunning()
+            ) {
+              window.history.back()
+            }
+          }, 0)
+        }
+
+        return
+      }
+
       const params =
         new URLSearchParams(
           window.location.search
@@ -280,27 +319,21 @@ export function AccessFlow({
           : "monthly"
 
       const historyState =
-        (event.state ||
-          {}) as FlowHistoryState
+        isObject(event.state)
+          ? (event.state as FlowHistoryState)
+          : {}
 
-      if (
-        historyState.__tgcFlow &&
-        Number.isInteger(
-          historyState.flowIndex
-        )
+      let nextStep: Step = "login"
+
+      if (isValidStep(urlStep)) {
+        nextStep = urlStep
+      } else if (
+        isValidStep(historyState.step)
       ) {
-        flowIndexRef.current =
-          Number(
-            historyState.flowIndex
-          )
+        nextStep = historyState.step
       }
 
-      setStep(
-        isValidStep(urlStep)
-          ? urlStep
-          : "login"
-      )
-
+      setStep(nextStep)
       setPlan(urlPlan)
       setMessage("")
       setLoading(false)
@@ -308,25 +341,32 @@ export function AccessFlow({
 
     window.addEventListener(
       "popstate",
-      onPopState
+      handlePopState
     )
 
     return () => {
       window.removeEventListener(
         "popstate",
-        onPopState
+        handlePopState
       )
     }
   }, [])
 
   /*
-   * Comprueba la sesión al cargar,
-   * volver con las flechas o recuperar
-   * el foco de la pestaña.
+   * Comprueba la sesión y la membresía.
    */
   useEffect(() => {
     const checkMembership =
       async () => {
+        /*
+         * No permitimos que esta comprobación cambie
+         * Pricing por Login mientras todavía estamos
+         * limpiando el historial.
+         */
+        if (cleanupIsRunning()) {
+          return
+        }
+
         try {
           const response =
             await fetch(
@@ -376,7 +416,7 @@ export function AccessFlow({
       checkMembership
     )
 
-    checkMembership()
+    void checkMembership()
 
     return () => {
       window.removeEventListener(
@@ -389,7 +429,10 @@ export function AccessFlow({
         checkMembership
       )
     }
-  }, [replaceStep, step])
+  }, [
+    replaceStep,
+    step,
+  ])
 
   useEffect(() => {
     if (step === "vip") {
@@ -397,9 +440,25 @@ export function AccessFlow({
     }
   }, [step])
 
+  useEffect(() => {
+    return () => {
+      if (
+        logoutFallbackRef.current !==
+        null
+      ) {
+        window.clearTimeout(
+          logoutFallbackRef.current
+        )
+      }
+    }
+  }, [])
+
   const login = async () => {
+    const cleanEmail =
+      email.trim()
+
     if (
-      !email.trim() ||
+      !cleanEmail ||
       !password
     ) {
       setMessage(
@@ -413,12 +472,11 @@ export function AccessFlow({
     setMessage("Procesando...")
 
     const { error } =
-      await supabase.auth.signInWithPassword(
-        {
-          email: email.trim(),
+      await supabase.auth
+        .signInWithPassword({
+          email: cleanEmail,
           password,
-        }
-      )
+        })
 
     if (error) {
       setLoading(false)
@@ -454,14 +512,7 @@ export function AccessFlow({
       }
 
       /*
-       * El paso Login se reemplaza
-       * por el paso Precios.
-       *
-       * Queda:
-       *
-       * Página externa
-       * → Inicio
-       * → Precios
+       * Login es reemplazado por Pricing.
        */
       replaceStep("pricing")
     } catch {
@@ -474,8 +525,11 @@ export function AccessFlow({
   }
 
   const register = async () => {
+    const cleanEmail =
+      email.trim()
+
     if (
-      !email.trim() ||
+      !cleanEmail ||
       !password
     ) {
       setMessage(
@@ -490,11 +544,13 @@ export function AccessFlow({
 
     const { error } =
       await supabase.auth.signUp({
-        email: email.trim(),
+        email: cleanEmail,
         password,
+
         options: {
           emailRedirectTo:
-            `${window.location.origin}/access?step=pricing`,
+            `${window.location.origin}` +
+            "/access?step=pricing",
         },
       })
 
@@ -516,13 +572,11 @@ export function AccessFlow({
   }
 
   /*
-   * Al cerrar sesión:
+   * No usamos profundidades ni números calculados.
    *
-   * 1. Cerramos Supabase.
-   * 2. Retrocedemos hasta Inicio.
-   * 3. Inicio crea nuevamente Login.
-   * 4. El navegador elimina Precios
-   *    y Checkout de la flecha Adelante.
+   * Siempre retrocedemos una sola vez.
+   * Si todavía estamos dentro de /access,
+   * popstate vuelve a retroceder.
    */
   const logout = async () => {
     if (loading) {
@@ -530,31 +584,38 @@ export function AccessFlow({
     }
 
     setLoading(true)
+    setMessage("")
 
     document.cookie =
       "tgc_logged_out=1; path=/; max-age=120; samesite=lax"
 
-    await supabase.auth.signOut()
+    const { error } =
+      await supabase.auth.signOut()
+
+    if (error) {
+      setLoading(false)
+
+      setMessage(
+        "No se pudo cerrar la sesión. Inténtalo nuevamente."
+      )
+
+      return
+    }
 
     setEmail("")
     setPassword("")
-    setMessage("")
 
     const flowStartedFromHome =
-      sessionStorage.getItem(
+      window.sessionStorage.getItem(
         FLOW_FROM_HOME_KEY
       ) === "1"
 
     /*
-     * Cuando el usuario entró directamente
-     * a Login sin pasar por Inicio, no podemos
-     * asegurar que Inicio esté detrás.
-     *
-     * En ese caso simplemente reemplazamos
-     * la pantalla por Login.
+     * Cuando /access se abrió directamente, no podemos
+     * asegurar que Inicio exista detrás.
      */
     if (!flowStartedFromHome) {
-      sessionStorage.removeItem(
+      window.sessionStorage.removeItem(
         LOGOUT_CLEANUP_KEY
       )
 
@@ -565,55 +626,41 @@ export function AccessFlow({
       return
     }
 
-    /*
-     * Inicio leerá esta señal
-     * cuando vuelva a aparecer.
-     */
-    sessionStorage.setItem(
+    window.sessionStorage.setItem(
       LOGOUT_CLEANUP_KEY,
-      "1"
+      "pending"
     )
+
+    window.history.back()
 
     /*
-     * Desde Precios:
-     *
-     * índice 0 + 1 = retroceder 1.
-     *
-     * Desde Checkout:
-     *
-     * índice 1 + 1 = retroceder 2.
+     * Respaldo para impedir que la pantalla quede bloqueada
+     * cuando el historial no contiene Inicio.
      */
-    const stepsBackToHome =
-      Math.max(
-        1,
-        flowIndexRef.current + 1
-      )
+    logoutFallbackRef.current =
+      window.setTimeout(() => {
+        if (
+          window.location.pathname ===
+            "/access" &&
+          cleanupIsRunning()
+        ) {
+          window.sessionStorage.removeItem(
+            LOGOUT_CLEANUP_KEY
+          )
 
-    window.history.go(
-      -stepsBackToHome
-    )
+          window.sessionStorage.removeItem(
+            FLOW_FROM_HOME_KEY
+          )
+
+          window.location.replace(
+            "/access?step=login"
+          )
+        }
+      }, 1800)
   }
 
   const returnToHome = () => {
-    const flowStartedFromHome =
-      sessionStorage.getItem(
-        FLOW_FROM_HOME_KEY
-      ) === "1"
-
-    if (!flowStartedFromHome) {
-      window.location.assign("/")
-      return
-    }
-
-    const stepsBackToHome =
-      Math.max(
-        1,
-        flowIndexRef.current + 1
-      )
-
-    window.history.go(
-      -stepsBackToHome
-    )
+    window.location.assign("/")
   }
 
   const pay = async () => {
@@ -630,10 +677,12 @@ export function AccessFlow({
           "/api/mercadopago/create-preference",
           {
             method: "POST",
+
             headers: {
               "Content-Type":
                 "application/json",
             },
+
             body: JSON.stringify({
               plan,
             }),
@@ -650,7 +699,9 @@ export function AccessFlow({
       const data =
         await response.json()
 
-      if (data?.url === "/vip") {
+      if (
+        data?.url === "/vip"
+      ) {
         window.location.replace(
           "/vip"
         )
@@ -658,12 +709,10 @@ export function AccessFlow({
         return
       }
 
-      if (data?.url) {
-        /*
-         * Mercado Pago es externo.
-         * Esta parte se probará después
-         * de confirmar el flujo interno.
-         */
+      if (
+        typeof data?.url === "string" &&
+        data.url.length > 0
+      ) {
         window.location.assign(
           data.url
         )
@@ -752,9 +801,9 @@ export function AccessFlow({
                     if (
                       step === "login"
                     ) {
-                      login()
+                      void login()
                     } else {
-                      register()
+                      void register()
                     }
                   }
                 }}
@@ -783,9 +832,9 @@ export function AccessFlow({
                     if (
                       step === "login"
                     ) {
-                      login()
+                      void login()
                     } else {
-                      register()
+                      void register()
                     }
                   }
                 }}
@@ -813,15 +862,13 @@ export function AccessFlow({
               <button
                 type="button"
                 disabled={loading}
-                onClick={() => {
-                  setMessage("")
-
+                onClick={() =>
                   replaceStep(
                     step === "login"
                       ? "register"
                       : "login"
                   )
-                }}
+                }
                 className="text-sm text-gold/70 transition hover:text-gold disabled:pointer-events-none disabled:opacity-50"
               >
                 {step === "login"
@@ -848,9 +895,8 @@ export function AccessFlow({
           </h1>
 
           <p className="mx-auto mt-6 max-w-xl text-sm leading-7 text-muted-foreground">
-            Selecciona una membresía
-            para continuar con el acceso
-            privado.
+            Selecciona una membresía para continuar con el
+            acceso privado.
           </p>
 
           <div className="mt-12 grid gap-6 md:grid-cols-2">
@@ -874,8 +920,7 @@ export function AccessFlow({
               </h2>
 
               <p className="mt-4 text-sm leading-7 text-muted-foreground">
-                Acceso privado durante un
-                mes.
+                Acceso privado durante un mes.
               </p>
 
               <p className="mt-8 text-5xl font-light text-gold">
@@ -903,8 +948,7 @@ export function AccessFlow({
               </h2>
 
               <p className="mt-4 text-sm leading-7 text-muted-foreground">
-                Acceso privado durante tres
-                meses.
+                Acceso privado durante tres meses.
               </p>
 
               <p className="mt-8 text-5xl font-light text-gold">
@@ -934,8 +978,7 @@ export function AccessFlow({
               </h1>
 
               <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
-                Revisa tu membresía antes
-                de continuar.
+                Revisa tu membresía antes de continuar.
               </p>
             </div>
 
@@ -948,15 +991,11 @@ export function AccessFlow({
                     </p>
 
                     <h2 className="mt-3 text-3xl font-light">
-                      {
-                        prices[plan]
-                          .label
-                      }
+                      {prices[plan].label}
                     </h2>
 
                     <p className="mt-3 text-sm text-muted-foreground">
-                      {plan ===
-                      "monthly"
+                      {plan === "monthly"
                         ? "Acceso privado durante 1 mes."
                         : "Acceso privado durante 3 meses."}
                     </p>
@@ -972,8 +1011,7 @@ export function AccessFlow({
                     </p>
 
                     <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      Acceso privado y
-                      futuras actualizaciones
+                      Acceso privado y futuras actualizaciones
                       exclusivas.
                     </p>
                   </div>
@@ -996,10 +1034,7 @@ export function AccessFlow({
                   </p>
 
                   <div className="checkout-premium-price mb-6 text-5xl font-light">
-                    {
-                      prices[plan]
-                        .price
-                    }
+                    {prices[plan].price}
                   </div>
 
                   <button
@@ -1014,8 +1049,7 @@ export function AccessFlow({
                   </button>
 
                   <p className="mt-5 text-xs leading-6 text-muted-foreground">
-                    Serás redirigido a
-                    Mercado Pago para
+                    Serás redirigido a Mercado Pago para
                     completar la operación.
                   </p>
 

@@ -13,7 +13,10 @@ function GlowLetters({ text }: { text: string }) {
   return (
     <>
       {text.split("").map((letter, index) => (
-        <span key={`${letter}-${index}`} className="hero-letter">
+        <span
+          key={`${letter}-${index}`}
+          className="hero-letter"
+        >
           {letter}
         </span>
       ))}
@@ -28,7 +31,10 @@ export function HeroSection() {
       <div className="hero-vignette absolute inset-0" />
 
       <div className="hero-login-wrap absolute right-6 top-6 z-30 md:right-10 md:top-8">
-        <a href="/login?next=/vip&source=header" className="hero-login-button">
+        <a
+          href="/access?step=login&from=home"
+          className="hero-login-button"
+        >
           <span>Iniciar sesión</span>
         </a>
       </div>
@@ -57,9 +63,6 @@ export function HeroSection() {
         <p className="hero-subtitle">
           Página oficial de información, novedades y contacto
         </p>
-
-        
-        
       </div>
     </section>
   )

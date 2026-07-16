@@ -12,7 +12,8 @@ const cormorant = Cormorant_Garamond({
 
 export const metadata: Metadata = {
   title: "The Golden Circle",
-  description: "Página oficial de información, novedades y contacto",
+  description:
+    "Página oficial de información, novedades y contacto",
 }
 
 export const viewport: Viewport = {
@@ -28,12 +29,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${cormorant.variable} font-serif antialiased`}>
-        <Script id="disable-scroll-restoration" strategy="beforeInteractive">
+      <body
+        className={`${cormorant.variable} font-serif antialiased`}
+      >
+        <Script
+          id="disable-scroll-restoration"
+          strategy="beforeInteractive"
+        >
           {`
             if ("scrollRestoration" in history) {
               history.scrollRestoration = "manual";
             }
+
             window.scrollTo(0, 0);
           `}
         </Script>

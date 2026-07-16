@@ -3,11 +3,14 @@
 import {
   useCallback,
   useEffect,
-  useRef,
   useState,
 } from "react"
 
 import { createClient } from "@/lib/supabase/client"
+import {
+  AUTH_EVENT_KEY,
+  logoutToHome,
+} from "@/lib/auth/logout-to-home"
 
 type Step =
   | "login"
@@ -16,7 +19,9 @@ type Step =
   | "checkout"
   | "vip"
 
-type Plan = "monthly" | "quarterly"
+type Plan =
+  | "monthly"
+  | "quarterly"
 
 type Props = {
   initialStep: string
@@ -24,14 +29,12 @@ type Props = {
   initialEmail: string | null
 }
 
-type FlowHistoryState = Record<string, unknown> & {
-  __tgcFlow?: true
-  step?: Step
-  plan?: Plan
-}
-
-const FLOW_FROM_HOME_KEY = "tgc:flow-from-home"
-const LOGOUT_CLEANUP_KEY = "tgc:logout-cleanup"
+type FlowHistoryState =
+  Record<string, unknown> & {
+    __tgcFlow?: true
+    step?: Step
+    plan?: Plan
+  }
 
 const prices: Record<
   Plan,
@@ -60,30 +63,43 @@ const validSteps: Step[] = [
 ]
 
 function isValidStep(
-  value: string | null | undefined
+  value:
+    | string
+    | null
+    | undefined
 ): value is Step {
   return Boolean(
     value &&
-      validSteps.includes(value as Step)
+      validSteps.includes(
+        value as Step
+      )
   )
 }
 
-function isObject(
+function isPlan(
   value: unknown
-): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
+): value is Plan {
+  return (
+    value === "monthly" ||
+    value === "quarterly"
+  )
 }
 
-function cleanupIsRunning() {
-  const value =
-    window.sessionStorage.getItem(
-      LOGOUT_CLEANUP_KEY
-    )
+function getHistoryState():
+  FlowHistoryState {
+  if (
+    typeof window
+      .history.state ===
+      "object" &&
+    window.history.state !==
+      null
+  ) {
+    return {
+      ...window.history.state,
+    }
+  }
 
-  return (
-    value === "pending" ||
-    value === "finishing"
-  )
+  return {}
 }
 
 export function AccessFlow({
@@ -91,174 +107,176 @@ export function AccessFlow({
   initialPlan,
   initialEmail,
 }: Props) {
-  const supabase = createClient()
+  const [supabase] =
+    useState(
+      () => createClient()
+    )
 
-  const normalizedInitialStep: Step =
-    isValidStep(initialStep)
-      ? initialStep
-      : "login"
+  const normalizedInitialStep:
+    Step =
+      isValidStep(initialStep)
+        ? initialStep
+        : "login"
 
   const [step, setStep] =
-    useState<Step>(normalizedInitialStep)
+    useState<Step>(
+      normalizedInitialStep
+    )
 
   const [plan, setPlan] =
-    useState<Plan>(initialPlan)
+    useState<Plan>(
+      initialPlan
+    )
 
   const [email, setEmail] =
-    useState(initialEmail ?? "")
+    useState(
+      initialEmail ?? ""
+    )
 
-  const [password, setPassword] =
-    useState("")
+  const [
+    password,
+    setPassword,
+  ] = useState("")
 
-  const [message, setMessage] =
-    useState("")
+  const [
+    message,
+    setMessage,
+  ] = useState("")
 
-  const [loading, setLoading] =
-    useState(false)
+  const [
+    loading,
+    setLoading,
+  ] = useState(false)
 
-  const logoutFallbackRef =
-    useRef<number | null>(null)
+  const buildUrl =
+    useCallback(
+      (
+        nextStep: Step,
+        nextPlan: Plan
+      ) => {
+        if (
+          nextStep ===
+          "checkout"
+        ) {
+          return (
+            "/access?" +
+            "step=checkout" +
+            `&plan=${nextPlan}`
+          )
+        }
 
-  const buildUrl = useCallback(
-    (
-      nextStep: Step,
-      nextPlan: Plan
-    ) => {
-      if (nextStep === "checkout") {
-        return `/access?step=checkout&plan=${nextPlan}`
-      }
-
-      return `/access?step=${nextStep}`
-    },
-    []
-  )
-
-  const writeHistory = useCallback(
-    (
-      mode: "push" | "replace",
-      nextStep: Step,
-      nextPlan: Plan
-    ) => {
-      /*
-       * No reemplazamos completamente history.state.
-       *
-       * Next.js guarda información interna en este objeto,
-       * por lo que debemos conservarla.
-       */
-      const currentState: FlowHistoryState =
-        isObject(window.history.state)
-          ? {
-              ...window.history.state,
-            }
-          : {}
-
-      const nextState: FlowHistoryState = {
-        ...currentState,
-        __tgcFlow: true,
-        step: nextStep,
-        plan: nextPlan,
-      }
-
-      const nextUrl =
-        buildUrl(nextStep, nextPlan)
-
-      if (mode === "push") {
-        window.history.pushState(
-          nextState,
-          "",
-          nextUrl
+        return (
+          `/access?step=${nextStep}`
         )
-      } else {
-        window.history.replaceState(
-          nextState,
-          "",
-          nextUrl
-        )
-      }
-    },
-    [buildUrl]
-  )
+      },
+      []
+    )
+
+  const writeHistory =
+    useCallback(
+      (
+        mode:
+          | "push"
+          | "replace",
+        nextStep: Step,
+        nextPlan: Plan
+      ) => {
+        const nextState:
+          FlowHistoryState = {
+            ...getHistoryState(),
+            __tgcFlow: true,
+            step: nextStep,
+            plan: nextPlan,
+          }
+
+        const nextUrl =
+          buildUrl(
+            nextStep,
+            nextPlan
+          )
+
+        if (
+          mode === "push"
+        ) {
+          window.history
+            .pushState(
+              nextState,
+              "",
+              nextUrl
+            )
+        } else {
+          window.history
+            .replaceState(
+              nextState,
+              "",
+              nextUrl
+            )
+        }
+      },
+      [buildUrl]
+    )
 
   /*
-   * Login → Pricing usa replace.
+   * Login → Pricing utiliza replace.
    *
-   * Login deja de aparecer en el historial
+   * Login deja de estar en el recorrido
    * mientras la sesión continúa iniciada.
    */
-  const replaceStep = useCallback(
-    (
-      nextStep: Step,
-      nextPlan: Plan = plan
-    ) => {
-      setStep(nextStep)
-      setPlan(nextPlan)
-      setMessage("")
-      setLoading(false)
+  const replaceStep =
+    useCallback(
+      (
+        nextStep: Step,
+        nextPlan:
+          Plan = plan
+      ) => {
+        setStep(nextStep)
+        setPlan(nextPlan)
+        setMessage("")
+        setLoading(false)
 
-      writeHistory(
-        "replace",
-        nextStep,
-        nextPlan
-      )
-    },
-    [plan, writeHistory]
-  )
+        writeHistory(
+          "replace",
+          nextStep,
+          nextPlan
+        )
+      },
+      [
+        plan,
+        writeHistory,
+      ]
+    )
 
   /*
-   * Pricing → Checkout usa push.
+   * Pricing → Checkout utiliza push.
    *
-   * Así se puede navegar correctamente
-   * entre estas dos pantallas.
+   * Atrás y Adelante funcionan normalmente
+   * durante la sesión.
    */
-  const pushStep = useCallback(
-    (
-      nextStep: Step,
-      nextPlan: Plan = plan
-    ) => {
-      setStep(nextStep)
-      setPlan(nextPlan)
-      setMessage("")
-      setLoading(false)
+  const pushStep =
+    useCallback(
+      (
+        nextStep: Step,
+        nextPlan:
+          Plan = plan
+      ) => {
+        setStep(nextStep)
+        setPlan(nextPlan)
+        setMessage("")
+        setLoading(false)
 
-      writeHistory(
-        "push",
-        nextStep,
-        nextPlan
-      )
-    },
-    [plan, writeHistory]
-  )
+        writeHistory(
+          "push",
+          nextStep,
+          nextPlan
+        )
+      },
+      [
+        plan,
+        writeHistory,
+      ]
+    )
 
-  /*
-   * Configuración inicial del flujo.
-   */
   useEffect(() => {
-    const params =
-      new URLSearchParams(
-        window.location.search
-      )
-
-    if (params.get("from") === "home") {
-      window.sessionStorage.setItem(
-        FLOW_FROM_HOME_KEY,
-        "1"
-      )
-    }
-
-    /*
-     * El cierre de sesión ya terminó.
-     * Quitamos todas las señales temporales.
-     */
-    if (params.get("from") === "logout") {
-      window.sessionStorage.removeItem(
-        LOGOUT_CLEANUP_KEY
-      )
-
-      window.sessionStorage.removeItem(
-        FLOW_FROM_HOME_KEY
-      )
-    }
-
     writeHistory(
       "replace",
       normalizedInitialStep,
@@ -270,40 +288,10 @@ export function AccessFlow({
     writeHistory,
   ])
 
-  /*
-   * Control de las flechas Atrás y Adelante.
-   */
   useEffect(() => {
-    const handlePopState = (
+    const onPopState = (
       event: PopStateEvent
     ) => {
-      /*
-       * Durante el cierre de sesión:
-       *
-       * Checkout ← Pricing ← Inicio
-       *
-       * Si después de retroceder seguimos en /access,
-       * retrocedemos una vez más.
-       */
-      if (cleanupIsRunning()) {
-        if (
-          window.location.pathname ===
-          "/access"
-        ) {
-          window.setTimeout(() => {
-            if (
-              window.location.pathname ===
-                "/access" &&
-              cleanupIsRunning()
-            ) {
-              window.history.back()
-            }
-          }, 0)
-        }
-
-        return
-      }
-
       const params =
         new URLSearchParams(
           window.location.search
@@ -312,146 +300,273 @@ export function AccessFlow({
       const urlStep =
         params.get("step")
 
-      const urlPlan: Plan =
-        params.get("plan") ===
-        "quarterly"
-          ? "quarterly"
-          : "monthly"
+      const urlPlan:
+        Plan =
+          params.get("plan") ===
+          "quarterly"
+            ? "quarterly"
+            : "monthly"
 
-      const historyState =
-        isObject(event.state)
-          ? (event.state as FlowHistoryState)
-          : {}
+      const historyState:
+        FlowHistoryState =
+          typeof event.state ===
+              "object" &&
+            event.state !== null
+            ? (
+                event.state as
+                  FlowHistoryState
+              )
+            : {}
 
-      let nextStep: Step = "login"
+      let nextStep:
+        Step = "login"
 
-      if (isValidStep(urlStep)) {
-        nextStep = urlStep
-      } else if (
-        isValidStep(historyState.step)
+      if (
+        isValidStep(urlStep)
       ) {
-        nextStep = historyState.step
+        nextStep =
+          urlStep
+      } else if (
+        isValidStep(
+          historyState.step
+        )
+      ) {
+        nextStep =
+          historyState.step
       }
 
+      const nextPlan =
+        isPlan(
+          historyState.plan
+        )
+          ? historyState.plan
+          : urlPlan
+
       setStep(nextStep)
-      setPlan(urlPlan)
+      setPlan(nextPlan)
       setMessage("")
       setLoading(false)
     }
 
     window.addEventListener(
       "popstate",
-      handlePopState
+      onPopState
     )
 
     return () => {
       window.removeEventListener(
         "popstate",
-        handlePopState
+        onPopState
       )
     }
   }, [])
 
   /*
-   * Comprueba la sesión y la membresía.
+   * Impide que una página privada restaurada
+   * desde Atrás, Adelante o bfcache muestre
+   * contenido después de cerrar sesión.
    */
   useEffect(() => {
-    const checkMembership =
-      async () => {
-        /*
-         * No permitimos que esta comprobación cambie
-         * Pricing por Login mientras todavía estamos
-         * limpiando el historial.
-         */
-        if (cleanupIsRunning()) {
+    let redirecting =
+      false
+
+    const redirect = (
+      url: string
+    ) => {
+      if (redirecting) {
+        return
+      }
+
+      redirecting = true
+
+      window.location.replace(
+        url
+      )
+    }
+
+    const check = async () => {
+      if (redirecting) {
+        return
+      }
+
+      try {
+        const response =
+          await fetch(
+            "/api/membership-status",
+            {
+              cache: "no-store",
+              credentials:
+                "same-origin",
+            }
+          )
+
+        if (
+          response.status ===
+          401
+        ) {
+          if (
+            step === "pricing" ||
+            step === "checkout" ||
+            step === "vip"
+          ) {
+            redirect("/")
+            return
+          }
+
+          setLoading(false)
           return
         }
 
-        try {
-          const response =
-            await fetch(
-              "/api/membership-status",
-              {
-                cache: "no-store",
-              }
-            )
-
-          if (
-            response.status === 401
-          ) {
-            if (
-              step !== "login" &&
-              step !== "register"
-            ) {
-              replaceStep("login")
-            }
-
-            return
-          }
-
-          const data =
-            await response.json()
-
-          if (data.active) {
-            window.location.replace(
-              "/vip"
-            )
-
-            return
-          }
-
+        if (!response.ok) {
           setLoading(false)
-        } catch {
-          setLoading(false)
+          return
+        }
+
+        const data =
+          await response.json()
+
+        if (data.active) {
+          redirect("/vip")
+          return
+        }
+
+        setLoading(false)
+      } catch {
+        if (
+          step === "pricing" ||
+          step === "checkout" ||
+          step === "vip"
+        ) {
+          redirect("/")
+          return
+        }
+
+        setLoading(false)
+      }
+    }
+
+    const onPageShow = () => {
+      void check()
+    }
+
+    const onFocus = () => {
+      void check()
+    }
+
+    const onVisibilityChange =
+      () => {
+        if (
+          document.visibilityState ===
+          "visible"
+        ) {
+          void check()
         }
       }
 
+    const onStorage = (
+      event: StorageEvent
+    ) => {
+      if (
+        event.key !==
+          AUTH_EVENT_KEY ||
+        !event.newValue
+      ) {
+        return
+      }
+
+      try {
+        const payload =
+          JSON.parse(
+            event.newValue
+          ) as {
+            type?: string
+          }
+
+        if (
+          payload.type ===
+          "SIGNED_OUT"
+        ) {
+          redirect("/")
+        }
+      } catch {
+        redirect("/")
+      }
+    }
+
+    const {
+      data: { subscription },
+    } =
+      supabase.auth
+        .onAuthStateChange(
+          (event) => {
+            if (
+              event ===
+              "SIGNED_OUT"
+            ) {
+              redirect("/")
+            }
+          }
+        )
+
     window.addEventListener(
       "pageshow",
-      checkMembership
+      onPageShow
     )
 
     window.addEventListener(
       "focus",
-      checkMembership
+      onFocus
     )
 
-    void checkMembership()
+    window.addEventListener(
+      "storage",
+      onStorage
+    )
+
+    document.addEventListener(
+      "visibilitychange",
+      onVisibilityChange
+    )
+
+    void check()
 
     return () => {
+      subscription.unsubscribe()
+
       window.removeEventListener(
         "pageshow",
-        checkMembership
+        onPageShow
       )
 
       window.removeEventListener(
         "focus",
-        checkMembership
+        onFocus
+      )
+
+      window.removeEventListener(
+        "storage",
+        onStorage
+      )
+
+      document.removeEventListener(
+        "visibilitychange",
+        onVisibilityChange
       )
     }
   }, [
-    replaceStep,
     step,
+    supabase,
   ])
 
   useEffect(() => {
-    if (step === "vip") {
-      window.location.replace("/vip")
+    if (
+      step === "vip"
+    ) {
+      window.location.replace(
+        "/vip"
+      )
     }
   }, [step])
-
-  useEffect(() => {
-    return () => {
-      if (
-        logoutFallbackRef.current !==
-        null
-      ) {
-        window.clearTimeout(
-          logoutFallbackRef.current
-        )
-      }
-    }
-  }, [])
 
   const login = async () => {
     const cleanEmail =
@@ -469,7 +584,9 @@ export function AccessFlow({
     }
 
     setLoading(true)
-    setMessage("Procesando...")
+    setMessage(
+      "Procesando..."
+    )
 
     const { error } =
       await supabase.auth
@@ -489,7 +606,10 @@ export function AccessFlow({
     }
 
     document.cookie =
-      "tgc_logged_out=; path=/; max-age=0; samesite=lax"
+      "tgc_logged_out=; " +
+      "path=/; " +
+      "max-age=0; " +
+      "samesite=lax"
 
     try {
       const statusResponse =
@@ -497,13 +617,30 @@ export function AccessFlow({
           "/api/membership-status",
           {
             cache: "no-store",
+            credentials:
+              "same-origin",
           }
         )
+
+      if (
+        statusResponse.status ===
+        401
+      ) {
+        setLoading(false)
+
+        setMessage(
+          "La sesión no pudo validarse. Inténtalo nuevamente."
+        )
+
+        return
+      }
 
       const statusData =
         await statusResponse.json()
 
-      if (statusData.active) {
+      if (
+        statusData.active
+      ) {
         window.location.replace(
           "/vip"
         )
@@ -511,10 +648,9 @@ export function AccessFlow({
         return
       }
 
-      /*
-       * Login es reemplazado por Pricing.
-       */
-      replaceStep("pricing")
+      replaceStep(
+        "pricing"
+      )
     } catch {
       setLoading(false)
 
@@ -540,19 +676,22 @@ export function AccessFlow({
     }
 
     setLoading(true)
-    setMessage("Creando cuenta...")
+    setMessage(
+      "Creando cuenta..."
+    )
 
     const { error } =
-      await supabase.auth.signUp({
-        email: cleanEmail,
-        password,
+      await supabase.auth
+        .signUp({
+          email: cleanEmail,
+          password,
 
-        options: {
-          emailRedirectTo:
-            `${window.location.origin}` +
-            "/access?step=pricing",
-        },
-      })
+          options: {
+            emailRedirectTo:
+              `${window.location.origin}` +
+              "/access?step=pricing",
+          },
+        })
 
     if (error) {
       setLoading(false)
@@ -572,11 +711,9 @@ export function AccessFlow({
   }
 
   /*
-   * No usamos profundidades ni números calculados.
+   * Única lógica de cierre:
    *
-   * Siempre retrocedemos una sola vez.
-   * Si todavía estamos dentro de /access,
-   * popstate vuelve a retroceder.
+   * Supabase → limpiar estado → Inicio.
    */
   const logout = async () => {
     if (loading) {
@@ -586,81 +723,9 @@ export function AccessFlow({
     setLoading(true)
     setMessage("")
 
-    document.cookie =
-      "tgc_logged_out=1; path=/; max-age=120; samesite=lax"
-
-    const { error } =
-      await supabase.auth.signOut()
-
-    if (error) {
-      setLoading(false)
-
-      setMessage(
-        "No se pudo cerrar la sesión. Inténtalo nuevamente."
-      )
-
-      return
-    }
-
-    setEmail("")
-    setPassword("")
-
-    const flowStartedFromHome =
-      window.sessionStorage.getItem(
-        FLOW_FROM_HOME_KEY
-      ) === "1"
-
-    /*
-     * Cuando /access se abrió directamente, no podemos
-     * asegurar que Inicio exista detrás.
-     */
-    if (!flowStartedFromHome) {
-      window.sessionStorage.removeItem(
-        LOGOUT_CLEANUP_KEY
-      )
-
-      window.location.replace(
-        "/access?step=login"
-      )
-
-      return
-    }
-
-    window.sessionStorage.setItem(
-      LOGOUT_CLEANUP_KEY,
-      "pending"
+    await logoutToHome(
+      supabase
     )
-
-    window.history.back()
-
-    /*
-     * Respaldo para impedir que la pantalla quede bloqueada
-     * cuando el historial no contiene Inicio.
-     */
-    logoutFallbackRef.current =
-      window.setTimeout(() => {
-        if (
-          window.location.pathname ===
-            "/access" &&
-          cleanupIsRunning()
-        ) {
-          window.sessionStorage.removeItem(
-            LOGOUT_CLEANUP_KEY
-          )
-
-          window.sessionStorage.removeItem(
-            FLOW_FROM_HOME_KEY
-          )
-
-          window.location.replace(
-            "/access?step=login"
-          )
-        }
-      }, 1800)
-  }
-
-  const returnToHome = () => {
-    window.location.assign("/")
   }
 
   const pay = async () => {
@@ -683,6 +748,9 @@ export function AccessFlow({
                 "application/json",
             },
 
+            credentials:
+              "same-origin",
+
             body: JSON.stringify({
               plan,
             }),
@@ -690,9 +758,13 @@ export function AccessFlow({
         )
 
       if (
-        response.status === 401
+        response.status ===
+        401
       ) {
-        replaceStep("login")
+        window.location.replace(
+          "/"
+        )
+
         return
       }
 
@@ -710,7 +782,8 @@ export function AccessFlow({
       }
 
       if (
-        typeof data?.url === "string" &&
+        typeof data?.url ===
+          "string" &&
         data.url.length > 0
       ) {
         window.location.assign(
@@ -735,7 +808,9 @@ export function AccessFlow({
     }
   }
 
-  if (step === "vip") {
+  if (
+    step === "vip"
+  ) {
     return null
   }
 
@@ -746,7 +821,11 @@ export function AccessFlow({
         <header className="fixed left-0 top-0 z-50 flex w-full items-center justify-between border-b border-gold/10 bg-black/80 px-6 py-4 backdrop-blur-md">
           <button
             type="button"
-            onClick={returnToHome}
+            onClick={() =>
+              window.location.assign(
+                "/"
+              )
+            }
             className="text-xs uppercase tracking-[0.35em] text-gold"
           >
             The Golden Circle
@@ -758,7 +837,9 @@ export function AccessFlow({
             disabled={loading}
             className="text-xs uppercase tracking-[0.25em] text-gold/80 transition hover:text-gold disabled:pointer-events-none disabled:opacity-50"
           >
-            Cerrar sesión
+            {loading
+              ? "Cerrando..."
+              : "Cerrar sesión"}
           </button>
         </header>
       )}
@@ -796,10 +877,12 @@ export function AccessFlow({
                 }
                 onKeyDown={(event) => {
                   if (
-                    event.key === "Enter"
+                    event.key ===
+                    "Enter"
                   ) {
                     if (
-                      step === "login"
+                      step ===
+                      "login"
                     ) {
                       void login()
                     } else {
@@ -827,10 +910,12 @@ export function AccessFlow({
                 }
                 onKeyDown={(event) => {
                   if (
-                    event.key === "Enter"
+                    event.key ===
+                    "Enter"
                   ) {
                     if (
-                      step === "login"
+                      step ===
+                      "login"
                     ) {
                       void login()
                     } else {
@@ -862,13 +947,15 @@ export function AccessFlow({
               <button
                 type="button"
                 disabled={loading}
-                onClick={() =>
+                onClick={() => {
+                  setMessage("")
+
                   replaceStep(
                     step === "login"
                       ? "register"
                       : "login"
                   )
-                }
+                }}
                 className="text-sm text-gold/70 transition hover:text-gold disabled:pointer-events-none disabled:opacity-50"
               >
                 {step === "login"
@@ -895,7 +982,8 @@ export function AccessFlow({
           </h1>
 
           <p className="mx-auto mt-6 max-w-xl text-sm leading-7 text-muted-foreground">
-            Selecciona una membresía para continuar con el
+            Selecciona una membresía
+            para continuar con el
             acceso privado.
           </p>
 
@@ -920,7 +1008,8 @@ export function AccessFlow({
               </h2>
 
               <p className="mt-4 text-sm leading-7 text-muted-foreground">
-                Acceso privado durante un mes.
+                Acceso privado durante
+                un mes.
               </p>
 
               <p className="mt-8 text-5xl font-light text-gold">
@@ -948,7 +1037,8 @@ export function AccessFlow({
               </h2>
 
               <p className="mt-4 text-sm leading-7 text-muted-foreground">
-                Acceso privado durante tres meses.
+                Acceso privado durante
+                tres meses.
               </p>
 
               <p className="mt-8 text-5xl font-light text-gold">
@@ -978,7 +1068,8 @@ export function AccessFlow({
               </h1>
 
               <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
-                Revisa tu membresía antes de continuar.
+                Revisa tu membresía
+                antes de continuar.
               </p>
             </div>
 
@@ -991,11 +1082,15 @@ export function AccessFlow({
                     </p>
 
                     <h2 className="mt-3 text-3xl font-light">
-                      {prices[plan].label}
+                      {
+                        prices[plan]
+                          .label
+                      }
                     </h2>
 
                     <p className="mt-3 text-sm text-muted-foreground">
-                      {plan === "monthly"
+                      {plan ===
+                      "monthly"
                         ? "Acceso privado durante 1 mes."
                         : "Acceso privado durante 3 meses."}
                     </p>
@@ -1011,7 +1106,8 @@ export function AccessFlow({
                     </p>
 
                     <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      Acceso privado y futuras actualizaciones
+                      Acceso privado y
+                      futuras actualizaciones
                       exclusivas.
                     </p>
                   </div>
@@ -1034,7 +1130,10 @@ export function AccessFlow({
                   </p>
 
                   <div className="checkout-premium-price mb-6 text-5xl font-light">
-                    {prices[plan].price}
+                    {
+                      prices[plan]
+                        .price
+                    }
                   </div>
 
                   <button
@@ -1049,7 +1148,8 @@ export function AccessFlow({
                   </button>
 
                   <p className="mt-5 text-xs leading-6 text-muted-foreground">
-                    Serás redirigido a Mercado Pago para
+                    Serás redirigido a
+                    Mercado Pago para
                     completar la operación.
                   </p>
 

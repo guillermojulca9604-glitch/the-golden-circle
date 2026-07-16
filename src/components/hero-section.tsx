@@ -1,25 +1,41 @@
+import Link from "next/link"
+
 function GoldenLogo() {
   return (
     <div className="hero-logo">
       <div className="hero-logo-ring hero-logo-ring-1" />
       <div className="hero-logo-ring hero-logo-ring-2" />
       <div className="hero-logo-ring hero-logo-ring-3" />
-      <span className="hero-logo-letter">G</span>
+
+      <span className="hero-logo-letter">
+        G
+      </span>
     </div>
   )
 }
 
-function GlowLetters({ text }: { text: string }) {
+function GlowLetters({
+  text,
+}: {
+  text: string
+}) {
   return (
     <>
-      {text.split("").map((letter, index) => (
-        <span
-          key={`${letter}-${index}`}
-          className="hero-letter"
-        >
-          {letter}
-        </span>
-      ))}
+      {text
+        .split("")
+        .map(
+          (
+            letter,
+            index
+          ) => (
+            <span
+              key={`${letter}-${index}`}
+              className="hero-letter"
+            >
+              {letter}
+            </span>
+          )
+        )}
     </>
   )
 }
@@ -31,12 +47,14 @@ export function HeroSection() {
       <div className="hero-vignette absolute inset-0" />
 
       <div className="hero-login-wrap absolute right-6 top-6 z-30 md:right-10 md:top-8">
-        <a
-          href="/access?step=login&from=home"
+        <Link
+          href="/access?step=login"
           className="hero-login-button"
         >
-          <span>Iniciar sesión</span>
-        </a>
+          <span>
+            Iniciar sesión
+          </span>
+        </Link>
       </div>
 
       <div className="hero-title-zone relative z-10 mx-auto w-full max-w-6xl">
@@ -61,7 +79,9 @@ export function HeroSection() {
         <div className="gold-line hero-line" />
 
         <p className="hero-subtitle">
-          Página oficial de información, novedades y contacto
+          Página oficial de
+          información, novedades y
+          contacto
         </p>
       </div>
     </section>

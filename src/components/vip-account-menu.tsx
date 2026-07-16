@@ -3,37 +3,69 @@
 import Link from "next/link"
 import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { logoutToHome } from "@/lib/auth/logout-to-home"
 
 type Props = {
   email?: string | null
 }
 
-export function VipAccountMenu({ email }: Props) {
-  const [open, setOpen] = useState(false)
-  const supabase = createClient()
+export function VipAccountMenu({
+  email,
+}: Props) {
+  const [supabase] =
+    useState(
+      () => createClient()
+    )
+
+  const [open, setOpen] =
+    useState(false)
+
+  const [
+    loggingOut,
+    setLoggingOut,
+  ] = useState(false)
 
   const logout = async () => {
-    await supabase.auth.signOut()
-    window.location.replace("/login")
+    if (loggingOut) {
+      return
+    }
+
+    setLoggingOut(true)
+
+    await logoutToHome(
+      supabase
+    )
   }
 
   return (
     <header className="fixed left-0 top-0 z-50 flex w-full items-center justify-between border-b border-gold/10 bg-black/80 px-6 py-4 backdrop-blur-md">
-      <Link href="/vip" className="text-xs uppercase tracking-[0.35em] text-gold">
+      <Link
+        href="/vip"
+        className="text-xs uppercase tracking-[0.35em] text-gold"
+      >
         The Golden Circle
       </Link>
 
       <div className="relative">
         <button
           type="button"
-          onClick={() => setOpen(!open)}
+          onClick={() =>
+            setOpen(
+              (current) =>
+                !current
+            )
+          }
+          aria-expanded={open}
+          aria-label="Abrir menú de cuenta"
           className="flex items-center gap-2"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-md border border-gold/30 bg-black text-gold shadow-[0_0_20px_rgba(212,175,55,0.16)]">
             ♙
           </div>
 
-          <span className="text-gold/70">▾</span>
+          <span className="text-gold/70">
+            ▾
+          </span>
         </button>
 
         {open && (
@@ -53,9 +85,14 @@ export function VipAccountMenu({ email }: Props) {
             <button
               type="button"
               onClick={logout}
-              className="w-full text-left text-sm font-semibold text-foreground transition hover:text-gold"
+              disabled={
+                loggingOut
+              }
+              className="w-full text-left text-sm font-semibold text-foreground transition hover:text-gold disabled:pointer-events-none disabled:opacity-50"
             >
-              Cerrar sesión
+              {loggingOut
+                ? "Cerrando..."
+                : "Cerrar sesión"}
             </button>
           </div>
         )}

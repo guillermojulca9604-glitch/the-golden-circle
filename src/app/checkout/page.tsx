@@ -6,9 +6,18 @@ type Props = {
   }>
 }
 
-export default async function CheckoutPage({ searchParams }: Props) {
-  const params = await searchParams
-  const plan = params.plan === "quarterly" ? "quarterly" : "monthly"
+export default async function CheckoutPage({
+  searchParams,
+}: Props) {
+  const params =
+    await searchParams
 
-  redirect(`/access?step=checkout&plan=${plan}`)
+  const plan =
+    params.plan === "quarterly"
+      ? "quarterly"
+      : "monthly"
+
+  redirect(
+    `/access?step=checkout&plan=${plan}`
+  )
 }

@@ -1,47 +1,215 @@
 "use client"
 
-import { useEffect } from "react"
+import {
+  useEffect,
+  useRef,
+} from "react"
+
+import { createClient } from "@/lib/supabase/client"
+import { AUTH_EVENT_KEY } from "@/lib/auth/logout-to-home"
 
 type Props = {
-  mode: "pricing" | "checkout" | "vip"
+  mode:
+    | "pricing"
+    | "checkout"
+    | "vip"
+    | "payment"
+    | "signed-in"
 }
 
-export function SessionGuard({ mode }: Props) {
+export function SessionGuard({
+  mode,
+}: Props) {
+  const redirectingRef =
+    useRef(false)
+
   useEffect(() => {
+    const supabase =
+      createClient()
+
+    const redirect = (
+      url: string
+    ) => {
+      if (
+        redirectingRef.current
+      ) {
+        return
+      }
+
+      redirectingRef.current =
+        true
+
+      window.location.replace(
+        url
+      )
+    }
+
     const check = async () => {
+      if (
+        redirectingRef.current
+      ) {
+        return
+      }
+
       try {
-        const response = await fetch("/api/membership-status", {
-          cache: "no-store",
-        })
+        const response =
+          await fetch(
+            "/api/membership-status",
+            {
+              cache: "no-store",
+              credentials:
+                "same-origin",
+            }
+          )
 
-        if (response.status === 401) {
-          window.location.replace("/")
+        if (
+          response.status === 401
+        ) {
+          redirect("/")
           return
         }
 
-        const data = await response.json()
-
-        if (data.active && mode !== "vip") {
-          window.location.replace("/vip")
+        if (!response.ok) {
           return
         }
 
-        if (!data.active && mode === "vip") {
-          window.location.replace("/pricing")
+        const data =
+          await response.json()
+
+        const active =
+          Boolean(data.active)
+
+        if (
+          mode === "vip" &&
+          !active
+        ) {
+          redirect(
+            "/access?step=pricing"
+          )
+
+          return
+        }
+
+        if (
+          (
+            mode === "pricing" ||
+            mode === "checkout"
+          ) &&
+          active
+        ) {
+          redirect("/vip")
         }
       } catch {
-        window.location.replace("/")
+        redirect("/")
       }
     }
 
-    window.addEventListener("pageshow", check)
-    window.addEventListener("focus", check)
+    const onPageShow = () => {
+      void check()
+    }
 
-    check()
+    const onFocus = () => {
+      void check()
+    }
+
+    const onVisibilityChange =
+      () => {
+        if (
+          document.visibilityState ===
+          "visible"
+        ) {
+          void check()
+        }
+      }
+
+    const onStorage = (
+      event: StorageEvent
+    ) => {
+      if (
+        event.key !==
+          AUTH_EVENT_KEY ||
+        !event.newValue
+      ) {
+        return
+      }
+
+      try {
+        const payload =
+          JSON.parse(
+            event.newValue
+          ) as {
+            type?: string
+          }
+
+        if (
+          payload.type ===
+          "SIGNED_OUT"
+        ) {
+          redirect("/")
+        }
+      } catch {
+        redirect("/")
+      }
+    }
+
+    const {
+      data: { subscription },
+    } =
+      supabase.auth.onAuthStateChange(
+        (event) => {
+          if (
+            event ===
+            "SIGNED_OUT"
+          ) {
+            redirect("/")
+          }
+        }
+      )
+
+    window.addEventListener(
+      "pageshow",
+      onPageShow
+    )
+
+    window.addEventListener(
+      "focus",
+      onFocus
+    )
+
+    window.addEventListener(
+      "storage",
+      onStorage
+    )
+
+    document.addEventListener(
+      "visibilitychange",
+      onVisibilityChange
+    )
+
+    void check()
 
     return () => {
-      window.removeEventListener("pageshow", check)
-      window.removeEventListener("focus", check)
+      subscription.unsubscribe()
+
+      window.removeEventListener(
+        "pageshow",
+        onPageShow
+      )
+
+      window.removeEventListener(
+        "focus",
+        onFocus
+      )
+
+      window.removeEventListener(
+        "storage",
+        onStorage
+      )
+
+      document.removeEventListener(
+        "visibilitychange",
+        onVisibilityChange
+      )
     }
   }, [mode])
 

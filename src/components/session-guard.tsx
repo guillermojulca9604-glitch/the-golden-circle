@@ -5,8 +5,8 @@ import {
   useRef,
 } from "react"
 
-import { createClient } from "@/lib/supabase/client"
 import { AUTH_EVENT_KEY } from "@/lib/auth/logout-to-home"
+import { createClient } from "@/lib/supabase/client"
 
 type Props = {
   mode:
@@ -44,65 +44,81 @@ export function SessionGuard({
       )
     }
 
-    const check = async () => {
-      if (
-        redirectingRef.current
-      ) {
-        return
-      }
+    const check =
+      async () => {
+        if (
+          redirectingRef.current
+        ) {
+          return
+        }
 
-      try {
-        const response =
-          await fetch(
-            "/api/membership-status",
-            {
-              cache: "no-store",
-              credentials:
-                "same-origin",
+        try {
+          const response =
+            await fetch(
+              "/api/membership-status",
+              {
+                cache: "no-store",
+                credentials:
+                  "same-origin",
+              }
+            )
+
+          if (
+            response.status === 401
+          ) {
+            redirect("/")
+            return
+          }
+
+          if (!response.ok) {
+            return
+          }
+
+          const data =
+            await response.json()
+
+          const active =
+            Boolean(data.active)
+
+          if (
+            mode === "vip" &&
+            !active
+          ) {
+            redirect("/pricing")
+            return
+          }
+
+          if (
+            (
+              mode === "pricing" ||
+              mode === "checkout"
+            ) &&
+            active
+          ) {
+            redirect("/vip")
+          }
+        } catch {
+          /*
+           * Un fallo de red no debe cerrar
+           * una sesión válida automáticamente.
+           */
+          try {
+            const {
+              data: {
+                session,
+              },
+            } =
+              await supabase.auth
+                .getSession()
+
+            if (!session) {
+              redirect("/")
             }
-          )
-
-        if (
-          response.status === 401
-        ) {
-          redirect("/")
-          return
+          } catch {
+            redirect("/")
+          }
         }
-
-        if (!response.ok) {
-          return
-        }
-
-        const data =
-          await response.json()
-
-        const active =
-          Boolean(data.active)
-
-        if (
-          mode === "vip" &&
-          !active
-        ) {
-          redirect(
-            "/access?step=pricing"
-          )
-
-          return
-        }
-
-        if (
-          (
-            mode === "pricing" ||
-            mode === "checkout"
-          ) &&
-          active
-        ) {
-          redirect("/vip")
-        }
-      } catch {
-        redirect("/")
       }
-    }
 
     const onPageShow = () => {
       void check()
@@ -153,18 +169,21 @@ export function SessionGuard({
     }
 
     const {
-      data: { subscription },
+      data: {
+        subscription,
+      },
     } =
-      supabase.auth.onAuthStateChange(
-        (event) => {
-          if (
-            event ===
-            "SIGNED_OUT"
-          ) {
-            redirect("/")
+      supabase.auth
+        .onAuthStateChange(
+          (event) => {
+            if (
+              event ===
+              "SIGNED_OUT"
+            ) {
+              redirect("/")
+            }
           }
-        }
-      )
+        )
 
     window.addEventListener(
       "pageshow",

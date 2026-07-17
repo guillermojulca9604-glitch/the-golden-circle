@@ -6,11 +6,11 @@ import {
   useState,
 } from "react"
 
-import { createClient } from "@/lib/supabase/client"
 import {
   AUTH_EVENT_KEY,
   logoutToHome,
 } from "@/lib/auth/logout-to-home"
+import { createClient } from "@/lib/supabase/client"
 
 type Step =
   | "login"
@@ -63,16 +63,11 @@ const validSteps: Step[] = [
 ]
 
 function isValidStep(
-  value:
-    | string
-    | null
-    | undefined
+  value: string | null | undefined
 ): value is Step {
   return Boolean(
     value &&
-      validSteps.includes(
-        value as Step
-      )
+      validSteps.includes(value as Step)
   )
 }
 
@@ -85,14 +80,30 @@ function isPlan(
   )
 }
 
+function isPrivateStep(
+  value: Step
+) {
+  return (
+    value === "pricing" ||
+    value === "checkout" ||
+    value === "vip"
+  )
+}
+
+function isPublicStep(
+  value: Step
+) {
+  return (
+    value === "login" ||
+    value === "register"
+  )
+}
+
 function getHistoryState():
   FlowHistoryState {
   if (
-    typeof window
-      .history.state ===
-      "object" &&
-    window.history.state !==
-      null
+    typeof window.history.state === "object" &&
+    window.history.state !== null
   ) {
     return {
       ...window.history.state,
@@ -108,15 +119,12 @@ export function AccessFlow({
   initialEmail,
 }: Props) {
   const [supabase] =
-    useState(
-      () => createClient()
-    )
+    useState(() => createClient())
 
-  const normalizedInitialStep:
-    Step =
-      isValidStep(initialStep)
-        ? initialStep
-        : "login"
+  const normalizedInitialStep: Step =
+    isValidStep(initialStep)
+      ? initialStep
+      : "login"
 
   const [step, setStep] =
     useState<Step>(
@@ -133,149 +141,128 @@ export function AccessFlow({
       initialEmail ?? ""
     )
 
-  const [
-    password,
-    setPassword,
-  ] = useState("")
+  const [password, setPassword] =
+    useState("")
 
-  const [
-    message,
-    setMessage,
-  ] = useState("")
+  const [message, setMessage] =
+    useState("")
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false)
+  const [loading, setLoading] =
+    useState(false)
 
-  const buildUrl =
-    useCallback(
-      (
-        nextStep: Step,
-        nextPlan: Plan
-      ) => {
-        if (
-          nextStep ===
-          "checkout"
-        ) {
-          return (
-            "/access?" +
-            "step=checkout" +
-            `&plan=${nextPlan}`
-          )
-        }
-
+  const buildUrl = useCallback(
+    (
+      nextStep: Step,
+      nextPlan: Plan
+    ) => {
+      if (nextStep === "checkout") {
         return (
-          `/access?step=${nextStep}`
+          `/access?step=checkout` +
+          `&plan=${nextPlan}`
         )
-      },
-      []
-    )
+      }
 
-  const writeHistory =
-    useCallback(
-      (
-        mode:
-          | "push"
-          | "replace",
-        nextStep: Step,
-        nextPlan: Plan
-      ) => {
-        const nextState:
-          FlowHistoryState = {
-            ...getHistoryState(),
-            __tgcFlow: true,
-            step: nextStep,
-            plan: nextPlan,
-          }
+      return `/access?step=${nextStep}`
+    },
+    []
+  )
 
-        const nextUrl =
-          buildUrl(
-            nextStep,
-            nextPlan
-          )
-
-        if (
-          mode === "push"
-        ) {
-          window.history
-            .pushState(
-              nextState,
-              "",
-              nextUrl
-            )
-        } else {
-          window.history
-            .replaceState(
-              nextState,
-              "",
-              nextUrl
-            )
+  const writeHistory = useCallback(
+    (
+      mode: "push" | "replace",
+      nextStep: Step,
+      nextPlan: Plan
+    ) => {
+      const nextState:
+        FlowHistoryState = {
+          ...getHistoryState(),
+          __tgcFlow: true,
+          step: nextStep,
+          plan: nextPlan,
         }
-      },
-      [buildUrl]
-    )
+
+      const nextUrl =
+        buildUrl(
+          nextStep,
+          nextPlan
+        )
+
+      if (mode === "push") {
+        window.history.pushState(
+          nextState,
+          "",
+          nextUrl
+        )
+      } else {
+        window.history.replaceState(
+          nextState,
+          "",
+          nextUrl
+        )
+      }
+    },
+    [buildUrl]
+  )
 
   /*
    * Login → Pricing utiliza replace.
    *
-   * Login deja de estar en el recorrido
-   * mientras la sesión continúa iniciada.
+   * Después de iniciar sesión, Login deja
+   * de ocupar una posición del historial.
    */
-  const replaceStep =
-    useCallback(
-      (
-        nextStep: Step,
-        nextPlan:
-          Plan = plan
-      ) => {
-        setStep(nextStep)
-        setPlan(nextPlan)
-        setMessage("")
-        setLoading(false)
+  const replaceStep = useCallback(
+    (
+      nextStep: Step,
+      nextPlan: Plan = plan
+    ) => {
+      setStep(nextStep)
+      setPlan(nextPlan)
+      setMessage("")
+      setLoading(false)
 
-        writeHistory(
-          "replace",
-          nextStep,
-          nextPlan
-        )
-      },
-      [
-        plan,
-        writeHistory,
-      ]
-    )
+      writeHistory(
+        "replace",
+        nextStep,
+        nextPlan
+      )
+    },
+    [
+      plan,
+      writeHistory,
+    ]
+  )
 
   /*
    * Pricing → Checkout utiliza push.
    *
-   * Atrás y Adelante funcionan normalmente
-   * durante la sesión.
+   * Esto permite navegar normalmente
+   * mediante Atrás y Adelante.
    */
-  const pushStep =
-    useCallback(
-      (
-        nextStep: Step,
-        nextPlan:
-          Plan = plan
-      ) => {
-        setStep(nextStep)
-        setPlan(nextPlan)
-        setMessage("")
-        setLoading(false)
+  const pushStep = useCallback(
+    (
+      nextStep: Step,
+      nextPlan: Plan = plan
+    ) => {
+      setStep(nextStep)
+      setPlan(nextPlan)
+      setMessage("")
+      setLoading(false)
 
-        writeHistory(
-          "push",
-          nextStep,
-          nextPlan
-        )
-      },
-      [
-        plan,
-        writeHistory,
-      ]
-    )
+      writeHistory(
+        "push",
+        nextStep,
+        nextPlan
+      )
+    },
+    [
+      plan,
+      writeHistory,
+    ]
+  )
 
+  /*
+   * Marca correctamente la entrada inicial.
+   */
   useEffect(() => {
     writeHistory(
       "replace",
@@ -288,8 +275,12 @@ export function AccessFlow({
     writeHistory,
   ])
 
+  /*
+   * Atrás y Adelante solamente actualizan
+   * la pantalla. Nunca cierran la sesión.
+   */
   useEffect(() => {
-    const onPopState = (
+    const handlePopState = (
       event: PopStateEvent
     ) => {
       const params =
@@ -300,32 +291,26 @@ export function AccessFlow({
       const urlStep =
         params.get("step")
 
-      const urlPlan:
-        Plan =
-          params.get("plan") ===
-          "quarterly"
-            ? "quarterly"
-            : "monthly"
+      const urlPlan: Plan =
+        params.get("plan") ===
+        "quarterly"
+          ? "quarterly"
+          : "monthly"
 
       const historyState:
         FlowHistoryState =
-          typeof event.state ===
-              "object" &&
-            event.state !== null
+          typeof event.state === "object" &&
+          event.state !== null
             ? (
                 event.state as
                   FlowHistoryState
               )
             : {}
 
-      let nextStep:
-        Step = "login"
+      let nextStep: Step = "login"
 
-      if (
-        isValidStep(urlStep)
-      ) {
-        nextStep =
-          urlStep
+      if (isValidStep(urlStep)) {
+        nextStep = urlStep
       } else if (
         isValidStep(
           historyState.step
@@ -336,9 +321,7 @@ export function AccessFlow({
       }
 
       const nextPlan =
-        isPlan(
-          historyState.plan
-        )
+        isPlan(historyState.plan)
           ? historyState.plan
           : urlPlan
 
@@ -350,25 +333,26 @@ export function AccessFlow({
 
     window.addEventListener(
       "popstate",
-      onPopState
+      handlePopState
     )
 
     return () => {
       window.removeEventListener(
         "popstate",
-        onPopState
+        handlePopState
       )
     }
   }, [])
 
   /*
-   * Impide que una página privada restaurada
-   * desde Atrás, Adelante o bfcache muestre
-   * contenido después de cerrar sesión.
+   * Comprueba la sesión cuando se abre o
+   * restaura una pantalla.
+   *
+   * Esta comprobación puede redirigir, pero
+   * nunca ejecuta signOut.
    */
   useEffect(() => {
-    let redirecting =
-      false
+    let redirecting = false
 
     const redirect = (
       url: string
@@ -378,97 +362,135 @@ export function AccessFlow({
       }
 
       redirecting = true
-
-      window.location.replace(
-        url
-      )
+      window.location.replace(url)
     }
 
-    const check = async () => {
-      if (redirecting) {
-        return
+    const verifyLocalSessionAfterError =
+      async () => {
+        if (
+          redirecting ||
+          !isPrivateStep(step)
+        ) {
+          return
+        }
+
+        try {
+          const {
+            data: { session },
+          } =
+            await supabase.auth
+              .getSession()
+
+          if (!session) {
+            redirect("/")
+          }
+        } catch {
+          redirect("/")
+        }
       }
 
-      try {
-        const response =
-          await fetch(
-            "/api/membership-status",
-            {
-              cache: "no-store",
-              credentials:
-                "same-origin",
-            }
-          )
+    const checkSession =
+      async () => {
+        if (redirecting) {
+          return
+        }
 
-        if (
-          response.status ===
-          401
-        ) {
+        try {
+          const response =
+            await fetch(
+              "/api/membership-status",
+              {
+                cache: "no-store",
+                credentials:
+                  "same-origin",
+              }
+            )
+
+          /*
+           * No hay sesión.
+           *
+           * Una ruta privada queda bloqueada
+           * y vuelve a Inicio.
+           */
           if (
-            step === "pricing" ||
-            step === "checkout" ||
-            step === "vip"
+            response.status === 401
           ) {
-            redirect("/")
+            if (
+              isPrivateStep(step)
+            ) {
+              redirect("/")
+              return
+            }
+
+            setLoading(false)
+            return
+          }
+
+          if (!response.ok) {
+            setLoading(false)
+            return
+          }
+
+          const data =
+            await response.json()
+
+          /*
+           * Tiene una membresía activa.
+           */
+          if (data.active) {
+            redirect("/vip")
+            return
+          }
+
+          /*
+           * Ya inició sesión, pero apareció
+           * una entrada antigua de Login.
+           *
+           * Login se salta y abre Pricing.
+           */
+          if (isPublicStep(step)) {
+            redirect(
+              "/access?step=pricing"
+            )
+
             return
           }
 
           setLoading(false)
-          return
-        }
-
-        if (!response.ok) {
+        } catch {
           setLoading(false)
-          return
+
+          /*
+           * Una caída temporal de internet no
+           * cierra la sesión automáticamente.
+           */
+          await verifyLocalSessionAfterError()
         }
-
-        const data =
-          await response.json()
-
-        if (data.active) {
-          redirect("/vip")
-          return
-        }
-
-        setLoading(false)
-      } catch {
-        if (
-          step === "pricing" ||
-          step === "checkout" ||
-          step === "vip"
-        ) {
-          redirect("/")
-          return
-        }
-
-        setLoading(false)
       }
+
+    const handlePageShow = () => {
+      void checkSession()
     }
 
-    const onPageShow = () => {
-      void check()
+    const handleFocus = () => {
+      void checkSession()
     }
 
-    const onFocus = () => {
-      void check()
-    }
-
-    const onVisibilityChange =
+    const handleVisibilityChange =
       () => {
         if (
           document.visibilityState ===
           "visible"
         ) {
-          void check()
+          void checkSession()
         }
       }
 
-    const onStorage = (
+    const handleStorage = (
       event: StorageEvent
     ) => {
       if (
-        event.key !==
-          AUTH_EVENT_KEY ||
+        event.key !== AUTH_EVENT_KEY ||
         !event.newValue
       ) {
         return
@@ -510,47 +532,47 @@ export function AccessFlow({
 
     window.addEventListener(
       "pageshow",
-      onPageShow
+      handlePageShow
     )
 
     window.addEventListener(
       "focus",
-      onFocus
+      handleFocus
     )
 
     window.addEventListener(
       "storage",
-      onStorage
+      handleStorage
     )
 
     document.addEventListener(
       "visibilitychange",
-      onVisibilityChange
+      handleVisibilityChange
     )
 
-    void check()
+    void checkSession()
 
     return () => {
       subscription.unsubscribe()
 
       window.removeEventListener(
         "pageshow",
-        onPageShow
+        handlePageShow
       )
 
       window.removeEventListener(
         "focus",
-        onFocus
+        handleFocus
       )
 
       window.removeEventListener(
         "storage",
-        onStorage
+        handleStorage
       )
 
       document.removeEventListener(
         "visibilitychange",
-        onVisibilityChange
+        handleVisibilityChange
       )
     }
   }, [
@@ -559,12 +581,8 @@ export function AccessFlow({
   ])
 
   useEffect(() => {
-    if (
-      step === "vip"
-    ) {
-      window.location.replace(
-        "/vip"
-      )
+    if (step === "vip") {
+      window.location.replace("/vip")
     }
   }, [step])
 
@@ -584,9 +602,7 @@ export function AccessFlow({
     }
 
     setLoading(true)
-    setMessage(
-      "Procesando..."
-    )
+    setMessage("Procesando...")
 
     const { error } =
       await supabase.auth
@@ -607,8 +623,7 @@ export function AccessFlow({
 
     document.cookie =
       "tgc_logged_out=; " +
-      "path=/; " +
-      "max-age=0; " +
+      "path=/; max-age=0; " +
       "samesite=lax"
 
     try {
@@ -623,8 +638,7 @@ export function AccessFlow({
         )
 
       if (
-        statusResponse.status ===
-        401
+        statusResponse.status === 401
       ) {
         setLoading(false)
 
@@ -635,12 +649,20 @@ export function AccessFlow({
         return
       }
 
+      if (!statusResponse.ok) {
+        setLoading(false)
+
+        setMessage(
+          "No se pudo comprobar la membresía."
+        )
+
+        return
+      }
+
       const statusData =
         await statusResponse.json()
 
-      if (
-        statusData.active
-      ) {
+      if (statusData.active) {
         window.location.replace(
           "/vip"
         )
@@ -648,9 +670,10 @@ export function AccessFlow({
         return
       }
 
-      replaceStep(
-        "pricing"
-      )
+      /*
+       * Login se reemplaza por Pricing.
+       */
+      replaceStep("pricing")
     } catch {
       setLoading(false)
 
@@ -681,17 +704,16 @@ export function AccessFlow({
     )
 
     const { error } =
-      await supabase.auth
-        .signUp({
-          email: cleanEmail,
-          password,
+      await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
 
-          options: {
-            emailRedirectTo:
-              `${window.location.origin}` +
-              "/access?step=pricing",
-          },
-        })
+        options: {
+          emailRedirectTo:
+            `${window.location.origin}` +
+            "/access?step=pricing",
+        },
+      })
 
     if (error) {
       setLoading(false)
@@ -711,9 +733,8 @@ export function AccessFlow({
   }
 
   /*
-   * Única lógica de cierre:
-   *
-   * Supabase → limpiar estado → Inicio.
+   * Esta es la única función del flujo
+   * que puede cerrar la sesión.
    */
   const logout = async () => {
     if (loading) {
@@ -723,9 +744,17 @@ export function AccessFlow({
     setLoading(true)
     setMessage("")
 
-    await logoutToHome(
-      supabase
-    )
+    try {
+      await logoutToHome(
+        supabase
+      )
+    } catch {
+      setLoading(false)
+
+      setMessage(
+        "No se pudo cerrar la sesión. Inténtalo nuevamente."
+      )
+    }
   }
 
   const pay = async () => {
@@ -742,14 +771,13 @@ export function AccessFlow({
           "/api/mercadopago/create-preference",
           {
             method: "POST",
+            credentials:
+              "same-origin",
 
             headers: {
               "Content-Type":
                 "application/json",
             },
-
-            credentials:
-              "same-origin",
 
             body: JSON.stringify({
               plan,
@@ -758,22 +786,16 @@ export function AccessFlow({
         )
 
       if (
-        response.status ===
-        401
+        response.status === 401
       ) {
-        window.location.replace(
-          "/"
-        )
-
+        window.location.replace("/")
         return
       }
 
       const data =
         await response.json()
 
-      if (
-        data?.url === "/vip"
-      ) {
+      if (data?.url === "/vip") {
         window.location.replace(
           "/vip"
         )
@@ -782,8 +804,7 @@ export function AccessFlow({
       }
 
       if (
-        typeof data?.url ===
-          "string" &&
+        typeof data?.url === "string" &&
         data.url.length > 0
       ) {
         window.location.assign(
@@ -808,9 +829,7 @@ export function AccessFlow({
     }
   }
 
-  if (
-    step === "vip"
-  ) {
+  if (step === "vip") {
     return null
   }
 
@@ -822,9 +841,7 @@ export function AccessFlow({
           <button
             type="button"
             onClick={() =>
-              window.location.assign(
-                "/"
-              )
+              window.location.assign("/")
             }
             className="text-xs uppercase tracking-[0.35em] text-gold"
           >
@@ -877,12 +894,10 @@ export function AccessFlow({
                 }
                 onKeyDown={(event) => {
                   if (
-                    event.key ===
-                    "Enter"
+                    event.key === "Enter"
                   ) {
                     if (
-                      step ===
-                      "login"
+                      step === "login"
                     ) {
                       void login()
                     } else {
@@ -910,12 +925,10 @@ export function AccessFlow({
                 }
                 onKeyDown={(event) => {
                   if (
-                    event.key ===
-                    "Enter"
+                    event.key === "Enter"
                   ) {
                     if (
-                      step ===
-                      "login"
+                      step === "login"
                     ) {
                       void login()
                     } else {
@@ -982,9 +995,8 @@ export function AccessFlow({
           </h1>
 
           <p className="mx-auto mt-6 max-w-xl text-sm leading-7 text-muted-foreground">
-            Selecciona una membresía
-            para continuar con el
-            acceso privado.
+            Selecciona una membresía para
+            continuar con el acceso privado.
           </p>
 
           <div className="mt-12 grid gap-6 md:grid-cols-2">
@@ -1008,8 +1020,7 @@ export function AccessFlow({
               </h2>
 
               <p className="mt-4 text-sm leading-7 text-muted-foreground">
-                Acceso privado durante
-                un mes.
+                Acceso privado durante un mes.
               </p>
 
               <p className="mt-8 text-5xl font-light text-gold">
@@ -1037,8 +1048,8 @@ export function AccessFlow({
               </h2>
 
               <p className="mt-4 text-sm leading-7 text-muted-foreground">
-                Acceso privado durante
-                tres meses.
+                Acceso privado durante tres
+                meses.
               </p>
 
               <p className="mt-8 text-5xl font-light text-gold">
@@ -1068,8 +1079,8 @@ export function AccessFlow({
               </h1>
 
               <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
-                Revisa tu membresía
-                antes de continuar.
+                Revisa tu membresía antes de
+                continuar.
               </p>
             </div>
 
@@ -1082,15 +1093,11 @@ export function AccessFlow({
                     </p>
 
                     <h2 className="mt-3 text-3xl font-light">
-                      {
-                        prices[plan]
-                          .label
-                      }
+                      {prices[plan].label}
                     </h2>
 
                     <p className="mt-3 text-sm text-muted-foreground">
-                      {plan ===
-                      "monthly"
+                      {plan === "monthly"
                         ? "Acceso privado durante 1 mes."
                         : "Acceso privado durante 3 meses."}
                     </p>
@@ -1106,9 +1113,8 @@ export function AccessFlow({
                     </p>
 
                     <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      Acceso privado y
-                      futuras actualizaciones
-                      exclusivas.
+                      Acceso privado y futuras
+                      actualizaciones exclusivas.
                     </p>
                   </div>
 
@@ -1130,10 +1136,7 @@ export function AccessFlow({
                   </p>
 
                   <div className="checkout-premium-price mb-6 text-5xl font-light">
-                    {
-                      prices[plan]
-                        .price
-                    }
+                    {prices[plan].price}
                   </div>
 
                   <button
@@ -1148,9 +1151,9 @@ export function AccessFlow({
                   </button>
 
                   <p className="mt-5 text-xs leading-6 text-muted-foreground">
-                    Serás redirigido a
-                    Mercado Pago para
-                    completar la operación.
+                    Serás redirigido a Mercado
+                    Pago para completar la
+                    operación.
                   </p>
 
                   {message && (

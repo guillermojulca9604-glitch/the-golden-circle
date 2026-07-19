@@ -1,10 +1,70 @@
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
-import { SessionGuard } from "@/components/session-guard"
+
 import { AuthTopbarSimple } from "@/components/auth-topbar-simple"
+import { SessionGuard } from "@/components/session-guard"
+import { createClient } from "@/lib/supabase/server"
+
 import { PaymentSuccessWaiter } from "./payment-success-waiter"
 
-export default async function PaymentSuccessPage() {
+type SearchValue =
+  | string
+  | string[]
+  | undefined
+
+type Props = {
+  searchParams: Promise<{
+    payment_id?: SearchValue
+    collection_id?: SearchValue
+  }>
+}
+
+function firstValue(
+  value: SearchValue
+) {
+  if (Array.isArray(value)) {
+    return value[0]
+  }
+
+  return value
+}
+
+function normalizePaymentId(
+  value: SearchValue
+) {
+  const selectedValue =
+    firstValue(value)
+
+  if (
+    typeof selectedValue !==
+    "string"
+  ) {
+    return null
+  }
+
+  const cleanValue =
+    selectedValue.trim()
+
+  return /^\d+$/.test(
+    cleanValue
+  )
+    ? cleanValue
+    : null
+}
+
+export default async function PaymentSuccessPage({
+  searchParams,
+}: Props) {
+  const params =
+    await searchParams
+
+  const paymentId =
+    normalizePaymentId(
+      params.payment_id
+    ) ||
+    normalizePaymentId(
+      params.collection_id
+    )
+
   const supabase =
     await createClient()
 
@@ -13,6 +73,13 @@ export default async function PaymentSuccessPage() {
   } =
     await supabase.auth.getUser()
 
+  /*
+   * Esta comprobación utiliza
+   * únicamente la sesión de TGC.
+   *
+   * La cuenta usada en Mercado Pago
+   * no afecta esta sesión.
+   */
   if (!user) {
     redirect("/")
   }
@@ -20,6 +87,7 @@ export default async function PaymentSuccessPage() {
   return (
     <main className="min-h-dvh bg-background px-6 py-24 text-foreground">
       <SessionGuard mode="payment" />
+
       <AuthTopbarSimple />
 
       <section className="mx-auto max-w-xl text-center">
@@ -40,7 +108,9 @@ export default async function PaymentSuccessPage() {
             VIP.
           </p>
 
-          <PaymentSuccessWaiter />
+          <PaymentSuccessWaiter
+            paymentId={paymentId}
+          />
         </div>
       </section>
     </main>

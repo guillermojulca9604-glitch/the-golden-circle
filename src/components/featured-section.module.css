@@ -1,0 +1,379 @@
+.subscriptionOrbit {
+  position: relative;
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 1rem;
+  isolation: isolate;
+  transform: translateZ(0);
+  transform-origin: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    transform 150ms
+      cubic-bezier(
+        0.2,
+        0.75,
+        0.3,
+        1
+      );
+}
+
+/*
+ * Iluminación permanente y discreta
+ * del contorno.
+ */
+.subscriptionOrbit::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+
+  border: 1px solid
+    oklch(0.78 0.12 85 / 0.34);
+
+  border-radius: inherit;
+  pointer-events: none;
+
+  box-shadow:
+    0 0 14px
+      oklch(0.78 0.12 85 / 0.08),
+    inset 0 1px 0
+      oklch(1 0 0 / 0.025);
+
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+/*
+ * Esta capa limita las luces móviles
+ * al borde fino del botón.
+ */
+.subscriptionBorderFlow {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+
+  overflow: hidden;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+
+  -webkit-mask:
+    linear-gradient(#000 0 0)
+      content-box,
+    linear-gradient(#000 0 0);
+
+  -webkit-mask-composite: xor;
+
+  mask:
+    linear-gradient(#000 0 0)
+      content-box,
+    linear-gradient(#000 0 0);
+
+  mask-composite: exclude;
+}
+
+/*
+ * Mismo tipo de luz de la raya horizontal:
+ * transparente → dorado → transparente.
+ */
+.subscriptionLight {
+  position: absolute;
+  left: 0;
+  top: 0;
+
+  width: 58px;
+  height: 18px;
+
+  border-radius: 9999px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      oklch(0.78 0.12 85 / 0.95),
+      transparent
+    );
+
+  offset-path:
+    inset(
+      1px
+      round 1rem
+    );
+
+  offset-distance: 0%;
+  offset-rotate: auto;
+  offset-anchor: 50% 50%;
+
+  will-change:
+    offset-distance,
+    filter;
+
+  filter:
+    drop-shadow(
+      0 0 2px
+      oklch(0.78 0.12 85 / 0.55)
+    );
+
+  transition:
+    filter 220ms ease;
+
+  animation:
+    subscriptionLineFlow
+    4.6s
+    linear
+    infinite;
+}
+
+.subscriptionLightFirst {
+  animation-delay: 0s;
+}
+
+.subscriptionLightSecond {
+  animation-delay: -2.3s;
+}
+
+.subscriptionLink {
+  position: relative;
+  z-index: 1;
+
+  border-color: transparent;
+
+  background:
+    oklch(0.12 0.025 85 / 0.78);
+
+  color:
+    oklch(0.86 0.14 85);
+
+  text-shadow:
+    0 0 1px
+      oklch(0.78 0.12 85 / 0.9),
+    0 0 10px
+      oklch(0.78 0.12 85 / 0.3),
+    0 0 22px
+      oklch(0.78 0.12 85 / 0.13);
+
+  box-shadow:
+    0 0 18px
+      oklch(0.78 0.12 85 / 0.1),
+    inset 0 1px 0
+      oklch(1 0 0 / 0.04);
+
+  transition:
+    color 220ms ease,
+    background 220ms ease,
+    text-shadow 220ms ease,
+    box-shadow 150ms ease;
+}
+
+/*
+ * COMPUTADORA
+ *
+ * Se conserva exactamente el efecto actual:
+ * hover dorado y presión al hacer clic.
+ */
+@media (
+  hover: hover
+) and (
+  pointer: fine
+) {
+  .subscriptionLink:hover {
+    border-color: transparent;
+
+    background:
+      oklch(0.14 0.03 85 / 0.82);
+
+    color:
+      oklch(0.88 0.145 85);
+
+    text-shadow:
+      0 0 1px
+        oklch(0.78 0.12 85 / 1),
+      0 0 12px
+        oklch(0.78 0.12 85 / 0.38),
+      0 0 26px
+        oklch(0.78 0.12 85 / 0.16);
+
+    box-shadow:
+      0 0 22px
+        oklch(0.78 0.12 85 / 0.13),
+      inset 0 1px 0
+        oklch(1 0 0 / 0.05);
+  }
+
+  .subscriptionOrbit:hover::before {
+    border-color:
+      oklch(0.78 0.12 85 / 0.42);
+
+    box-shadow:
+      0 0 18px
+        oklch(0.78 0.12 85 / 0.12),
+      inset 0 1px 0
+        oklch(1 0 0 / 0.03);
+  }
+
+  .subscriptionOrbit:hover
+  .subscriptionLight {
+    filter:
+      drop-shadow(
+        0 0 2.5px
+        oklch(0.78 0.12 85 / 0.68)
+      );
+  }
+
+  /*
+   * Clic con mouse:
+   * conserva la presión actual.
+   */
+  .subscriptionOrbit:active {
+    transform:
+      translateY(2px)
+      scale(0.985);
+
+    transition-duration: 90ms;
+  }
+
+  .subscriptionOrbit:active::before {
+    border-color:
+      oklch(0.78 0.12 85 / 0.38);
+
+    box-shadow:
+      0 0 6px
+        oklch(0.78 0.12 85 / 0.06),
+      inset 0 2px 5px
+        oklch(0 0 0 / 0.48);
+  }
+
+  .subscriptionOrbit:active
+  .subscriptionLink {
+    background:
+      oklch(0.095 0.018 85 / 0.9);
+
+    box-shadow:
+      0 0 7px
+        oklch(0.78 0.12 85 / 0.06),
+      inset 0 3px 8px
+        oklch(0 0 0 / 0.55),
+      inset 0 1px 0
+        oklch(1 0 0 / 0.025);
+  }
+}
+
+/*
+ * CELULAR Y TABLET
+ *
+ * Mientras el dedo está presionando:
+ * - aparece el dorado del hover de PC;
+ * - aumenta la iluminación;
+ * - el botón se hunde;
+ * - no hace zoom.
+ */
+@media (
+  hover: none
+) and (
+  pointer: coarse
+) {
+  .subscriptionOrbit:active {
+    transform:
+      translateY(2px);
+
+    transition-duration: 80ms;
+  }
+
+  .subscriptionOrbit:active::before {
+    border-color:
+      oklch(0.78 0.12 85 / 0.42);
+
+    box-shadow:
+      0 0 13px
+        oklch(0.78 0.12 85 / 0.12),
+      inset 0 2px 5px
+        oklch(0 0 0 / 0.32);
+  }
+
+  .subscriptionOrbit:active
+  .subscriptionLight {
+    filter:
+      drop-shadow(
+        0 0 2.5px
+        oklch(0.78 0.12 85 / 0.68)
+      );
+  }
+
+  .subscriptionOrbit:active
+  .subscriptionLink {
+    border-color: transparent;
+
+    background:
+      oklch(0.14 0.03 85 / 0.82);
+
+    color:
+      oklch(0.88 0.145 85);
+
+    text-shadow:
+      0 0 1px
+        oklch(0.78 0.12 85 / 1),
+      0 0 12px
+        oklch(0.78 0.12 85 / 0.38),
+      0 0 26px
+        oklch(0.78 0.12 85 / 0.16);
+
+    box-shadow:
+      0 0 12px
+        oklch(0.78 0.12 85 / 0.12),
+      inset 0 3px 7px
+        oklch(0 0 0 / 0.34),
+      inset 0 1px 0
+        oklch(1 0 0 / 0.045);
+  }
+}
+
+/*
+ * Navegación mediante teclado.
+ */
+.subscriptionOrbit:focus-within::before {
+  border-color:
+    oklch(0.78 0.12 85 / 0.52);
+
+  box-shadow:
+    0 0 18px
+      oklch(0.78 0.12 85 / 0.14);
+}
+
+@keyframes subscriptionLineFlow {
+  from {
+    offset-distance: 0%;
+  }
+
+  to {
+    offset-distance: 100%;
+  }
+}
+
+@media (
+  prefers-reduced-motion: reduce
+) {
+  .subscriptionLight {
+    display: none;
+  }
+
+  .subscriptionOrbit {
+    transition: none;
+  }
+
+  .subscriptionOrbit:active {
+    transform:
+      translateY(2px);
+  }
+}
+
+@supports not (
+  offset-path:
+    inset(1px round 1rem)
+) {
+  .subscriptionBorderFlow {
+    display: none;
+  }
+}

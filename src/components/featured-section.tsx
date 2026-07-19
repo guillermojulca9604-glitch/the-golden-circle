@@ -1,4 +1,7 @@
 import Image from "next/image"
+import Link from "next/link"
+
+import styles from "./featured-section.module.css"
 
 const featuredContent = {
   badge: "Nuevo",
@@ -6,12 +9,19 @@ const featuredContent = {
   subtitle: "Novedades de Mayo 2026",
   description:
     "Contenido exclusivo disponible para los miembros de The Golden Circle. Accede a las últimas actualizaciones y material premium a través de nuestro canal oficial de Telegram.",
-  image: "/photo_2026-05-17_13-03-48.jpg",
+  image:
+    "/photo_2026-05-17_13-03-48.jpg",
+
+  /*
+   * Cambia únicamente este número
+   * para graduar el blur de la imagen.
+   */
+  imageBlur: 9,
 }
 
 export function FeaturedSection() {
   return (
-    <section className="relative overflow-hidden px-6 py-20 md:py-32">
+    <section className="relative overflow-hidden px-6 pt-8 pb-20 md:pt-12 md:pb-32">
       <div className="mx-auto max-w-6xl">
         <div className="mb-12 text-center">
           <span className="mb-4 block text-xs uppercase tracking-[0.4em] text-gold">
@@ -37,13 +47,19 @@ export function FeaturedSection() {
                 unoptimized
                 sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-cover"
+                style={{
+                  filter:
+                    `blur(${featuredContent.imageBlur}px)`,
+                }}
               />
 
               <div className="absolute inset-0 bg-linear-to-r from-transparent via-transparent to-background/85" />
 
               <div className="absolute left-6 top-6">
                 <div className="flex items-center gap-2 rounded-full border border-gold/30 bg-black/35 px-4 py-2">
-                  <span className="text-gold">✦</span>
+                  <span className="text-gold">
+                    ✦
+                  </span>
 
                   <span className="text-xs uppercase tracking-wider text-gold">
                     {featuredContent.badge}
@@ -65,14 +81,31 @@ export function FeaturedSection() {
                 {featuredContent.description}
               </p>
 
-              <a
-                href="/login?next=/pricing"
-                className="telegram-button subscription-premium-button inline-flex w-fit items-center gap-3 rounded-2xl px-8 py-5 text-sm uppercase tracking-[0.28em]"
-              >
-                Suscripción
+              <span className={styles.subscriptionOrbit}>
+                <span
+                  className={styles.subscriptionBorderFlow}
+                  aria-hidden="true"
+                >
+                  <span
+                    className={`${styles.subscriptionLight} ${styles.subscriptionLightFirst}`}
+                  />
 
-                <span className="telegram-arrow text-lg">→</span>
-              </a>
+                  <span
+                    className={`${styles.subscriptionLight} ${styles.subscriptionLightSecond}`}
+                  />
+                </span>
+
+                <Link
+                  href="/suscripcion"
+                  className={`${styles.subscriptionLink} telegram-button subscription-premium-button inline-flex cursor-pointer items-center gap-3 rounded-2xl px-8 py-5 text-sm uppercase tracking-[0.28em]`}
+                >
+                  Suscripción
+
+                  <span className="telegram-arrow text-lg">
+                    →
+                  </span>
+                </Link>
+              </span>
             </div>
           </div>
         </div>

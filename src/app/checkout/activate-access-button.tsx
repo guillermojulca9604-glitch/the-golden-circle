@@ -1,30 +1,23 @@
 "use client"
 
-import {
-  useEffect,
-  useState,
-} from "react"
+import { useEffect, useState } from "react"
 
 type Props = {
-  plan:
-    | "monthly"
-    | "quarterly"
+  plan: "monthly" | "quarterly"
 }
 
 export function ActivateAccessButton({
   plan,
 }: Props) {
-  const [
-    loading,
-    setLoading,
-  ] = useState(false)
+  const [loading, setLoading] =
+    useState(false)
 
-  const [
-    message,
-    setMessage,
-  ] = useState("")
+  const [message, setMessage] =
+    useState("")
 
   useEffect(() => {
+    let cancelled = false
+
     const resetOrRedirect =
       async () => {
         try {
@@ -37,6 +30,10 @@ export function ActivateAccessButton({
                   "same-origin",
               }
             )
+
+          if (cancelled) {
+            return
+          }
 
           if (
             response.status === 401
@@ -54,7 +51,9 @@ export function ActivateAccessButton({
           }
 
           const data =
-            await response.json()
+            (await response.json()) as {
+              active?: boolean
+            }
 
           if (data.active) {
             window.location.replace(
@@ -81,6 +80,8 @@ export function ActivateAccessButton({
     )
 
     return () => {
+      cancelled = true
+
       window.removeEventListener(
         "pageshow",
         resetOrRedirect
@@ -108,6 +109,7 @@ export function ActivateAccessButton({
             "/api/mercadopago/create-preference",
             {
               method: "POST",
+              cache: "no-store",
               credentials:
                 "same-origin",
 
@@ -116,10 +118,9 @@ export function ActivateAccessButton({
                   "application/json",
               },
 
-              body:
-                JSON.stringify({
-                  plan,
-                }),
+              body: JSON.stringify({
+                plan,
+              }),
             }
           )
 
@@ -134,10 +135,13 @@ export function ActivateAccessButton({
         }
 
         const data =
-          await response.json()
+          (await response.json()) as {
+            url?: string
+            error?: string
+          }
 
         if (
-          data?.url === "/vip"
+          data.url === "/vip"
         ) {
           window.location.replace(
             "/vip"
@@ -147,7 +151,7 @@ export function ActivateAccessButton({
         }
 
         if (
-          typeof data?.url ===
+          typeof data.url ===
             "string" &&
           data.url.length > 0
         ) {
@@ -161,7 +165,7 @@ export function ActivateAccessButton({
         setLoading(false)
 
         setMessage(
-          data?.error ||
+          data.error ||
             "No se pudo preparar el pago."
         )
       } catch {
@@ -179,7 +183,7 @@ export function ActivateAccessButton({
         type="button"
         onClick={handleClick}
         disabled={loading}
-        className="telegram-button subscription-premium-button flex w-full items-center justify-center rounded-2xl px-6 py-4 text-xs uppercase tracking-[0.25em] transition duration-150 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-75"
+        className="telegram-button subscription-premium-button flex w-full cursor-pointer items-center justify-center rounded-2xl px-6 py-4 text-xs uppercase tracking-[0.28em] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold disabled:pointer-events-none disabled:opacity-75"
       >
         {loading
           ? "Preparando pago..."

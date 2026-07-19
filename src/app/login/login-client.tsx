@@ -1,14 +1,23 @@
 "use client"
 
 import { useState } from "react"
+
 import { LoginForm } from "./login-form"
+
+type Mode =
+  | "login"
+  | "register"
+  | "forgot"
 
 type Props = {
   nextPath: string
 }
 
-export function LoginClient({ nextPath }: Props) {
-  const [mode, setMode] = useState<"login" | "register" | "forgot">("login")
+export function LoginClient({
+  nextPath,
+}: Props) {
+  const [mode, setMode] =
+    useState<Mode>("login")
 
   return (
     <main className="min-h-dvh bg-background px-6 py-20 text-foreground">
@@ -18,22 +27,21 @@ export function LoginClient({ nextPath }: Props) {
         </span>
 
         <h1 className="mb-4 text-5xl font-light leading-tight">
-          {mode === "login" && "Acceso privado"}
-          {mode === "register" && "Crear cuenta"}
-          {mode === "forgot" && "Recuperar acceso"}
+          {mode === "forgot"
+            ? "Recuperar acceso"
+            : "Acceso privado"}
         </h1>
 
         <p className="mb-8 text-sm leading-relaxed text-muted-foreground">
-          {mode === "login" && "Inicia sesión para continuar."}
-          {mode === "register" && "Crea tu cuenta para continuar."}
-          {mode === "forgot" &&
-            "Ingresa tu correo y te enviaremos un enlace de recuperación."}
+          {mode === "forgot"
+            ? "Ingresa tu correo y te enviaremos un enlace de recuperación."
+            : "Inicia sesión para continuar."}
         </p>
 
         <LoginForm
           mode={mode}
           setMode={setMode}
-          onlyLogin={false}
+          onlyLogin
           nextPath={nextPath}
         />
       </div>

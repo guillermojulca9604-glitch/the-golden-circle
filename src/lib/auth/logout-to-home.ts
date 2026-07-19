@@ -78,6 +78,32 @@ async function closeBrowserSession(
   }
 }
 
+/*
+ * Cuando el usuario regresó desde una página externa,
+ * como Mercado Pago, esa página puede quedar disponible
+ * mediante el botón Adelante del navegador.
+ *
+ * Crear una nueva entrada en el historial elimina
+ * automáticamente todas las entradas que estaban
+ * guardadas hacia Adelante.
+ */
+function clearForwardHistory() {
+  try {
+    window.history.pushState(
+      {
+        tgcLogoutCleanup: true,
+      },
+      "",
+      window.location.href
+    )
+  } catch {
+    /*
+     * El cierre de sesión continúa aunque el navegador
+     * no permita modificar el historial.
+     */
+  }
+}
+
 export async function logoutToHome(
   supabase: SupabaseClient
 ) {
@@ -106,8 +132,15 @@ export async function logoutToHome(
     "tgc_logged_out=1; path=/; max-age=120; samesite=lax"
 
   /*
-   * Reemplaza únicamente la pantalla actual.
-   * No utiliza Atrás, Adelante ni history.go().
+   * Antes de volver al Inicio eliminamos cualquier
+   * página que haya quedado disponible hacia Adelante,
+   * incluida una navegación externa a Mercado Pago.
+   */
+  clearForwardHistory()
+
+  /*
+   * Reemplaza únicamente la entrada temporal creada
+   * arriba y vuelve al Inicio con la sesión cerrada.
    */
   window.location.replace("/")
 }

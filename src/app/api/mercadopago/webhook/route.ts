@@ -1,107 +1,144 @@
 import { NextResponse } from "next/server"
-import { supabaseAdmin } from "@/lib/supabase/admin"
 
-function addDays(days: number) {
-  const date = new Date()
-  date.setDate(date.getDate() + days)
-  return date.toISOString()
+import {
+  normalizePaymentId,
+  reconcilePaymentById,
+} from "@/lib/mercadopago/reconcile-payment"
+
+export const dynamic =
+  "force-dynamic"
+
+function json(
+  body: Record<string, unknown>,
+  status = 200
+) {
+  return NextResponse.json(body, {
+    status,
+    headers: {
+      "Cache-Control":
+        "no-store, max-age=0",
+    },
+  })
 }
 
-export async function POST(request: Request) {
-  const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN
+function readPaymentId(
+  request: Request,
+  body: unknown
+) {
+  const url =
+    new URL(request.url)
 
-  if (!accessToken) {
-    return NextResponse.json({ error: "Falta token" }, { status: 500 })
+  if (
+    typeof body === "object" &&
+    body !== null
+  ) {
+    const record =
+      body as {
+        data?: {
+          id?:
+            | string
+            | number
+        }
+
+        id?:
+          | string
+          | number
+      }
+
+    const value =
+      record.data?.id ??
+      record.id
+
+    const normalized =
+      normalizePaymentId(
+        value
+      )
+
+    if (normalized) {
+      return normalized
+    }
   }
 
-  const url = new URL(request.url)
-  const body = await request.json().catch(() => null)
+  return (
+    normalizePaymentId(
+      url.searchParams.get(
+        "data.id"
+      )
+    ) ||
+    normalizePaymentId(
+      url.searchParams.get(
+        "id"
+      )
+    )
+  )
+}
+
+export async function POST(
+  request: Request
+) {
+  const body =
+    await request
+      .json()
+      .catch(() => null)
 
   const paymentId =
-    body?.data?.id ||
-    body?.id ||
-    url.searchParams.get("data.id") ||
-    url.searchParams.get("id")
+    readPaymentId(
+      request,
+      body
+    )
 
+  /*
+   * Algunas notificaciones no
+   * corresponden directamente
+   * a un pago.
+   */
   if (!paymentId) {
-    return NextResponse.json({ received: true })
+    return json({
+      received: true,
+    })
   }
 
-  const { data: existing } = await supabaseAdmin
-    .from("memberships")
-    .select("id")
-    .eq("mercado_pago_payment_id", String(paymentId))
-    .maybeSingle()
+  /*
+   * Nunca confiamos en el estado
+   * enviado en el cuerpo del webhook.
+   * Consultamos el pago real.
+   */
+  const result =
+    await reconcilePaymentById(
+      paymentId
+    )
 
-  if (existing) {
-    return NextResponse.json({ received: true, duplicated: true })
-  }
-
-  const paymentResponse = await fetch(
-    `https://api.mercadopago.com/v1/payments/${paymentId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
+  /*
+   * Un error temporal devuelve 5xx
+   * para que Mercado Pago pueda
+   * volver a enviar la notificación.
+   */
+  if (!result.checked) {
+    return json(
+      {
+        received: false,
+        error:
+          result.error ||
+          "No se pudo verificar el pago.",
       },
-    }
-  )
-
-  const payment = await paymentResponse.json()
-
-  if (!paymentResponse.ok || payment.status !== "approved") {
-    return NextResponse.json({ received: true, status: payment.status })
+      result.httpStatus >= 500
+        ? result.httpStatus
+        : 500
+    )
   }
 
-  let reference: {
-    attempt_id?: string
-    user_id: string
-    email: string
-    plan: "monthly" | "quarterly"
-    days: number
-  } | null = null
-
-  try {
-    reference = JSON.parse(payment.external_reference || "{}")
-  } catch {
-    reference = null
-  }
-
-  if (!reference?.user_id || !reference?.email || !reference?.plan) {
-    return NextResponse.json({ error: "Referencia inválida" }, { status: 400 })
-  }
-
-  if (reference.attempt_id) {
-    await supabaseAdmin
-      .from("payment_attempts")
-      .update({ status: "approved" })
-      .eq("id", reference.attempt_id)
-  }
-
-  await supabaseAdmin
-    .from("memberships")
-    .update({ status: "disabled" })
-    .eq("user_id", reference.user_id)
-    .eq("status", "active")
-
-  await supabaseAdmin.from("memberships").insert({
-    user_id: reference.user_id,
-    email: reference.email,
-    plan: reference.plan,
-    status: "active",
-    starts_at: new Date().toISOString(),
-    expires_at: addDays(reference.days),
-    mercado_pago_payment_id: String(paymentId),
+  return json({
+    received: true,
+    active: result.active,
+    status: result.status,
+    payment_id:
+      result.paymentId ||
+      paymentId,
   })
-
-  await supabaseAdmin.from("admin_logs").insert({
-    user_id: reference.user_id,
-    action: `mercadopago_approved_${reference.plan}`,
-    note: `payment_id:${paymentId}`,
-  })
-
-  return NextResponse.json({ received: true, activated: true })
 }
 
 export async function GET() {
-  return NextResponse.json({ ok: true })
+  return json({
+    ok: true,
+  })
 }

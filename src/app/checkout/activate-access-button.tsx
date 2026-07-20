@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useRef,
   useState,
 } from "react"
 
@@ -11,22 +12,21 @@ type Props = {
     | "quarterly"
 }
 
-type MembershipResult =
-  | "active"
-  | "inactive"
-  | "signed-out"
-  | "error"
+type MembershipResponse = {
+  active?: boolean
+  verificationPending?: boolean
+  error?: string
+}
 
 const PAYMENT_RETURN_CHECK_KEY =
   "tgc:payment-return-check"
 
 function setPaymentReturnFlag() {
   try {
-    window.sessionStorage
-      .setItem(
-        PAYMENT_RETURN_CHECK_KEY,
-        "1"
-      )
+    window.sessionStorage.setItem(
+      PAYMENT_RETURN_CHECK_KEY,
+      "1"
+    )
   } catch {
     /*
      * El pago puede continuar
@@ -37,10 +37,9 @@ function setPaymentReturnFlag() {
 
 function clearPaymentReturnFlag() {
   try {
-    window.sessionStorage
-      .removeItem(
-        PAYMENT_RETURN_CHECK_KEY
-      )
+    window.sessionStorage.removeItem(
+      PAYMENT_RETURN_CHECK_KEY
+    )
   } catch {
     /*
      * No interrumpimos
@@ -52,10 +51,9 @@ function clearPaymentReturnFlag() {
 function hasPaymentReturnFlag() {
   try {
     return (
-      window.sessionStorage
-        .getItem(
-          PAYMENT_RETURN_CHECK_KEY
-        ) === "1"
+      window.sessionStorage.getItem(
+        PAYMENT_RETURN_CHECK_KEY
+      ) === "1"
     )
   } catch {
     return false
@@ -83,17 +81,101 @@ export function ActivateAccessButton({
   ] =
     useState("")
 
+  const checkingRef =
+    useRef(false)
+
+  const redirectingRef =
+    useRef(false)
+
   useEffect(() => {
     let cancelled = false
 
-    let timeoutId:
+    let retryId:
       | number
       | undefined
 
-    let verificationId = 0
+    const clearRetry = () => {
+      if (retryId) {
+        window.clearTimeout(
+          retryId
+        )
 
-    const checkMembership =
-      async (): Promise<MembershipResult> => {
+        retryId = undefined
+      }
+    }
+
+    const goHome = () => {
+      if (
+        redirectingRef.current
+      ) {
+        return
+      }
+
+      redirectingRef.current =
+        true
+
+      clearPaymentReturnFlag()
+
+      window.location.replace("/")
+    }
+
+    const goVip = () => {
+      if (
+        redirectingRef.current
+      ) {
+        return
+      }
+
+      redirectingRef.current =
+        true
+
+      clearPaymentReturnFlag()
+
+      window.location.replace(
+        "/vip"
+      )
+    }
+
+    const scheduleRetry = (
+      secondPass: boolean
+    ) => {
+      clearRetry()
+
+      retryId =
+        window.setTimeout(
+          () => {
+            void verifyMembership(
+              secondPass
+            )
+          },
+          1000
+        )
+    }
+
+    const verifyMembership =
+      async (
+        secondPass = false
+      ) => {
+        if (
+          cancelled ||
+          redirectingRef.current ||
+          checkingRef.current
+        ) {
+          return
+        }
+
+        const returningFromPayment =
+          hasPaymentReturnFlag()
+
+        if (
+          returningFromPayment
+        ) {
+          setCheckingReturn(true)
+        }
+
+        checkingRef.current =
+          true
+
         try {
           const response =
             await fetch(
@@ -106,174 +188,143 @@ export function ActivateAccessButton({
             )
 
           if (
-            response.status === 401
+            cancelled ||
+            redirectingRef.current
           ) {
-            return "signed-out"
+            return
           }
 
-          if (!response.ok) {
-            return "error"
+          if (
+            response.status === 401
+          ) {
+            goHome()
+            return
           }
 
           const data =
-            (await response.json()) as {
-              active?: boolean
-            }
+            (await response
+              .json()
+              .catch(
+                () => ({})
+              )) as MembershipResponse
 
-          return data.active
-            ? "active"
-            : "inactive"
-        } catch {
-          return "error"
-        }
-      }
-
-    const handleResult = (
-      result: MembershipResult
-    ) => {
-      if (
-        result === "signed-out"
-      ) {
-        clearPaymentReturnFlag()
-
-        window.location.replace(
-          "/"
-        )
-
-        return true
-      }
-
-      if (
-        result === "active"
-      ) {
-        clearPaymentReturnFlag()
-
-        window.location.replace(
-          "/vip"
-        )
-
-        return true
-      }
-
-      return false
-    }
-
-    const checkOnce =
-      async () => {
-        const result =
-          await checkMembership()
-
-        if (cancelled) {
-          return
-        }
-
-        if (
-          !handleResult(result)
-        ) {
-          setLoading(false)
-        }
-      }
-
-    const verifyPaymentReturn =
-      () => {
-        /*
-         * En una visita normal
-         * solo hacemos una revisión.
-         */
-        if (
-          !hasPaymentReturnFlag()
-        ) {
-          void checkOnce()
-          return
-        }
-
-        verificationId += 1
-
-        const currentVerification =
-          verificationId
-
-        if (timeoutId) {
-          window.clearTimeout(
-            timeoutId
-          )
-        }
-
-        setCheckingReturn(true)
-        setLoading(false)
-        setMessage("")
-
-        let attempts = 0
-
-        const run =
-          async () => {
-            if (
-              cancelled ||
-              currentVerification !==
-                verificationId
-            ) {
-              return
-            }
-
-            attempts += 1
-
-            const result =
-              await checkMembership()
-
-            if (
-              cancelled ||
-              currentVerification !==
-                verificationId
-            ) {
-              return
-            }
-
-            if (
-              handleResult(result)
-            ) {
-              return
-            }
-
-            /*
-             * Verificamos durante
-             * diez segundos para
-             * cubrir un webhook que
-             * llegue con retraso.
-             */
-            if (attempts < 10) {
-              timeoutId =
-                window.setTimeout(
-                  run,
-                  1000
-                )
-
-              return
-            }
-
-            clearPaymentReturnFlag()
-            setCheckingReturn(false)
-            setLoading(false)
+          if (
+            response.ok &&
+            data.active
+          ) {
+            goVip()
+            return
           }
 
-        void run()
+          /*
+           * Si no pudimos comprobar el
+           * pago con seguridad, el botón
+           * permanece bloqueado. Es mejor
+           * esperar que arriesgar un segundo
+           * cobro.
+           */
+          if (
+            returningFromPayment &&
+            (
+              response.status ===
+                503 ||
+              data.verificationPending
+            )
+          ) {
+            scheduleRetry(
+              secondPass
+            )
+
+            return
+          }
+
+          if (
+            returningFromPayment &&
+            !response.ok
+          ) {
+            scheduleRetry(
+              secondPass
+            )
+
+            return
+          }
+
+          /*
+           * Al regresar desde Mercado Pago
+           * hacemos una segunda comprobación
+           * breve. No existe la espera fija
+           * de diez segundos anterior.
+           */
+          if (
+            returningFromPayment &&
+            !secondPass
+          ) {
+            clearRetry()
+
+            retryId =
+              window.setTimeout(
+                () => {
+                  void verifyMembership(
+                    true
+                  )
+                },
+                700
+              )
+
+            return
+          }
+
+          /*
+           * Dos comprobaciones confirmaron
+           * que todavía no existe un pago
+           * aprobado. Checkout vuelve a su
+           * funcionamiento normal.
+           */
+          if (
+            returningFromPayment
+          ) {
+            clearPaymentReturnFlag()
+          }
+
+          setCheckingReturn(false)
+        } catch {
+          if (
+            returningFromPayment
+          ) {
+            scheduleRetry(
+              secondPass
+            )
+          }
+        } finally {
+          checkingRef.current =
+            false
+        }
       }
 
     const onPageShow = () => {
-      verifyPaymentReturn()
+      void verifyMembership(false)
     }
 
     const onFocus = () => {
       if (
         hasPaymentReturnFlag()
       ) {
-        verifyPaymentReturn()
+        void verifyMembership(false)
       }
     }
 
-    /*
-     * Comprueba la membresía
-     * al cargar Checkout.
-     */
-    verifyPaymentReturn()
+    const onVisibilityChange =
+      () => {
+        if (
+          document.visibilityState ===
+            "visible" &&
+          hasPaymentReturnFlag()
+        ) {
+          void verifyMembership(false)
+        }
+      }
+
+    void verifyMembership(false)
 
     window.addEventListener(
       "pageshow",
@@ -285,15 +336,14 @@ export function ActivateAccessButton({
       onFocus
     )
 
+    document.addEventListener(
+      "visibilitychange",
+      onVisibilityChange
+    )
+
     return () => {
       cancelled = true
-      verificationId += 1
-
-      if (timeoutId) {
-        window.clearTimeout(
-          timeoutId
-        )
-      }
+      clearRetry()
 
       window.removeEventListener(
         "pageshow",
@@ -303,6 +353,11 @@ export function ActivateAccessButton({
       window.removeEventListener(
         "focus",
         onFocus
+      )
+
+      document.removeEventListener(
+        "visibilitychange",
+        onVisibilityChange
       )
     }
   }, [])
@@ -320,6 +375,13 @@ export function ActivateAccessButton({
       setMessage("")
 
       try {
+        /*
+         * Aunque Checkout haya sido
+         * recuperado desde la caché,
+         * esta API vuelve a comprobar
+         * el pago antes de devolver o
+         * crear una preferencia.
+         */
         const response =
           await fetch(
             "/api/mercadopago/create-preference",
@@ -352,10 +414,14 @@ export function ActivateAccessButton({
         }
 
         const data =
-          (await response.json()) as {
-            url?: string
-            error?: string
-          }
+          (await response
+            .json()
+            .catch(
+              () => ({})
+            )) as {
+              url?: string
+              error?: string
+            }
 
         if (
           data.url === "/vip"
@@ -369,18 +435,22 @@ export function ActivateAccessButton({
           return
         }
 
+        if (!response.ok) {
+          setLoading(false)
+
+          setMessage(
+            data.error ||
+              "No se pudo verificar la operación de pago."
+          )
+
+          return
+        }
+
         if (
           typeof data.url ===
             "string" &&
           data.url.length > 0
         ) {
-          /*
-           * Señala que esta pestaña
-           * salió hacia Mercado Pago.
-           * Al regresar a Checkout
-           * se abre una ventana breve
-           * de verificación.
-           */
           setPaymentReturnFlag()
 
           window.location.assign(

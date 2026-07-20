@@ -1,39 +1,24 @@
 import { NextResponse } from "next/server"
 
+import {
+  buildExternalReference,
+  findActiveMembership,
+  isPlanId,
+  PAYMENT_PLANS,
+  reconcileRecentApprovedPaymentForUser,
+} from "@/lib/mercadopago/reconcile-payment"
 import { supabaseAdmin } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 
-export const dynamic = "force-dynamic"
-
-const PLANS = {
-  monthly: {
-    title: "TGC Access M",
-    price: 30,
-    days: 30,
-  },
-  quarterly: {
-    title: "TGC Access T",
-    price: 90,
-    days: 90,
-  },
-} as const
-
-type PlanId = keyof typeof PLANS
-
-function isPlanId(
-  value: unknown
-): value is PlanId {
-  return (
-    value === "monthly" ||
-    value === "quarterly"
-  )
-}
+export const dynamic =
+  "force-dynamic"
 
 function addMinutes(minutes: number) {
   const date = new Date()
 
   date.setMinutes(
-    date.getMinutes() + minutes
+    date.getMinutes() +
+      minutes
   )
 
   return date.toISOString()
@@ -89,34 +74,21 @@ export async function POST(
     )
   }
 
-  const planId = requestedPlan
-  const plan = PLANS[planId]
-  const now = new Date().toISOString()
+  const planId =
+    requestedPlan
+
+  const plan =
+    PAYMENT_PLANS[planId]
 
   /*
-   * Un usuario que ya tiene
-   * membresía no puede volver a pagar.
+   * Primera barrera:
+   * una membresía activa nunca
+   * puede generar otro pago.
    */
-  const {
-    data: activeMembership,
-  } =
-    await supabaseAdmin
-      .from("memberships")
-      .select("id")
-      .eq(
-        "user_id",
-        user.id
-      )
-      .eq(
-        "status",
-        "active"
-      )
-      .gt(
-        "expires_at",
-        now
-      )
-      .limit(1)
-      .maybeSingle()
+  const activeMembership =
+    await findActiveMembership(
+      user.id
+    )
 
   if (activeMembership) {
     return json({
@@ -125,8 +97,59 @@ export async function POST(
   }
 
   /*
-   * Solo reutilizamos un intento
-   * pendiente del mismo plan.
+   * Segunda barrera:
+   * antes de crear o reutilizar una
+   * preferencia, buscamos un pago
+   * aprobado asociado a los intentos
+   * recientes de este usuario.
+   */
+  const reconciliation =
+    await reconcileRecentApprovedPaymentForUser(
+      user.id
+    )
+
+  if (reconciliation.active) {
+    return json({
+      url: "/vip",
+    })
+  }
+
+  /*
+   * Si Mercado Pago no pudo ser
+   * consultado, no arriesgamos un
+   * segundo cobro.
+   */
+  if (!reconciliation.checked) {
+    return json(
+      {
+        error:
+          "No se pudo verificar el pago anterior. No se creó ningún cobro. Inténtalo nuevamente en unos momentos.",
+      },
+      503
+    )
+  }
+
+  const accessToken =
+    process.env
+      .MERCADO_PAGO_ACCESS_TOKEN
+
+  if (!accessToken) {
+    return json(
+      {
+        error:
+          "Falta configurar Mercado Pago.",
+      },
+      500
+    )
+  }
+
+  const now =
+    new Date().toISOString()
+
+  /*
+   * Si todavía no pagó, puede volver
+   * a la misma pantalla de Mercado
+   * Pago usando el intento vigente.
    */
   const {
     data: pendingAttempt,
@@ -175,25 +198,14 @@ export async function POST(
     })
   }
 
-  const accessToken =
-    process.env
-      .MERCADO_PAGO_ACCESS_TOKEN
-
-  if (!accessToken) {
-    return json(
-      {
-        error:
-          "Falta configurar Mercado Pago.",
-      },
-      500
-    )
-  }
-
   const siteUrl = (
     process.env
       .NEXT_PUBLIC_SITE_URL ||
     "https://the-golden-circle-149p.vercel.app"
   ).replace(/\/$/, "")
+
+  const expiresAt =
+    addMinutes(20)
 
   const {
     data: attempt,
@@ -207,7 +219,7 @@ export async function POST(
         plan: planId,
         status: "pending",
         expires_at:
-          addMinutes(20),
+          expiresAt,
       })
       .select("id")
       .single()
@@ -225,19 +237,12 @@ export async function POST(
     )
   }
 
-  /*
-   * Este identificador relaciona
-   * el pago con la cuenta de TGC.
-   *
-   * No depende de la cuenta
-   * utilizada dentro de Mercado Pago.
-   */
   const externalReference =
-    JSON.stringify({
-      attempt_id: attempt.id,
-      user_id: user.id,
-      plan: planId,
-    })
+    buildExternalReference(
+      attempt.id,
+      user.id,
+      planId
+    )
 
   const mercadoPagoResponse =
     await fetch(
@@ -251,6 +256,7 @@ export async function POST(
           "Content-Type":
             "application/json",
         },
+
         body: JSON.stringify({
           items: [
             {
@@ -258,7 +264,8 @@ export async function POST(
               quantity: 1,
               unit_price:
                 plan.price,
-              currency_id: "PEN",
+              currency_id:
+                "PEN",
             },
           ],
 
@@ -270,32 +277,14 @@ export async function POST(
             externalReference,
 
           back_urls: {
-            /*
-             * Pago aprobado.
-             */
             success:
               `${siteUrl}` +
               "/payment-success",
 
-            /*
-             * Pago cancelado,
-             * rechazado o regreso
-             * sin completar.
-             *
-             * Con sesión:
-             * vuelve a Checkout.
-             *
-             * Sin sesión:
-             * Checkout lo devuelve
-             * al Inicio.
-             */
             failure:
               `${siteUrl}` +
               `/checkout?plan=${planId}`,
 
-            /*
-             * Pago todavía pendiente.
-             */
             pending:
               `${siteUrl}` +
               "/payment-pending",
@@ -367,6 +356,16 @@ export async function POST(
       )
 
   if (updateError) {
+    await supabaseAdmin
+      .from("payment_attempts")
+      .update({
+        status: "failed",
+      })
+      .eq(
+        "id",
+        attempt.id
+      )
+
     return json(
       {
         error:

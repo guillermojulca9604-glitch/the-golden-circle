@@ -17,8 +17,7 @@ function addMinutes(minutes: number) {
   const date = new Date()
 
   date.setMinutes(
-    date.getMinutes() +
-      minutes
+    date.getMinutes() + minutes
   )
 
   return date.toISOString()
@@ -81,9 +80,8 @@ export async function POST(
     PAYMENT_PLANS[planId]
 
   /*
-   * Primera barrera:
-   * una membresía activa nunca
-   * puede generar otro pago.
+   * Un usuario con membresía activa
+   * nunca puede generar otro pago.
    */
   const activeMembership =
     await findActiveMembership(
@@ -97,11 +95,9 @@ export async function POST(
   }
 
   /*
-   * Segunda barrera:
-   * antes de crear o reutilizar una
-   * preferencia, buscamos un pago
-   * aprobado asociado a los intentos
-   * recientes de este usuario.
+   * Antes de generar un pago nuevo,
+   * comprobamos que el usuario no
+   * haya pagado anteriormente.
    */
   const reconciliation =
     await reconcileRecentApprovedPaymentForUser(
@@ -115,9 +111,8 @@ export async function POST(
   }
 
   /*
-   * Si Mercado Pago no pudo ser
-   * consultado, no arriesgamos un
-   * segundo cobro.
+   * Si no se puede verificar con
+   * seguridad, no se crea otro cobro.
    */
   if (!reconciliation.checked) {
     return json(
@@ -143,70 +138,19 @@ export async function POST(
     )
   }
 
-  const now =
-    new Date().toISOString()
-
-  /*
-   * Si todavía no pagó, puede volver
-   * a la misma pantalla de Mercado
-   * Pago usando el intento vigente.
-   */
-  const {
-    data: pendingAttempt,
-  } =
-    await supabaseAdmin
-      .from("payment_attempts")
-      .select(
-        "id, payment_url"
-      )
-      .eq(
-        "user_id",
-        user.id
-      )
-      .eq(
-        "plan",
-        planId
-      )
-      .eq(
-        "status",
-        "pending"
-      )
-      .gt(
-        "expires_at",
-        now
-      )
-      .not(
-        "payment_url",
-        "is",
-        null
-      )
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        }
-      )
-      .limit(1)
-      .maybeSingle()
-
-  if (
-    pendingAttempt?.payment_url
-  ) {
-    return json({
-      url:
-        pendingAttempt.payment_url,
-    })
-  }
-
   const siteUrl = (
     process.env
       .NEXT_PUBLIC_SITE_URL ||
     "https://the-golden-circle-149p.vercel.app"
   ).replace(/\/$/, "")
 
-  const expiresAt =
-    addMinutes(20)
-
+  /*
+   * Creamos una preferencia nueva.
+   *
+   * No reutilizamos enlaces antiguos
+   * que puedan contener la ruta vieja:
+   * /access?step=checkout
+   */
   const {
     data: attempt,
     error: attemptError,
@@ -219,7 +163,7 @@ export async function POST(
         plan: planId,
         status: "pending",
         expires_at:
-          expiresAt,
+          addMinutes(20),
       })
       .select("id")
       .single()
@@ -250,6 +194,7 @@ export async function POST(
       {
         method: "POST",
         cache: "no-store",
+
         headers: {
           Authorization:
             `Bearer ${accessToken}`,
@@ -277,25 +222,32 @@ export async function POST(
             externalReference,
 
           back_urls: {
+            /*
+             * Después de pagar:
+             * verifica el pago y entra a VIP.
+             */
             success:
-              `${siteUrl}` +
-              "/payment-success",
+              `${siteUrl}/payment-success`,
 
+            /*
+             * Volver sin pagar:
+             * Checkout del mismo plan.
+             */
             failure:
-              `${siteUrl}` +
-              `/checkout?plan=${planId}`,
+              `${siteUrl}/checkout?plan=${planId}`,
 
+            /*
+             * Pago todavía pendiente.
+             */
             pending:
-              `${siteUrl}` +
-              "/payment-pending",
+              `${siteUrl}/payment-pending`,
           },
 
           auto_return:
             "approved",
 
           notification_url:
-            `${siteUrl}` +
-            "/api/mercadopago/webhook",
+            `${siteUrl}/api/mercadopago/webhook`,
         }),
       }
     )

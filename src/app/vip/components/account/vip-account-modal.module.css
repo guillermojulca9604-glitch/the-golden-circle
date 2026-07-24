@@ -1,0 +1,1355 @@
+.modalLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+
+  display: flex;
+
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+
+  box-sizing: border-box;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  overflow: hidden;
+
+  background:
+    rgba(0, 0, 0, 0.44);
+
+  backdrop-filter:
+    blur(6px)
+    saturate(92%);
+
+  -webkit-backdrop-filter:
+    blur(6px)
+    saturate(92%);
+}
+
+.accountModal {
+  position: relative;
+
+  width:
+    min(
+      620px,
+      calc(100vw - 48px)
+    );
+
+  max-height:
+    calc(100dvh - 48px);
+
+  box-sizing: border-box;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  border:
+    1px solid
+    rgba(214, 143, 29, 0.34);
+
+  border-radius: 24px;
+
+  padding:
+    30px
+    30px
+    28px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(13, 13, 12, 0.96),
+      rgba(5, 5, 5, 0.97)
+    );
+
+  box-shadow:
+    0 28px 80px
+      rgba(0, 0, 0, 0.62),
+    inset 0 1px 0
+      rgba(255, 255, 255, 0.03);
+
+  color:
+    rgba(241, 238, 230, 0.96);
+}
+
+.accountModal::-webkit-scrollbar {
+  width: 7px;
+}
+
+.accountModal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.accountModal::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+
+  background:
+    rgba(211, 140, 28, 0.22);
+}
+
+.closeButton {
+  position: absolute;
+
+  top: 19px;
+  right: 19px;
+
+  display: grid;
+
+  width: 36px;
+  height: 36px;
+
+  place-items: center;
+
+  border:
+    1px solid
+    transparent;
+
+  border-radius: 10px;
+
+  padding: 0;
+
+  background: transparent;
+
+  color:
+    rgba(193, 191, 184, 0.78);
+
+  cursor: pointer;
+
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.closeButton svg {
+  display: block;
+
+  width: 20px;
+  height: 20px;
+}
+
+.closeButton:hover,
+.closeButton:focus-visible {
+  border-color:
+    rgba(214, 143, 29, 0.14);
+
+  background:
+    rgba(255, 255, 255, 0.035);
+
+  color:
+    rgba(244, 241, 233, 0.96);
+
+  outline: none;
+}
+
+.modalHeading {
+  padding-right: 48px;
+}
+
+.modalTitle {
+  margin: 0;
+
+  color:
+    rgba(247, 243, 233, 0.98);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: 27px;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: 0.015em;
+}
+
+.modalDescription {
+  margin:
+    8px
+    0
+    0;
+
+  color:
+    rgba(176, 174, 167, 0.76);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.profileSummary {
+  display: flex;
+
+  margin-top: 27px;
+
+  align-items: center;
+
+  gap: 16px;
+}
+
+.profileAvatar {
+  display: grid;
+
+  width: 62px;
+  height: 62px;
+
+  flex: 0 0 62px;
+
+  box-sizing: border-box;
+
+  place-items: center;
+
+  border:
+    1px solid
+    rgba(219, 145, 25, 0.55);
+
+  border-radius: 50%;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(16, 16, 15, 0.9),
+      rgba(7, 7, 7, 0.92)
+    );
+
+  color: #e3a42e;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: 23px;
+
+  box-shadow:
+    0 0 14px
+      rgba(212, 131, 13, 0.08);
+}
+
+.profileIdentity {
+  min-width: 0;
+
+  flex: 1;
+}
+
+.profileName {
+  overflow: hidden;
+
+  margin: 0;
+
+  color:
+    rgba(244, 241, 233, 0.97);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.25;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+.profileEmail {
+  overflow: hidden;
+
+  margin:
+    5px
+    0
+    0;
+
+  color:
+    rgba(176, 174, 167, 0.74);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 12px;
+  line-height: 1.3;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+.activeBadge {
+  display: inline-flex;
+
+  margin-top: 9px;
+
+  align-items: center;
+
+  gap: 7px;
+
+  color: #dda129;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 11px;
+  line-height: 1;
+}
+
+.activePoint {
+  width: 6px;
+  height: 6px;
+
+  flex: 0 0 6px;
+
+  border-radius: 50%;
+
+  background: #e3a62d;
+
+  box-shadow:
+    0 0 8px
+      rgba(226, 166, 45, 0.42);
+}
+
+.sectionDivider {
+  width: 100%;
+  height: 1px;
+
+  margin:
+    24px
+    0;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(197, 130, 24, 0.18) 12%,
+      rgba(197, 130, 24, 0.18) 88%,
+      transparent
+    );
+}
+
+.modalSection {
+  margin: 0;
+}
+
+.sectionTitle {
+  margin:
+    0
+    0
+    12px;
+
+  color:
+    rgba(222, 219, 211, 0.88);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.025em;
+}
+
+.membershipCard {
+  display: grid;
+
+  grid-template-columns:
+    46px
+    minmax(0, 1fr)
+    auto;
+
+  align-items: center;
+
+  gap: 14px;
+
+  border:
+    1px solid
+    rgba(215, 143, 27, 0.18);
+
+  border-radius: 16px;
+
+  padding:
+    15px
+    17px;
+
+  background:
+    rgba(255, 255, 255, 0.018);
+}
+
+.membershipIcon {
+  display: grid;
+
+  width: 46px;
+  height: 46px;
+
+  place-items: center;
+
+  border:
+    1px solid
+    rgba(216, 143, 24, 0.28);
+
+  border-radius: 13px;
+
+  background:
+    rgba(216, 143, 24, 0.045);
+
+  color: #dda02a;
+}
+
+.membershipIcon svg {
+  display: block;
+
+  width: 23px;
+  height: 23px;
+}
+
+.membershipDetails {
+  min-width: 0;
+}
+
+.membershipName {
+  margin: 0;
+
+  color:
+    rgba(240, 237, 229, 0.95);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.membershipDescription {
+  margin:
+    5px
+    0
+    0;
+
+  color:
+    rgba(169, 167, 160, 0.72);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.expirationDetails {
+  display: flex;
+
+  min-width: 120px;
+
+  align-items: flex-end;
+  flex-direction: column;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  text-align: right;
+}
+
+.expirationDetails span {
+  color:
+    rgba(163, 161, 154, 0.7);
+
+  font-size: 10px;
+  line-height: 1;
+}
+
+.expirationDetails strong {
+  margin-top: 6px;
+
+  color:
+    rgba(225, 176, 81, 0.92);
+
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.accountActions {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 8px;
+}
+
+.actionButton {
+  display: grid;
+
+  width: 100%;
+  min-height: 66px;
+
+  box-sizing: border-box;
+
+  grid-template-columns:
+    38px
+    minmax(0, 1fr)
+    20px;
+
+  align-items: center;
+
+  gap: 13px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.03);
+
+  border-radius: 14px;
+
+  padding:
+    10px
+    14px;
+
+  background:
+    rgba(255, 255, 255, 0.015);
+
+  color:
+    rgba(211, 209, 202, 0.84);
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.actionButton:hover,
+.actionButton:focus-visible {
+  border-color:
+    rgba(211, 140, 27, 0.14);
+
+  background:
+    rgba(255, 255, 255, 0.03);
+
+  color:
+    rgba(241, 238, 230, 0.96);
+
+  outline: none;
+}
+
+.actionIcon {
+  display: grid;
+
+  width: 38px;
+  height: 38px;
+
+  place-items: center;
+
+  border:
+    1px solid
+    rgba(210, 139, 26, 0.14);
+
+  border-radius: 11px;
+
+  background:
+    rgba(210, 139, 26, 0.03);
+
+  color:
+    rgba(218, 159, 49, 0.88);
+}
+
+.actionIcon svg {
+  display: block;
+
+  width: 19px;
+  height: 19px;
+}
+
+.actionText {
+  display: flex;
+
+  min-width: 0;
+
+  flex-direction: column;
+}
+
+.actionText strong {
+  color: currentColor;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.actionText small {
+  overflow: hidden;
+
+  margin-top: 5px;
+
+  color:
+    rgba(160, 158, 151, 0.7);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 10.5px;
+  line-height: 1.3;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+.chevronIcon {
+  display: grid;
+
+  width: 20px;
+  height: 20px;
+
+  place-items: center;
+
+  color:
+    rgba(157, 155, 149, 0.65);
+}
+
+.chevronIcon svg {
+  display: block;
+
+  width: 18px;
+  height: 18px;
+}
+
+.secondaryLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 1010;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+
+  padding: 24px;
+
+  background:
+    rgba(0, 0, 0, 0.48);
+
+  backdrop-filter:
+    blur(4px);
+
+  -webkit-backdrop-filter:
+    blur(4px);
+}
+
+.secondaryModal {
+  position: relative;
+
+  width:
+    min(
+      440px,
+      calc(100vw - 48px)
+    );
+
+  box-sizing: border-box;
+
+  border:
+    1px solid
+    rgba(214, 143, 29, 0.3);
+
+  border-radius: 20px;
+
+  padding:
+    27px
+    27px
+    24px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(15, 15, 14, 0.99),
+      rgba(5, 5, 5, 0.995)
+    );
+
+  box-shadow:
+    0 28px 72px
+      rgba(0, 0, 0, 0.7),
+    inset 0 1px 0
+      rgba(255, 255, 255, 0.03);
+
+  color:
+    rgba(241, 238, 230, 0.96);
+}
+
+.secondaryCloseButton {
+  position: absolute;
+
+  top: 15px;
+  right: 15px;
+
+  display: grid;
+
+  width: 34px;
+  height: 34px;
+
+  place-items: center;
+
+  border:
+    1px solid
+    transparent;
+
+  border-radius: 10px;
+
+  padding: 0;
+
+  background: transparent;
+
+  color:
+    rgba(193, 191, 184, 0.76);
+
+  cursor: pointer;
+
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.secondaryCloseButton svg {
+  display: block;
+
+  width: 19px;
+  height: 19px;
+}
+
+.secondaryCloseButton:hover,
+.secondaryCloseButton:focus-visible {
+  border-color:
+    rgba(214, 143, 29, 0.14);
+
+  background:
+    rgba(255, 255, 255, 0.035);
+
+  color:
+    rgba(244, 241, 233, 0.96);
+
+  outline: none;
+}
+
+.secondaryCloseButton:disabled {
+  opacity: 0.52;
+
+  cursor: default;
+}
+
+.secondaryHeading {
+  padding-right: 40px;
+}
+
+.secondaryTitle {
+  margin: 0;
+
+  color:
+    rgba(247, 243, 233, 0.98);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.secondaryDescription {
+  margin:
+    8px
+    0
+    22px;
+
+  color:
+    rgba(174, 172, 165, 0.74);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.fieldLabel {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color:
+    rgba(218, 215, 207, 0.88);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.nameInput {
+  width: 100%;
+  height: 46px;
+
+  box-sizing: border-box;
+
+  border:
+    1px solid
+    rgba(211, 140, 27, 0.24);
+
+  border-radius: 12px;
+
+  padding:
+    0
+    14px;
+
+  background:
+    rgba(255, 255, 255, 0.025);
+
+  color:
+    rgba(244, 241, 233, 0.96);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 13px;
+
+  caret-color: #dda02a;
+
+  outline: none;
+
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.nameInput:hover {
+  border-color:
+    rgba(211, 140, 27, 0.34);
+}
+
+.nameInput:focus {
+  border-color:
+    rgba(218, 148, 35, 0.58);
+
+  background:
+    rgba(255, 255, 255, 0.035);
+
+  box-shadow:
+    0 0 0 3px
+      rgba(218, 145, 28, 0.055);
+}
+
+.nameInput:disabled {
+  opacity: 0.58;
+
+  cursor: default;
+}
+
+.fieldInformation {
+  display: flex;
+
+  margin-top: 7px;
+
+  align-items: center;
+  justify-content: space-between;
+
+  color:
+    rgba(151, 149, 143, 0.66);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.formError,
+.formSuccess {
+  margin:
+    13px
+    0
+    0;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.formError {
+  color:
+    rgba(237, 119, 72, 0.94);
+}
+
+.formSuccess {
+  color:
+    rgba(222, 170, 65, 0.94);
+}
+
+.secondaryActions {
+  display: flex;
+
+  margin-top: 23px;
+
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 9px;
+}
+
+.cancelButton,
+.saveButton {
+  min-height: 40px;
+
+  box-sizing: border-box;
+
+  border-radius: 11px;
+
+  padding:
+    0
+    16px;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 11.5px;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease,
+    opacity 150ms ease;
+}
+
+.cancelButton {
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.07);
+
+  background:
+    rgba(255, 255, 255, 0.025);
+
+  color:
+    rgba(211, 209, 202, 0.82);
+}
+
+.cancelButton:hover,
+.cancelButton:focus-visible {
+  border-color:
+    rgba(255, 255, 255, 0.12);
+
+  background:
+    rgba(255, 255, 255, 0.045);
+
+  color:
+    rgba(241, 238, 230, 0.96);
+
+  outline: none;
+}
+
+.saveButton {
+  border:
+    1px solid
+    rgba(218, 145, 28, 0.56);
+
+  background:
+    rgba(218, 145, 28, 0.13);
+
+  color: #e1a027;
+}
+
+.saveButton:hover,
+.saveButton:focus-visible {
+  border-color:
+    rgba(224, 154, 41, 0.76);
+
+  background:
+    rgba(218, 145, 28, 0.19);
+
+  color: #e5a733;
+
+  outline: none;
+}
+
+.cancelButton:disabled,
+.saveButton:disabled {
+  opacity: 0.5;
+
+  cursor: default;
+
+  pointer-events: none;
+}
+
+.passwordModal {
+  width:
+    min(
+      470px,
+      calc(100vw - 48px)
+    );
+
+  max-height:
+    calc(100dvh - 48px);
+
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.passwordFields {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 18px;
+}
+
+.passwordFieldGroup {
+  width: 100%;
+}
+
+.passwordInputShell {
+  position: relative;
+
+  display: flex;
+
+  width: 100%;
+  height: 46px;
+
+  box-sizing: border-box;
+
+  align-items: center;
+
+  border:
+    1px solid
+    rgba(211, 140, 27, 0.24);
+
+  border-radius: 12px;
+
+  background:
+    rgba(255, 255, 255, 0.025);
+
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.passwordInputShell:hover {
+  border-color:
+    rgba(211, 140, 27, 0.34);
+}
+
+.passwordInputShell:focus-within {
+  border-color:
+    rgba(218, 148, 35, 0.58);
+
+  background:
+    rgba(255, 255, 255, 0.035);
+
+  box-shadow:
+    0 0 0 3px
+      rgba(218, 145, 28, 0.055);
+}
+
+.passwordInput {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+
+  box-sizing: border-box;
+
+  border: 0;
+
+  border-radius: inherit;
+
+  padding:
+    0
+    52px
+    0
+    14px;
+
+  background: transparent;
+
+  color:
+    rgba(244, 241, 233, 0.96);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 13px;
+
+  caret-color: #dda02a;
+
+  outline: none;
+}
+
+.passwordInput::placeholder {
+  color:
+    rgba(151, 149, 143, 0.62);
+}
+
+.passwordInput:disabled {
+  opacity: 0.58;
+
+  cursor: default;
+}
+
+.passwordEyeButton {
+  position: absolute;
+
+  top: 50%;
+  right: 5px;
+
+  display: grid;
+
+  width: 36px;
+  height: 36px;
+
+  place-items: center;
+
+  border: 0;
+
+  border-radius: 50%;
+
+  padding: 0;
+
+  background: transparent;
+
+  color:
+    rgba(218, 159, 49, 0.72);
+
+  cursor: pointer;
+
+  transform:
+    translateY(-50%);
+
+  -webkit-tap-highlight-color:
+    transparent;
+
+  touch-action: manipulation;
+
+  transition:
+    color 150ms ease,
+    background 150ms ease,
+    transform 100ms ease;
+}
+
+.passwordEyeButton svg {
+  display: block;
+
+  width: 20px;
+  height: 20px;
+}
+
+.passwordEyeButton:hover {
+  background:
+    rgba(218, 145, 28, 0.055);
+
+  color:
+    rgba(226, 169, 58, 0.96);
+}
+
+.passwordEyeButton:active {
+  transform:
+    translateY(-50%)
+    scale(0.95);
+}
+
+.passwordEyeButton:disabled {
+  opacity: 0.5;
+
+  cursor: default;
+
+  pointer-events: none;
+}
+
+.inlineError {
+  margin:
+    8px
+    0
+    0;
+
+  color:
+    rgba(237, 119, 72, 0.94);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+@media (max-width: 760px) {
+  .modalLayer {
+    padding: 20px;
+  }
+
+  .accountModal {
+    width: 100%;
+
+    max-height:
+      calc(100dvh - 40px);
+
+    padding:
+      25px
+      20px
+      23px;
+
+    border-radius: 20px;
+  }
+
+  .membershipCard {
+    grid-template-columns:
+      42px
+      minmax(0, 1fr);
+
+    padding: 14px;
+  }
+
+  .membershipIcon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .expirationDetails {
+    grid-column:
+      1
+      / -1;
+
+    min-width: 0;
+
+    padding-top: 4px;
+
+    align-items: flex-start;
+
+    text-align: left;
+  }
+}
+
+@media (max-width: 520px) {
+  .modalLayer,
+  .secondaryLayer {
+    padding: 14px;
+  }
+
+  .accountModal {
+    max-height:
+      calc(100dvh - 28px);
+
+    border-radius: 20px;
+
+    padding:
+      24px
+      18px
+      21px;
+  }
+
+  .modalTitle {
+    font-size: 24px;
+  }
+
+  .profileAvatar {
+    width: 54px;
+    height: 54px;
+
+    flex-basis: 54px;
+  }
+
+  .actionText small {
+    white-space: normal;
+  }
+
+  .secondaryModal {
+    width: 100%;
+
+    padding:
+      24px
+      18px
+      20px;
+  }
+
+  .passwordModal {
+    width: 100%;
+
+    max-height:
+      calc(100dvh - 28px);
+  }
+
+  .secondaryActions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .cancelButton,
+  .saveButton {
+    width: 100%;
+  }
+}
+
+@media (
+  prefers-reduced-motion:
+  reduce
+) {
+  .closeButton,
+  .actionButton,
+  .secondaryCloseButton,
+  .nameInput,
+  .passwordInputShell,
+  .passwordEyeButton,
+  .cancelButton,
+  .saveButton {
+    transition: none;
+  }
+}

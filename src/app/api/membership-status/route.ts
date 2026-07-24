@@ -35,6 +35,9 @@ export async function GET() {
       {
         active: false,
         membership: null,
+        expiresAt: null,
+        serverNow:
+          new Date().toISOString(),
       },
       401
     )
@@ -60,6 +63,9 @@ export async function GET() {
       {
         active: false,
         membership: null,
+        expiresAt: null,
+        serverNow:
+          new Date().toISOString(),
         verificationPending: true,
         error:
           result.error ||
@@ -71,10 +77,32 @@ export async function GET() {
     )
   }
 
+  const membershipRecord =
+    result.membership &&
+    typeof result.membership ===
+      "object" &&
+    !Array.isArray(
+      result.membership
+    )
+      ? (
+          result.membership as
+            Record<string, unknown>
+        )
+      : null
+
+  const expiresAt =
+    typeof membershipRecord
+      ?.expires_at === "string"
+      ? membershipRecord.expires_at
+      : null
+
   return json({
     active: result.active,
     membership:
       result.membership,
+    expiresAt,
+    serverNow:
+      new Date().toISOString(),
     status: result.status,
   })
 }

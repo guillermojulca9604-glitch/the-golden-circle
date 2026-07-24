@@ -6,12 +6,20 @@ import type {
   MouseEvent,
   SetStateAction,
 } from "react"
+
 import {
+  useEffect,
   useRef,
   useState,
 } from "react"
 
 import { createClient } from "@/lib/supabase/client"
+
+const RECOVERY_COOLDOWN_SECONDS =
+  60
+
+const RECOVERY_COOLDOWN_STORAGE_KEY =
+  "golden-circle-recovery-cooldown-until"
 
 type Mode =
   | "login"
@@ -38,6 +46,14 @@ function getSafeNextPath(
   }
 
   return nextPath
+}
+
+function isValidEmail(
+  value: string
+) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+    value
+  )
 }
 
 function EyeIcon() {
@@ -156,8 +172,129 @@ export function LoginForm({
     setLoading,
   ] = useState(false)
 
+  const [
+    recoveryCooldown,
+    setRecoveryCooldown,
+  ] = useState(0)
+
   const safeNext =
     getSafeNextPath(nextPath)
+
+  const recoveryEmail =
+    email
+      .trim()
+      .toLowerCase()
+
+  const recoveryEmailIsValid =
+    isValidEmail(
+      recoveryEmail
+    )
+
+  const recoveryIsCoolingDown =
+    recoveryCooldown > 0
+
+  const recoveryButtonIsDisabled =
+    loading ||
+    !recoveryEmailIsValid ||
+    recoveryIsCoolingDown
+
+  useEffect(() => {
+    const updateRecoveryCooldown =
+      () => {
+        try {
+          const storedValue =
+            window.localStorage.getItem(
+              RECOVERY_COOLDOWN_STORAGE_KEY
+            )
+
+          if (!storedValue) {
+            setRecoveryCooldown(0)
+            return
+          }
+
+          const cooldownUntil =
+            Number(storedValue)
+
+          if (
+            !Number.isFinite(
+              cooldownUntil
+            )
+          ) {
+            window.localStorage.removeItem(
+              RECOVERY_COOLDOWN_STORAGE_KEY
+            )
+
+            setRecoveryCooldown(0)
+
+            return
+          }
+
+          const remainingSeconds =
+            Math.max(
+              0,
+              Math.ceil(
+                (
+                  cooldownUntil -
+                  Date.now()
+                ) / 1000
+              )
+            )
+
+          setRecoveryCooldown(
+            remainingSeconds
+          )
+
+          if (
+            remainingSeconds === 0
+          ) {
+            window.localStorage.removeItem(
+              RECOVERY_COOLDOWN_STORAGE_KEY
+            )
+          }
+        } catch {
+          setRecoveryCooldown(0)
+        }
+      }
+
+    updateRecoveryCooldown()
+
+    const intervalId =
+      window.setInterval(
+        updateRecoveryCooldown,
+        1000
+      )
+
+    return () => {
+      window.clearInterval(
+        intervalId
+      )
+    }
+  }, [])
+
+  const startRecoveryCooldown =
+    () => {
+      const cooldownUntil =
+        Date.now() +
+        RECOVERY_COOLDOWN_SECONDS *
+          1000
+
+      try {
+        window.localStorage.setItem(
+          RECOVERY_COOLDOWN_STORAGE_KEY,
+          String(cooldownUntil)
+        )
+      } catch {
+        /*
+         * Si el navegador no permite
+         * localStorage, el bloqueo continúa
+         * funcionando durante esta visita.
+         */
+      }
+
+      setRecoveryCooldown(
+        RECOVERY_COOLDOWN_SECONDS
+      )
+    }
 
   const handleSubmit =
     async () => {
@@ -180,6 +317,7 @@ export function LoginForm({
       }
 
       setLoading(true)
+
       setMessage(
         "Procesando..."
       )
@@ -248,12 +386,21 @@ export function LoginForm({
 
   const handleForgotPassword =
     async () => {
-      const cleanEmail =
-        email.trim()
-
-      if (!cleanEmail) {
+      if (
+        !recoveryEmailIsValid
+      ) {
         setMessage(
-          "Ingresa tu correo para recuperar tu contraseña."
+          "Ingresa un correo válido."
+        )
+
+        return
+      }
+
+      if (
+        recoveryIsCoolingDown
+      ) {
+        setMessage(
+          `Espera ${recoveryCooldown} segundos para volver a enviarlo.`
         )
 
         return
@@ -266,13 +413,13 @@ export function LoginForm({
       setLoading(true)
 
       setMessage(
-        "Enviando correo de recuperación..."
+        "Enviando enlace..."
       )
 
       const { error } =
         await supabase.auth
           .resetPasswordForEmail(
-            cleanEmail,
+            recoveryEmail,
             {
               redirectTo:
                 `${window.location.origin}` +
@@ -283,15 +430,33 @@ export function LoginForm({
       setLoading(false)
 
       if (error) {
+        if (
+          error.status === 429
+        ) {
+          startRecoveryCooldown()
+
+          setMessage(
+            "Espera un momento antes de intentarlo nuevamente."
+          )
+
+          return
+        }
+
         setMessage(
-          "No se pudo enviar el correo de recuperación."
+          "No se pudo enviar el enlace. Inténtalo nuevamente."
         )
 
         return
       }
 
+      setEmail(
+        recoveryEmail
+      )
+
+      startRecoveryCooldown()
+
       setMessage(
-        "Te enviamos un enlace para cambiar tu contraseña."
+        "Confirma el enlace enviado a tu correo."
       )
     }
 
@@ -351,11 +516,13 @@ export function LoginForm({
         autoComplete="email"
         placeholder="Correo electrónico"
         value={email}
-        onChange={(event) =>
+        onChange={(event) => {
           setEmail(
             event.target.value
           )
-        }
+
+          setMessage("")
+        }}
         onKeyDown={
           submitOnEnter
         }
@@ -431,7 +598,11 @@ export function LoginForm({
             ? handleForgotPassword
             : handleSubmit
         }
-        disabled={loading}
+        disabled={
+          mode === "forgot"
+            ? recoveryButtonIsDisabled
+            : loading
+        }
         className="telegram-button w-full rounded-xl px-6 py-4 disabled:pointer-events-none disabled:opacity-70"
       >
         {loading &&
@@ -447,6 +618,12 @@ export function LoginForm({
 
         {!loading &&
           mode === "forgot" &&
+          recoveryIsCoolingDown &&
+          `Reenviar en ${recoveryCooldown} s`}
+
+        {!loading &&
+          mode === "forgot" &&
+          !recoveryIsCoolingDown &&
           "Enviar enlace"}
       </button>
 
@@ -504,7 +681,10 @@ export function LoginForm({
           </button>
         )}
 
-      <p className="min-h-5 text-sm text-muted-foreground">
+      <p
+        className="min-h-5 text-sm text-muted-foreground"
+        aria-live="polite"
+      >
         {message}
       </p>
     </div>

@@ -1,7 +1,92 @@
 import { redirect } from "next/navigation"
-import { VipAccountMenu } from "@/components/vip-account-menu"
-import { createClient } from "@/lib/supabase/server"
+
+import { VipBackground } from "./components/vip-background"
+
 import { supabaseAdmin } from "@/lib/supabase/admin"
+import { createClient } from "@/lib/supabase/server"
+
+const CHANGE_COOLDOWN_DAYS = 7
+
+const CHANGE_COOLDOWN_MS =
+  CHANGE_COOLDOWN_DAYS *
+  24 *
+  60 *
+  60 *
+  1000
+
+type ChangeLimit = {
+  canChange: boolean
+  nextChangeAt: string | null
+}
+
+type AccountLimits = {
+  username: ChangeLimit
+  password: ChangeLimit
+}
+
+function readProfileName(
+  metadata: Record<string, unknown>
+) {
+  const profileName =
+    metadata.profile_name
+
+  if (
+    typeof profileName === "string" &&
+    profileName.trim()
+  ) {
+    return profileName.trim()
+  }
+
+  const username =
+    metadata.username
+
+  if (
+    typeof username === "string" &&
+    username.trim()
+  ) {
+    return username.trim()
+  }
+
+  return ""
+}
+
+function createChangeLimit(
+  changedAt: string | null
+): ChangeLimit {
+  if (!changedAt) {
+    return {
+      canChange: true,
+      nextChangeAt: null,
+    }
+  }
+
+  const changedAtTime =
+    new Date(changedAt).getTime()
+
+  if (
+    Number.isNaN(changedAtTime)
+  ) {
+    return {
+      canChange: true,
+      nextChangeAt: null,
+    }
+  }
+
+  const nextChangeDate =
+    new Date(
+      changedAtTime +
+        CHANGE_COOLDOWN_MS
+    )
+
+  return {
+    canChange:
+      nextChangeDate.getTime() <=
+      Date.now(),
+
+    nextChangeAt:
+      nextChangeDate.toISOString(),
+  }
+}
 
 export default async function VipPage() {
   const supabase =
@@ -18,11 +103,12 @@ export default async function VipPage() {
 
   const {
     data: membership,
+    error: membershipError,
   } =
     await supabaseAdmin
       .from("memberships")
       .select(
-        "id, plan, expires_at"
+        "id, expires_at"
       )
       .eq(
         "user_id",
@@ -45,87 +131,88 @@ export default async function VipPage() {
       .limit(1)
       .maybeSingle()
 
+  if (membershipError) {
+    throw new Error(
+      "No se pudo consultar la membresía."
+    )
+  }
+
   if (!membership) {
     redirect(
       "/access?step=pricing"
     )
   }
 
-  const expiresAt =
-    new Date(
-      membership.expires_at
-    ).toLocaleDateString(
-      "es-PE"
+  const metadata =
+    user.user_metadata &&
+    typeof user.user_metadata ===
+      "object"
+      ? (
+          user.user_metadata as Record<
+            string,
+            unknown
+          >
+        )
+      : {}
+
+  const profileName =
+    readProfileName(metadata)
+
+  if (!profileName) {
+    redirect("/vip/profile")
+  }
+
+  const accountEmail =
+    user.email?.trim() ?? ""
+
+  const {
+    data: storedLimits,
+    error: limitsError,
+  } =
+    await supabaseAdmin
+      .from(
+        "user_account_change_limits"
+      )
+      .select(
+        "username_changed_at, password_changed_at"
+      )
+      .eq(
+        "user_id",
+        user.id
+      )
+      .maybeSingle()
+
+  if (limitsError) {
+    throw new Error(
+      "No se pudieron consultar los límites de la cuenta."
     )
+  }
+
+  const accountLimits: AccountLimits = {
+    username:
+      createChangeLimit(
+        storedLimits
+          ?.username_changed_at ??
+          null
+      ),
+
+    password:
+      createChangeLimit(
+        storedLimits
+          ?.password_changed_at ??
+          null
+      ),
+  }
 
   return (
-    <main className="min-h-dvh bg-background px-6 py-24 text-foreground">
-      <VipAccountMenu
-        email={user.email}
-      />
-
-      <section className="mx-auto max-w-6xl text-center">
-        <span className="pricing-label mb-5 block">
-          The Golden Circle
-        </span>
-
-        <h1 className="checkout-premium-title text-5xl font-light md:text-7xl">
-          Panel VIP
-        </h1>
-
-        <p className="mx-auto mt-6 max-w-xl text-sm leading-7 text-muted-foreground">
-          Tu membresía está
-          activa. Bienvenido al
-          espacio privado.
-        </p>
-
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
-          <div className="checkout-premium-card rounded-[34px] bg-black p-7">
-            <p className="text-xs uppercase tracking-[0.3em] text-gold/70">
-              Estado
-            </p>
-
-            <h2 className="mt-4 text-3xl font-light text-gold">
-              Activo
-            </h2>
-          </div>
-
-          <div className="checkout-premium-card rounded-[34px] bg-black p-7">
-            <p className="text-xs uppercase tracking-[0.3em] text-gold/70">
-              Plan
-            </p>
-
-            <h2 className="mt-4 text-3xl font-light">
-              {membership.plan ===
-              "quarterly"
-                ? "Trimestral"
-                : "Mensual"}
-            </h2>
-          </div>
-
-          <div className="checkout-premium-card rounded-[34px] bg-black p-7">
-            <p className="text-xs uppercase tracking-[0.3em] text-gold/70">
-              Vigencia
-            </p>
-
-            <h2 className="mt-4 text-3xl font-light">
-              {expiresAt}
-            </h2>
-          </div>
-        </div>
-
-        <div className="checkout-premium-card mt-8 rounded-[34px] bg-black p-8 text-left">
-          <h2 className="text-3xl font-light">
-            Colección privada
-          </h2>
-
-          <p className="mt-4 text-sm leading-7 text-muted-foreground">
-            Aquí colocaremos el
-            contenido exclusivo para
-            miembros VIP.
-          </p>
-        </div>
-      </section>
-    </main>
+    <VipBackground
+      accountName={profileName}
+      accountEmail={accountEmail}
+      membershipExpiresAt={
+        membership.expires_at ??
+        ""
+      }
+      accountLimits={accountLimits}
+    />
   )
 }

@@ -1,6 +1,43 @@
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
+
+import { createClient } from "@/lib/supabase/server"
+
 import { ResetPasswordForm } from "./reset-password-form"
 
-export default function ResetPasswordPage() {
+const PASSWORD_RECOVERY_COOKIE =
+  "golden_circle_password_recovery"
+
+export const dynamic =
+  "force-dynamic"
+
+export default async function ResetPasswordPage() {
+  const cookieStore =
+    await cookies()
+
+  const recoveryAllowed =
+    cookieStore.get(
+      PASSWORD_RECOVERY_COOKIE
+    )?.value === "1"
+
+  if (!recoveryAllowed) {
+    redirect("/login")
+  }
+
+  const supabase =
+    await createClient()
+
+  const {
+    data: {
+      user,
+    },
+  } =
+    await supabase.auth.getUser()
+
+  if (!user) {
+    redirect("/login")
+  }
+
   return (
     <main className="min-h-dvh bg-background px-6 py-20 text-foreground">
       <div className="featured-card mx-auto max-w-md rounded-[34px] bg-black p-8 text-center md:p-10">
@@ -13,7 +50,8 @@ export default function ResetPasswordPage() {
         </h1>
 
         <p className="mb-8 text-sm leading-relaxed text-muted-foreground">
-          Escribe una nueva contraseña para recuperar tu acceso.
+          Escribe una nueva contraseña
+          para recuperar tu acceso.
         </p>
 
         <ResetPasswordForm />

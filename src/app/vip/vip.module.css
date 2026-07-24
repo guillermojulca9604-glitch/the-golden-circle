@@ -1,0 +1,683 @@
+.vipPage {
+  position: fixed;
+  inset: 0;
+  isolation: isolate;
+
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+
+  overflow: hidden;
+
+  background: #020202;
+}
+
+/*
+  Escenario 16:9 que funciona como cover real.
+
+  La imagen no se deforma ni deja franjas.
+  Cuando la pantalla es más ancha, se conserva
+  la parte superior y se recorta únicamente
+  la zona inferior que queda fuera de pantalla.
+*/
+
+.vipVisualScene {
+  position: absolute;
+
+  top: 0;
+  left: 50%;
+  z-index: 0;
+
+  width:
+    max(
+      100vw,
+      177.77778vh
+    );
+
+  height:
+    max(
+      100vh,
+      56.25vw
+    );
+
+  overflow: hidden;
+
+  transform:
+    translateX(-50%);
+
+  pointer-events: none;
+  user-select: none;
+
+  --vip-point-size: 1px;
+  --vip-point-size-small: 0.9px;
+  --vip-point-size-large: 1.1px;
+
+  --vip-point-glow-one: 1px;
+  --vip-point-glow-two: 3px;
+  --vip-point-glow-three: 7px;
+
+  --vip-point-rest-glow-one: 1px;
+  --vip-point-rest-glow-two: 2px;
+  --vip-point-rest-glow-three: 4px;
+
+  --vip-point-peak-glow-one: 2px;
+  --vip-point-peak-glow-two: 5px;
+  --vip-point-peak-glow-three: 10px;
+}
+
+@supports (height: 100dvh) {
+  .vipVisualScene {
+    width:
+      max(
+        100vw,
+        177.77778dvh
+      );
+
+    height:
+      max(
+        100dvh,
+        56.25vw
+      );
+  }
+}
+
+.vipBackgroundLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+
+  width: 100%;
+  height: 100%;
+
+  background-color: #020202;
+
+  background-image:
+    url("/vip/vip-background.png");
+
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: 100% 100%;
+
+  pointer-events: none;
+  user-select: none;
+}
+
+.vipBackgroundLayer::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.08) 0%,
+      transparent 48%,
+      rgba(0, 0, 0, 0.025) 100%
+    ),
+    linear-gradient(
+      180deg,
+      transparent 72%,
+      rgba(0, 0, 0, 0.1) 100%
+    );
+
+  pointer-events: none;
+}
+
+.vipAtmosphereLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+
+  width: 100%;
+  height: 100%;
+
+  overflow: hidden;
+
+  pointer-events: none;
+  user-select: none;
+}
+
+/*
+  Zona de animación calculada dentro de
+  la imagen original de 1920 × 1080.
+
+  1380 / 1920 = 71.875 %
+  560 / 1080 = 51.85185 %
+*/
+
+.vipSky {
+  position: absolute;
+
+  top: 0;
+  right: 0;
+
+  width: 71.875%;
+  height: 51.85185%;
+
+  pointer-events: none;
+}
+
+.vipBreathGlow {
+  position: absolute;
+
+  top: -15%;
+  right: -5%;
+
+  width: 86%;
+  height: 116%;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      ellipse at 73% 31%,
+      rgba(
+        255,
+        181,
+        51,
+        0.065
+      ) 0%,
+      rgba(
+        226,
+        121,
+        11,
+        0.027
+      ) 23%,
+      rgba(
+        143,
+        67,
+        2,
+        0.01
+      ) 45%,
+      transparent 70%
+    );
+
+  filter: blur(14px);
+
+  transform-origin:
+    76% 30%;
+
+  animation:
+    vipSkyBreathing
+    12s
+    ease-in-out
+    infinite;
+
+  will-change:
+    opacity,
+    transform;
+}
+
+.vipBreathingPoint {
+  position: absolute;
+
+  display: block;
+
+  width:
+    var(
+      --vip-point-size
+    );
+
+  height:
+    var(
+      --vip-point-size
+    );
+
+  border-radius: 50%;
+
+  background:
+    rgba(
+      255,
+      237,
+      188,
+      0.95
+    );
+
+  box-shadow:
+    0 0
+      var(
+        --vip-point-glow-one
+      )
+      rgba(
+        255,
+        249,
+        224,
+        0.9
+      ),
+    0 0
+      var(
+        --vip-point-glow-two
+      )
+      rgba(
+        255,
+        189,
+        64,
+        0.52
+      ),
+    0 0
+      var(
+        --vip-point-glow-three
+      )
+      rgba(
+        226,
+        119,
+        10,
+        0.24
+      );
+
+  opacity: 0.16;
+
+  mix-blend-mode: screen;
+
+  animation:
+    vipPointBreathing
+    6s
+    ease-in-out
+    infinite;
+
+  will-change:
+    opacity,
+    transform,
+    box-shadow;
+}
+
+/* Las 20 estrellas animadas */
+
+.vipPointOne {
+  top: 8%;
+  left: 22%;
+
+  animation-duration: 6.2s;
+  animation-delay: -1.2s;
+}
+
+.vipPointTwo {
+  top: 11%;
+  left: 27%;
+
+  animation-duration: 7s;
+  animation-delay: -4s;
+}
+
+.vipPointThree {
+  top: 14%;
+  left: 31%;
+
+  animation-duration: 5.6s;
+  animation-delay: -2.4s;
+}
+
+.vipPointFour {
+  top: 18%;
+  left: 25%;
+
+  animation-duration: 7.4s;
+  animation-delay: -5.1s;
+}
+
+.vipPointFive {
+  top: 21%;
+  left: 34%;
+
+  animation-duration: 6.1s;
+  animation-delay: -2s;
+}
+
+.vipPointSix {
+  top: 25%;
+  left: 29%;
+
+  animation-duration: 7.7s;
+  animation-delay: -4.8s;
+}
+
+.vipPointSeven {
+  top: 16%;
+  left: 38%;
+
+  animation-duration: 5.8s;
+  animation-delay: -3.2s;
+}
+
+.vipPointEight {
+  top: 9%;
+  left: 39%;
+
+  animation-duration: 6.4s;
+  animation-delay: -1.6s;
+}
+
+.vipPointNine {
+  top: 12%;
+  left: 46%;
+
+  animation-duration: 6.8s;
+  animation-delay: -4.2s;
+}
+
+.vipPointTen {
+  top: 15%;
+  left: 53%;
+
+  width:
+    var(
+      --vip-point-size-large
+    );
+
+  height:
+    var(
+      --vip-point-size-large
+    );
+
+  animation-duration: 5.5s;
+  animation-delay: -2.8s;
+}
+
+.vipPointEleven {
+  top: 18%;
+  left: 60%;
+
+  animation-duration: 7.1s;
+  animation-delay: -5.3s;
+}
+
+.vipPointTwelve {
+  top: 21%;
+  left: 67%;
+
+  width:
+    var(
+      --vip-point-size-large
+    );
+
+  height:
+    var(
+      --vip-point-size-large
+    );
+
+  animation-duration: 6s;
+  animation-delay: -1.8s;
+}
+
+.vipPointThirteen {
+  top: 24%;
+  left: 74%;
+
+  animation-duration: 7.6s;
+  animation-delay: -4.9s;
+}
+
+.vipPointFourteen {
+  top: 27%;
+  left: 81%;
+
+  animation-duration: 5.9s;
+  animation-delay: -3.1s;
+}
+
+.vipPointFifteen {
+  top: 30%;
+  left: 88%;
+
+  animation-duration: 6.9s;
+  animation-delay: -5.8s;
+}
+
+.vipPointSixteen {
+  top: 10%;
+  left: 57%;
+
+  width:
+    var(
+      --vip-point-size-small
+    );
+
+  height:
+    var(
+      --vip-point-size-small
+    );
+
+  animation-duration: 6.3s;
+  animation-delay: -3.7s;
+}
+
+.vipPointSeventeen {
+  top: 14%;
+  left: 66%;
+
+  width:
+    var(
+      --vip-point-size-small
+    );
+
+  height:
+    var(
+      --vip-point-size-small
+    );
+
+  animation-duration: 7.3s;
+  animation-delay: -6.1s;
+}
+
+.vipPointEighteen {
+  top: 17%;
+  left: 73%;
+
+  width:
+    var(
+      --vip-point-size-large
+    );
+
+  height:
+    var(
+      --vip-point-size-large
+    );
+
+  animation-duration: 5.8s;
+  animation-delay: -4.4s;
+}
+
+.vipPointNineteen {
+  top: 20%;
+  left: 80%;
+
+  width:
+    var(
+      --vip-point-size-small
+    );
+
+  height:
+    var(
+      --vip-point-size-small
+    );
+
+  animation-duration: 6.5s;
+  animation-delay: -2.3s;
+}
+
+.vipPointTwenty {
+  top: 13%;
+  left: 43%;
+
+  width:
+    var(
+      --vip-point-size-small
+    );
+
+  height:
+    var(
+      --vip-point-size-small
+    );
+
+  animation-duration: 6.7s;
+  animation-delay: -3.5s;
+}
+
+.vipContent {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+
+  width: 100%;
+  height: 100%;
+
+  overflow: visible;
+}
+
+.screenReaderOnly {
+  position: absolute;
+
+  width: 1px;
+  height: 1px;
+
+  overflow: hidden;
+
+  margin: -1px;
+  padding: 0;
+
+  border: 0;
+
+  clip:
+    rect(
+      0,
+      0,
+      0,
+      0
+    );
+
+  clip-path:
+    inset(50%);
+
+  white-space: nowrap;
+}
+
+@keyframes vipSkyBreathing {
+  0%,
+  100% {
+    opacity: 0.22;
+
+    transform:
+      scale(0.99);
+  }
+
+  50% {
+    opacity: 0.42;
+
+    transform:
+      scale(1.015);
+  }
+}
+
+@keyframes vipPointBreathing {
+  0%,
+  100% {
+    opacity: 0.12;
+
+    transform:
+      scale(0.7);
+
+    box-shadow:
+      0 0
+        var(
+          --vip-point-rest-glow-one
+        )
+        rgba(
+          255,
+          249,
+          224,
+          0.5
+        ),
+      0 0
+        var(
+          --vip-point-rest-glow-two
+        )
+        rgba(
+          255,
+          189,
+          64,
+          0.22
+        ),
+      0 0
+        var(
+          --vip-point-rest-glow-three
+        )
+        rgba(
+          226,
+          119,
+          10,
+          0.08
+        );
+  }
+
+  45% {
+    opacity: 0.32;
+
+    transform:
+      scale(0.9);
+  }
+
+  58% {
+    opacity: 0.86;
+
+    transform:
+      scale(1.15);
+
+    box-shadow:
+      0 0
+        var(
+          --vip-point-peak-glow-one
+        )
+        rgba(
+          255,
+          251,
+          232,
+          0.95
+        ),
+      0 0
+        var(
+          --vip-point-peak-glow-two
+        )
+        rgba(
+          255,
+          194,
+          72,
+          0.62
+        ),
+      0 0
+        var(
+          --vip-point-peak-glow-three
+        )
+        rgba(
+          226,
+          119,
+          10,
+          0.27
+        );
+  }
+
+  72% {
+    opacity: 0.28;
+
+    transform:
+      scale(0.88);
+  }
+}
+
+@media (
+  prefers-reduced-motion:
+  reduce
+) {
+  .vipBreathGlow,
+  .vipBreathingPoint {
+    animation: none;
+  }
+
+  .vipBreathGlow {
+    opacity: 0.26;
+  }
+
+  .vipBreathingPoint {
+    opacity: 0.3;
+  }
+}

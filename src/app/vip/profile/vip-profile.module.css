@@ -1,0 +1,928 @@
+.profileViewport {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+
+  display: grid;
+
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+
+  box-sizing: border-box;
+
+  place-items: center;
+
+  overflow: hidden;
+
+  padding:
+    54px
+    24px
+    26px;
+
+  pointer-events: none;
+}
+
+.profileCard {
+  position: relative;
+  isolation: isolate;
+
+  width:
+    min(
+      760px,
+      calc(100vw - 56px)
+    );
+
+  box-sizing: border-box;
+
+  overflow: visible;
+
+  border:
+    1px solid
+    rgba(211, 143, 32, 0.3);
+
+  border-radius: 18px;
+
+  padding:
+    76px
+    52px
+    32px;
+
+  background:
+    radial-gradient(
+      circle at 91% 5%,
+      rgba(214, 139, 24, 0.055),
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at 6% 95%,
+      rgba(174, 104, 14, 0.025),
+      transparent 42%
+    ),
+    linear-gradient(
+      145deg,
+      rgba(13, 13, 12, 0.42),
+      rgba(2, 2, 2, 0.54)
+    );
+
+  box-shadow:
+    0 18px 46px
+      rgba(0, 0, 0, 0.38),
+    0 0 22px
+      rgba(164, 98, 8, 0.045),
+    inset 0 1px 0
+      rgba(255, 255, 255, 0.035),
+    inset 0 0 22px
+      rgba(255, 171, 43, 0.012);
+
+  backdrop-filter:
+    blur(21px)
+    saturate(112%)
+    contrast(104%);
+
+  -webkit-backdrop-filter:
+    blur(21px)
+    saturate(112%)
+    contrast(104%);
+
+  pointer-events: auto;
+}
+
+/*
+  Reflejo copiado del panel de cuenta.
+*/
+
+.profileCard::before {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+
+  border-radius: inherit;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.018),
+      transparent 32%,
+      transparent 72%,
+      rgba(220, 143, 24, 0.012)
+    );
+
+  pointer-events: none;
+}
+
+.profileCard::after {
+  content: none;
+}
+
+/*
+  Medallón aprobado.
+*/
+
+.profileEmblem {
+  position: absolute;
+
+  top: 0;
+  left: 50%;
+  z-index: 5;
+
+  display: grid;
+
+  width: 82px;
+  height: 82px;
+
+  box-sizing: border-box;
+
+  place-items: center;
+
+  border:
+    1px solid
+    rgba(231, 160, 47, 0.76);
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle at 37% 27%,
+      rgba(255, 199, 91, 0.08),
+      transparent 46%
+    ),
+    linear-gradient(
+      145deg,
+      rgba(20, 16, 10, 0.94),
+      rgba(3, 3, 3, 0.98)
+    );
+
+  color: #e2a431;
+
+  box-shadow:
+    0 0 15px
+      rgba(220, 137, 16, 0.13),
+    inset 0 1px 0
+      rgba(255, 255, 255, 0.025);
+
+  transform:
+    translate(
+      -50%,
+      -50%
+    );
+}
+
+.profileEmblem::before {
+  content: "";
+
+  position: absolute;
+
+  inset: -7px;
+
+  border:
+    1px solid
+    rgba(218, 144, 26, 0.47);
+
+  border-radius: 50%;
+
+  box-shadow:
+    0 0 11px
+      rgba(219, 135, 14, 0.075);
+
+  pointer-events: none;
+}
+
+.profileEmblem::after {
+  content: "";
+
+  position: absolute;
+
+  inset: 8px;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      transparent 56%,
+      rgba(224, 145, 24, 0.045) 100%
+    );
+
+  pointer-events: none;
+}
+
+.profileEmblem svg {
+  position: relative;
+  z-index: 1;
+
+  width: 34px;
+  height: 34px;
+
+  filter:
+    drop-shadow(
+      0 0 4px
+      rgba(220, 139, 18, 0.1)
+    );
+}
+
+.heading,
+.form {
+  position: relative;
+  z-index: 2;
+}
+
+.heading {
+  text-align: center;
+}
+
+.welcome {
+  margin: 0;
+
+  color: #dfa42e;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.title {
+  margin:
+    10px
+    0
+    0;
+
+  color: #e2ac50;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size:
+    clamp(
+      35px,
+      3.4vw,
+      50px
+    );
+
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.025em;
+
+  white-space: nowrap;
+
+  text-shadow:
+    0 0 15px
+      rgba(221, 139, 18, 0.12);
+}
+
+.titleDivider {
+  position: relative;
+
+  width: 72%;
+  height: 1px;
+
+  margin:
+    22px
+    auto
+    20px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(203, 132, 20, 0.18) 15%,
+      rgba(221, 148, 31, 0.48) 50%,
+      rgba(203, 132, 20, 0.18) 85%,
+      transparent
+    );
+}
+
+.titleDivider span {
+  position: absolute;
+
+  top: 50%;
+  left: 50%;
+
+  display: block;
+
+  width: 5px;
+  height: 5px;
+
+  border-radius: 50%;
+
+  background: #f1b43e;
+
+  box-shadow:
+    0 0 7px
+      rgba(244, 180, 57, 0.9),
+    0 0 17px
+      rgba(221, 132, 13, 0.46);
+
+  transform:
+    translate(
+      -50%,
+      -50%
+    );
+}
+
+.description {
+  margin: 0;
+
+  color:
+    rgba(232, 229, 220, 0.88);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.form {
+  margin-top: 38px;
+}
+
+.fieldGroup {
+  width: 100%;
+}
+
+.label {
+  display: block;
+
+  margin-bottom: 9px;
+
+  color: #e0a52f;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.inputShell {
+  display: flex;
+
+  width: 100%;
+  height: 68px;
+
+  box-sizing: border-box;
+
+  align-items: center;
+
+  border:
+    1px solid
+    rgba(217, 143, 26, 0.58);
+
+  border-radius: 13px;
+
+  background:
+    radial-gradient(
+      circle at 0% 50%,
+      rgba(209, 130, 13, 0.045),
+      transparent 25%
+    ),
+    linear-gradient(
+      100deg,
+      rgba(7, 7, 6, 0.48),
+      rgba(2, 2, 2, 0.42)
+    );
+
+  box-shadow:
+    inset 0 1px 0
+      rgba(255, 255, 255, 0.018),
+    0 0 12px
+      rgba(207, 125, 8, 0.03);
+
+  backdrop-filter:
+    blur(8px);
+
+  -webkit-backdrop-filter:
+    blur(8px);
+
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.inputShell:focus-within {
+  border-color:
+    rgba(240, 166, 46, 0.9);
+
+  background:
+    radial-gradient(
+      circle at 0% 50%,
+      rgba(223, 143, 21, 0.07),
+      transparent 28%
+    ),
+    linear-gradient(
+      100deg,
+      rgba(10, 9, 7, 0.55),
+      rgba(3, 3, 3, 0.48)
+    );
+
+  box-shadow:
+    0 0 0 3px
+      rgba(222, 143, 22, 0.065),
+    0 0 17px
+      rgba(213, 130, 12, 0.085),
+    inset 0 1px 0
+      rgba(255, 255, 255, 0.022);
+}
+
+.inputShellComplete {
+  border-color:
+    rgba(233, 157, 40, 0.82);
+}
+
+.inputIcon {
+  display: grid;
+
+  width: 66px;
+  height: 100%;
+
+  flex:
+    0
+    0
+    66px;
+
+  place-items: center;
+
+  color: #dda12b;
+}
+
+.inputIcon svg {
+  width: 27px;
+  height: 27px;
+
+  filter:
+    drop-shadow(
+      0 0 5px
+      rgba(219, 139, 20, 0.1)
+    );
+}
+
+.input {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+
+  box-sizing: border-box;
+
+  border: 0;
+
+  padding:
+    0
+    22px
+    0
+    0;
+
+  background: transparent;
+
+  color:
+    rgba(244, 241, 233, 0.97);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 18px;
+  font-weight: 400;
+
+  outline: none;
+
+  caret-color: #e2a631;
+}
+
+.input::placeholder {
+  color:
+    rgba(175, 172, 164, 0.68);
+}
+
+.input:disabled {
+  cursor: wait;
+}
+
+.fieldFooter {
+  display: flex;
+
+  margin-top: 11px;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 18px;
+}
+
+.fieldHelp,
+.characterCount {
+  margin: 0;
+
+  color:
+    rgba(187, 183, 174, 0.75);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.characterCount {
+  font-variant-numeric:
+    tabular-nums;
+}
+
+.errorMessage {
+  margin:
+    14px
+    0
+    0;
+
+  color:
+    rgba(236, 122, 76, 0.96);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.continueButton {
+  display: grid;
+
+  width: 100%;
+  min-height: 68px;
+
+  box-sizing: border-box;
+
+  margin-top: 38px;
+
+  place-items: center;
+
+  border:
+    1px solid
+    rgba(222, 147, 29, 0.72);
+
+  border-radius: 13px;
+
+  padding:
+    0
+    22px;
+
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(255, 187, 57, 0.1),
+      transparent 58%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(55, 37, 13, 0.39),
+      rgba(12, 10, 7, 0.53)
+    );
+
+  color: #e1a52f;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 19px;
+  font-weight: 500;
+
+  box-shadow:
+    0 0 17px
+      rgba(217, 136, 15, 0.07),
+    inset 0 1px 0
+      rgba(255, 255, 255, 0.022);
+
+  backdrop-filter:
+    blur(8px);
+
+  -webkit-backdrop-filter:
+    blur(8px);
+
+  cursor: pointer;
+
+  -webkit-tap-highlight-color:
+    transparent;
+
+  touch-action: manipulation;
+
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.continueButton:disabled {
+  border-color:
+    rgba(171, 128, 67, 0.32);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(66, 57, 44, 0.22),
+      rgba(23, 20, 16, 0.31)
+    );
+
+  color:
+    rgba(187, 174, 153, 0.52);
+
+  box-shadow:
+    inset 0 1px 0
+      rgba(255, 255, 255, 0.01);
+
+  cursor: not-allowed;
+}
+
+.continueButton:not(
+  :disabled
+):focus-visible {
+  border-color:
+    rgba(247, 176, 61, 0.98);
+
+  box-shadow:
+    0 0 0 3px
+      rgba(229, 151, 28, 0.09),
+    0 0 23px
+      rgba(219, 137, 17, 0.15);
+
+  outline: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .continueButton:not(
+    :disabled
+  ):hover {
+    border-color:
+      rgba(247, 176, 61, 0.98);
+
+    background:
+      radial-gradient(
+        circle at 50% 0%,
+        rgba(255, 197, 76, 0.16),
+        transparent 60%
+      ),
+      linear-gradient(
+        135deg,
+        rgba(72, 47, 14, 0.5),
+        rgba(16, 13, 8, 0.63)
+      );
+
+    box-shadow:
+      0 0 24px
+        rgba(219, 137, 17, 0.14);
+  }
+}
+
+.continueButton:not(
+  :disabled
+):active {
+  border-color:
+    rgba(250, 183, 72, 1);
+
+  box-shadow:
+    0 0 25px
+      rgba(219, 137, 17, 0.19);
+}
+
+.buttonHelp {
+  display: flex;
+
+  margin:
+    18px
+    0
+    0;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 9px;
+
+  color:
+    rgba(195, 191, 181, 0.76);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.lockIcon {
+  display: grid;
+
+  width: 19px;
+  height: 19px;
+
+  flex:
+    0
+    0
+    19px;
+
+  place-items: center;
+
+  color: #dca02b;
+}
+
+.lockIcon svg {
+  width: 17px;
+  height: 17px;
+}
+
+@media (max-width: 720px) {
+  .profileViewport {
+    padding:
+      58px
+      14px
+      25px;
+  }
+
+  .profileCard {
+    width: 100%;
+
+    border-radius: 18px;
+
+    padding:
+      66px
+      22px
+      27px;
+  }
+
+  .profileEmblem {
+    width: 70px;
+    height: 70px;
+  }
+
+  .profileEmblem::before {
+    inset: -6px;
+  }
+
+  .profileEmblem svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .welcome {
+    font-size: 14px;
+  }
+
+  .title {
+    font-size:
+      clamp(
+        27px,
+        8.8vw,
+        39px
+      );
+
+    white-space: normal;
+  }
+
+  .description {
+    font-size: 13px;
+  }
+
+  .form {
+    margin-top: 31px;
+  }
+
+  .label {
+    font-size: 14px;
+  }
+
+  .inputShell {
+    height: 61px;
+  }
+
+  .inputIcon {
+    width: 57px;
+
+    flex-basis: 57px;
+  }
+
+  .inputIcon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .input {
+    font-size: 16px;
+  }
+
+  .continueButton {
+    min-height: 61px;
+
+    margin-top: 31px;
+
+    font-size: 17px;
+  }
+
+  .buttonHelp {
+    font-size: 11px;
+  }
+}
+
+@media (max-height: 660px) and (min-width: 721px) {
+  .profileViewport {
+    padding:
+      42px
+      24px
+      20px;
+  }
+
+  .profileCard {
+    padding:
+      59px
+      46px
+      22px;
+  }
+
+  .profileEmblem {
+    width: 66px;
+    height: 66px;
+  }
+
+  .profileEmblem::before {
+    inset: -5px;
+  }
+
+  .profileEmblem svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .welcome {
+    font-size: 13px;
+  }
+
+  .title {
+    margin-top: 7px;
+
+    font-size:
+      clamp(
+        31px,
+        3.2vw,
+        43px
+      );
+  }
+
+  .titleDivider {
+    margin:
+      15px
+      auto
+      13px;
+  }
+
+  .description {
+    font-size: 13px;
+  }
+
+  .form {
+    margin-top: 25px;
+  }
+
+  .inputShell {
+    height: 58px;
+  }
+
+  .continueButton {
+    min-height: 56px;
+
+    margin-top: 25px;
+  }
+
+  .buttonHelp {
+    margin-top: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inputShell,
+  .continueButton {
+    transition: none;
+  }
+}

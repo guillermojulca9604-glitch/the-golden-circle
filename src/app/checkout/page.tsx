@@ -101,11 +101,11 @@ export default async function CheckoutPage({
     plans[plan]
 
   return (
-    <main className="min-h-dvh bg-background px-6 py-24 text-foreground">
+    <main className="min-h-dvh bg-background px-6 pt-11 text-foreground">
       <SessionGuard mode="checkout" />
       <AuthTopbarSimple />
 
-      <section className="mx-auto flex min-h-[calc(100dvh-96px)] max-w-5xl items-center">
+      <section className="mx-auto flex min-h-[calc(100dvh-2.75rem)] max-w-5xl items-center">
         <div className="w-full">
           <div className="mb-8 text-center">
             <span className="pricing-label mb-3 block">

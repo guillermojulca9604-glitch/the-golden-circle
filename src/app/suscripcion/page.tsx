@@ -40,8 +40,8 @@ export default async function SubscriptionPage() {
   }
 
   return (
-    <main className="min-h-dvh bg-background px-6 py-20 text-foreground">
-      <section className="mx-auto max-w-6xl text-center">
+    <main className="flex min-h-dvh items-center bg-background px-6 py-20 text-foreground">
+      <section className="mx-auto w-full max-w-6xl text-center">
         <span className="pricing-label mb-5 block">
           Membresía privada
         </span>

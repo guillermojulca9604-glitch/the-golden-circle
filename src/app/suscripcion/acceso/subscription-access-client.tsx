@@ -38,8 +38,8 @@ export function SubscriptionAccessClient({
     `/checkout?plan=${plan}`
 
   return (
-    <main className="min-h-dvh bg-background px-6 py-20 text-foreground">
-      <div className="featured-card mx-auto max-w-md rounded-[34px] bg-black p-8 text-center md:p-10">
+    <main className="flex min-h-dvh items-center bg-background px-6 py-20 text-foreground">
+      <div className="featured-card mx-auto w-full max-w-md rounded-[34px] bg-black p-8 text-center md:p-10">
         <span className="mb-5 block text-xs uppercase tracking-[0.45em] text-gold">
           The Golden Circle
         </span>

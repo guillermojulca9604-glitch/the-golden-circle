@@ -6,7 +6,6 @@ import type {
   MouseEvent,
   SetStateAction,
 } from "react"
-
 import {
   useEffect,
   useRef,
@@ -15,11 +14,11 @@ import {
 
 import { createClient } from "@/lib/supabase/client"
 
-const RECOVERY_COOLDOWN_SECONDS =
-  60
+const RECOVERY_STORAGE_KEY =
+  "golden-circle-password-recovery-retry-at"
 
-const RECOVERY_COOLDOWN_STORAGE_KEY =
-  "golden-circle-recovery-cooldown-until"
+const EMAIL_PATTERN =
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type Mode =
   | "login"
@@ -35,6 +34,15 @@ type Props = {
   nextPath?: string
 }
 
+type PasswordResetResponse = {
+  success?: boolean
+  message?: string
+  error?: string
+  reason?: string
+  retryAt?: string
+  retryAfterSeconds?: number
+}
+
 function getSafeNextPath(
   nextPath: string
 ) {
@@ -48,11 +56,69 @@ function getSafeNextPath(
   return nextPath
 }
 
-function isValidEmail(
-  value: string
+function getRemainingSeconds(
+  retryAt: number
 ) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-    value
+  return Math.max(
+    0,
+    Math.ceil(
+      (
+        retryAt -
+        Date.now()
+      ) / 1000
+    )
+  )
+}
+
+function formatCooldown(
+  totalSeconds: number
+) {
+  const safeSeconds =
+    Math.max(
+      0,
+      Math.floor(
+        totalSeconds
+      )
+    )
+
+  const hours =
+    Math.floor(
+      safeSeconds / 3600
+    )
+
+  const minutes =
+    Math.floor(
+      (
+        safeSeconds % 3600
+      ) / 60
+    )
+
+  const seconds =
+    safeSeconds % 60
+
+  const paddedMinutes =
+    String(minutes)
+      .padStart(2, "0")
+
+  const paddedSeconds =
+    String(seconds)
+      .padStart(2, "0")
+
+  if (hours > 0) {
+    const paddedHours =
+      String(hours)
+        .padStart(2, "0")
+
+    return (
+      `${paddedHours}:` +
+      `${paddedMinutes}:` +
+      paddedSeconds
+    )
+  }
+
+  return (
+    `${paddedMinutes}:` +
+    paddedSeconds
   )
 }
 
@@ -95,10 +161,6 @@ function EyeOffIcon() {
       aria-hidden="true"
       className="block h-5 w-5"
     >
-      {/*
-       * El contorno del ojo es exactamente
-       * igual al estado visible.
-       */}
       <path
         d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"
         stroke="currentColor"
@@ -107,9 +169,6 @@ function EyeOffIcon() {
         strokeLinejoin="round"
       />
 
-      {/*
-       * La línea se dibuja sobre el ojo.
-       */}
       <path
         d="M3.25 3.25 20.75 20.75"
         stroke="currentColor"
@@ -117,10 +176,6 @@ function EyeOffIcon() {
         strokeLinecap="round"
       />
 
-      {/*
-       * La pupila se dibuja al final para que
-       * conserve su circunferencia completa.
-       */}
       <circle
         cx="12"
         cy="12"
@@ -149,8 +204,10 @@ export function LoginForm({
       null
     )
 
-  const [email, setEmail] =
-    useState("")
+  const [
+    email,
+    setEmail,
+  ] = useState("")
 
   const [
     password,
@@ -173,94 +230,110 @@ export function LoginForm({
   ] = useState(false)
 
   const [
+    recoveryRetryAt,
+    setRecoveryRetryAt,
+  ] =
+    useState<number | null>(
+      null
+    )
+
+  const [
     recoveryCooldown,
     setRecoveryCooldown,
   ] = useState(0)
 
   const safeNext =
-    getSafeNextPath(nextPath)
+    getSafeNextPath(
+      nextPath
+    )
 
-  const recoveryEmail =
+  const normalizedRecoveryEmail =
     email
       .trim()
       .toLowerCase()
 
   const recoveryEmailIsValid =
-    isValidEmail(
-      recoveryEmail
+    EMAIL_PATTERN.test(
+      normalizedRecoveryEmail
     )
 
-  const recoveryIsCoolingDown =
-    recoveryCooldown > 0
+  useEffect(() => {
+    const storedRetryAt =
+      window.localStorage
+        .getItem(
+          RECOVERY_STORAGE_KEY
+        )
 
-  const recoveryButtonIsDisabled =
-    loading ||
-    !recoveryEmailIsValid ||
-    recoveryIsCoolingDown
+    if (!storedRetryAt) {
+      return
+    }
+
+    const parsedRetryAt =
+      Number(storedRetryAt)
+
+    if (
+      !Number.isFinite(
+        parsedRetryAt
+      ) ||
+      parsedRetryAt <=
+        Date.now()
+    ) {
+      window.localStorage
+        .removeItem(
+          RECOVERY_STORAGE_KEY
+        )
+
+      return
+    }
+
+    setRecoveryRetryAt(
+      parsedRetryAt
+    )
+
+    setRecoveryCooldown(
+      getRemainingSeconds(
+        parsedRetryAt
+      )
+    )
+  }, [])
 
   useEffect(() => {
-    const updateRecoveryCooldown =
+    if (!recoveryRetryAt) {
+      setRecoveryCooldown(0)
+      return
+    }
+
+    const updateCooldown =
       () => {
-        try {
-          const storedValue =
-            window.localStorage.getItem(
-              RECOVERY_COOLDOWN_STORAGE_KEY
-            )
-
-          if (!storedValue) {
-            setRecoveryCooldown(0)
-            return
-          }
-
-          const cooldownUntil =
-            Number(storedValue)
-
-          if (
-            !Number.isFinite(
-              cooldownUntil
-            )
-          ) {
-            window.localStorage.removeItem(
-              RECOVERY_COOLDOWN_STORAGE_KEY
-            )
-
-            setRecoveryCooldown(0)
-
-            return
-          }
-
-          const remainingSeconds =
-            Math.max(
-              0,
-              Math.ceil(
-                (
-                  cooldownUntil -
-                  Date.now()
-                ) / 1000
-              )
-            )
-
-          setRecoveryCooldown(
-            remainingSeconds
+        const remaining =
+          getRemainingSeconds(
+            recoveryRetryAt
           )
 
-          if (
-            remainingSeconds === 0
-          ) {
-            window.localStorage.removeItem(
-              RECOVERY_COOLDOWN_STORAGE_KEY
-            )
-          }
-        } catch {
+        if (remaining <= 0) {
           setRecoveryCooldown(0)
+          setRecoveryRetryAt(
+            null
+          )
+
+          window.localStorage
+            .removeItem(
+              RECOVERY_STORAGE_KEY
+            )
+
+          return
         }
+
+        setRecoveryCooldown(
+          remaining
+        )
       }
 
-    updateRecoveryCooldown()
+    updateCooldown()
 
     const intervalId =
       window.setInterval(
-        updateRecoveryCooldown,
+        updateCooldown,
         1000
       )
 
@@ -269,30 +342,60 @@ export function LoginForm({
         intervalId
       )
     }
-  }, [])
+  }, [recoveryRetryAt])
 
   const startRecoveryCooldown =
-    () => {
-      const cooldownUntil =
-        Date.now() +
-        RECOVERY_COOLDOWN_SECONDS *
-          1000
+    (
+      retryAtValue:
+        string | undefined,
 
-      try {
-        window.localStorage.setItem(
-          RECOVERY_COOLDOWN_STORAGE_KEY,
-          String(cooldownUntil)
+      retryAfterSeconds:
+        number | undefined
+    ) => {
+      const parsedRetryAt =
+        retryAtValue
+          ? new Date(
+              retryAtValue
+            ).getTime()
+          : Number.NaN
+
+      const fallbackSeconds =
+        typeof retryAfterSeconds ===
+          "number" &&
+        Number.isFinite(
+          retryAfterSeconds
         )
-      } catch {
-        /*
-         * Si el navegador no permite
-         * localStorage, el bloqueo continúa
-         * funcionando durante esta visita.
-         */
-      }
+          ? Math.max(
+              1,
+              retryAfterSeconds
+            )
+          : 60
+
+      const retryAt =
+        Number.isFinite(
+          parsedRetryAt
+        ) &&
+        parsedRetryAt >
+          Date.now()
+          ? parsedRetryAt
+          : Date.now() +
+            fallbackSeconds *
+              1000
+
+      window.localStorage
+        .setItem(
+          RECOVERY_STORAGE_KEY,
+          String(retryAt)
+        )
+
+      setRecoveryRetryAt(
+        retryAt
+      )
 
       setRecoveryCooldown(
-        RECOVERY_COOLDOWN_SECONDS
+        getRemainingSeconds(
+          retryAt
+        )
       )
     }
 
@@ -325,20 +428,25 @@ export function LoginForm({
       if (
         mode === "register"
       ) {
-        const { error } =
-          await supabase.auth.signUp({
-            email: cleanEmail,
-            password,
+        const {
+          error,
+        } =
+          await supabase.auth
+            .signUp({
+              email:
+                cleanEmail,
 
-            options: {
-              emailRedirectTo:
-                `${window.location.origin}` +
-                "/auth/confirm" +
-                `?next=${encodeURIComponent(
-                  safeNext
-                )}`,
-            },
-          })
+              password,
+
+              options: {
+                emailRedirectTo:
+                  `${window.location.origin}` +
+                  "/auth/confirm" +
+                  `?next=${encodeURIComponent(
+                    safeNext
+                  )}`,
+              },
+            })
 
         setLoading(false)
 
@@ -357,10 +465,14 @@ export function LoginForm({
         return
       }
 
-      const { error } =
+      const {
+        error,
+      } =
         await supabase.auth
           .signInWithPassword({
-            email: cleanEmail,
+            email:
+              cleanEmail,
+
             password,
           })
 
@@ -374,11 +486,6 @@ export function LoginForm({
         return
       }
 
-      /*
-       * Login se reemplaza por /entry.
-       * /entry decide si corresponde
-       * abrir Admin, Pricing o VIP.
-       */
       window.location.replace(
         safeNext
       )
@@ -397,67 +504,98 @@ export function LoginForm({
       }
 
       if (
-        recoveryIsCoolingDown
+        loading ||
+        recoveryCooldown > 0
       ) {
-        setMessage(
-          `Espera ${recoveryCooldown} segundos para volver a enviarlo.`
-        )
-
-        return
-      }
-
-      if (loading) {
         return
       }
 
       setLoading(true)
 
       setMessage(
-        "Enviando enlace..."
+        "Enviando correo de recuperación..."
       )
 
-      const { error } =
-        await supabase.auth
-          .resetPasswordForEmail(
-            recoveryEmail,
+      try {
+        const response =
+          await fetch(
+            "/api/auth/request-password-reset",
             {
-              redirectTo:
-                `${window.location.origin}` +
-                "/reset-password",
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              credentials:
+                "same-origin",
+
+              cache:
+                "no-store",
+
+              body:
+                JSON.stringify({
+                  email:
+                    normalizedRecoveryEmail,
+                }),
             }
           )
 
-      setLoading(false)
+        const result =
+          (
+            await response
+              .json()
+              .catch(
+                () => ({})
+              )
+          ) as
+            PasswordResetResponse
 
-      if (error) {
         if (
-          error.status === 429
+          result.retryAt ||
+          result.retryAfterSeconds
         ) {
-          startRecoveryCooldown()
+          startRecoveryCooldown(
+            result.retryAt,
+            result.retryAfterSeconds
+          )
+        }
+
+        if (
+          !response.ok ||
+          !result.success
+        ) {
+          if (
+            response.status ===
+              429 ||
+            result.reason ===
+              "rate_limit"
+          ) {
+            setMessage("")
+            return
+          }
 
           setMessage(
-            "Espera un momento antes de intentarlo nuevamente."
+            result.error ||
+              "No se pudo enviar el correo de recuperación."
           )
 
           return
         }
 
         setMessage(
-          "No se pudo enviar el enlace. Inténtalo nuevamente."
+          result.message ||
+            "Confirma el enlace enviado a tu correo."
         )
-
-        return
+      } catch {
+        setMessage(
+          "No se pudo enviar el correo de recuperación. Inténtalo nuevamente."
+        )
+      } finally {
+        setLoading(false)
       }
-
-      setEmail(
-        recoveryEmail
-      )
-
-      startRecoveryCooldown()
-
-      setMessage(
-        "Confirma el enlace enviado a tu correo."
-      )
     }
 
   const submitOnEnter = (
@@ -482,32 +620,28 @@ export function LoginForm({
     void handleSubmit()
   }
 
-  const togglePasswordVisibility = (
-    event:
-      MouseEvent<HTMLButtonElement>
-  ) => {
-    /*
-     * El ojo únicamente alterna la
-     * visibilidad de la contraseña.
-     */
-    setShowPassword(
-      (current) => !current
-    )
+  const togglePasswordVisibility =
+    (
+      event:
+        MouseEvent<HTMLButtonElement>
+    ) => {
+      setShowPassword(
+        (current) =>
+          !current
+      )
 
-    /*
-     * El campo deja de estar activo.
-     * Desaparece el cursor y, en móvil,
-     * se cierra el teclado.
-     */
-    passwordInputRef.current?.blur()
+      passwordInputRef
+        .current
+        ?.blur()
 
-    /*
-     * El botón tampoco conserva el foco.
-     * De este modo Enter no vuelve a
-     * activar el ojo.
-     */
-    event.currentTarget.blur()
-  }
+      event.currentTarget
+        .blur()
+    }
+
+  const recoveryButtonDisabled =
+    loading ||
+    !recoveryEmailIsValid ||
+    recoveryCooldown > 0
 
   return (
     <div className="space-y-4">
@@ -533,7 +667,9 @@ export function LoginForm({
       {mode !== "forgot" && (
         <div className="relative">
           <input
-            ref={passwordInputRef}
+            ref={
+              passwordInputRef
+            }
             type={
               showPassword
                 ? "text"
@@ -600,7 +736,7 @@ export function LoginForm({
         }
         disabled={
           mode === "forgot"
-            ? recoveryButtonIsDisabled
+            ? recoveryButtonDisabled
             : loading
         }
         className="telegram-button w-full rounded-xl px-6 py-4 disabled:pointer-events-none disabled:opacity-70"
@@ -618,12 +754,16 @@ export function LoginForm({
 
         {!loading &&
           mode === "forgot" &&
-          recoveryIsCoolingDown &&
-          `Reenviar en ${recoveryCooldown} s`}
+          recoveryCooldown >
+            0 &&
+          `Nuevo intento en ${formatCooldown(
+            recoveryCooldown
+          )}`}
 
         {!loading &&
           mode === "forgot" &&
-          !recoveryIsCoolingDown &&
+          recoveryCooldown ===
+            0 &&
           "Enviar enlace"}
       </button>
 
@@ -634,7 +774,9 @@ export function LoginForm({
             setMode("forgot")
             setMessage("")
             setPassword("")
-            setShowPassword(false)
+            setShowPassword(
+              false
+            )
           }}
           disabled={loading}
           className="text-sm text-gold/70 transition hover:text-gold disabled:pointer-events-none disabled:opacity-50"
@@ -670,7 +812,9 @@ export function LoginForm({
 
               setMessage("")
               setPassword("")
-              setShowPassword(false)
+              setShowPassword(
+                false
+              )
             }}
             disabled={loading}
             className="block w-full text-sm text-gold/70 transition hover:text-gold disabled:pointer-events-none disabled:opacity-50"

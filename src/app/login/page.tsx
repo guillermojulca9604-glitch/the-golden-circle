@@ -4,10 +4,70 @@ import { supabaseAdmin } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { LoginClient } from "./login-client"
 
+type Props = {
+  searchParams: Promise<{
+    next?: string
+    oauth_error?: string
+  }>
+}
+
+function getSafeNextPath(
+  value: string | undefined
+) {
+  if (
+    !value ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\")
+  ) {
+    return "/entry"
+  }
+
+  return value
+}
+
+function getOAuthErrorMessage(
+  errorCode: string | undefined
+) {
+  switch (errorCode) {
+    case "access_denied":
+      return "Cancelaste el acceso con Google."
+
+    case "provider_error":
+      return "Google no pudo completar el acceso."
+
+    case "missing_code":
+    case "exchange_failed":
+      return "No pudimos completar el inicio de sesión con Google."
+
+    case "membership_check_failed":
+      return "La cuenta se conectó, pero no pudimos comprobar tu membresía."
+
+    default:
+      return ""
+  }
+}
+
 export const dynamic =
   "force-dynamic"
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: Props) {
+  const params =
+    await searchParams
+
+  const nextPath =
+    getSafeNextPath(
+      params.next
+    )
+
+  const errorReturnPath =
+    "/login" +
+    `?next=${encodeURIComponent(
+      nextPath
+    )}`
+
   const supabase =
     await createClient()
 
@@ -16,10 +76,6 @@ export default async function LoginPage() {
   } =
     await supabase.auth.getUser()
 
-  /*
-   * Un usuario que ya inició sesión
-   * no vuelve a ver Login.
-   */
   if (user) {
     const adminEmail =
       process.env.ADMIN_EMAIL
@@ -65,10 +121,20 @@ export default async function LoginPage() {
       redirect("/vip")
     }
 
-    redirect("/pricing")
+    redirect(nextPath)
   }
 
   return (
-    <LoginClient nextPath="/entry" />
+    <LoginClient
+      nextPath={nextPath}
+      errorReturnPath={
+        errorReturnPath
+      }
+      oauthErrorMessage={
+        getOAuthErrorMessage(
+          params.oauth_error
+        )
+      }
+    />
   )
 }

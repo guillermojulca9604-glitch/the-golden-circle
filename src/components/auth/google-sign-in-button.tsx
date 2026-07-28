@@ -369,7 +369,7 @@ export function GoogleSignInButton({
         )
       }
 
-      window.location.assign(
+      window.location.replace(
         safeNextPath
       )
     } catch (error) {

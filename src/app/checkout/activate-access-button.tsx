@@ -252,8 +252,7 @@ export function ActivateAccessButton({
           /*
            * Al regresar desde Mercado Pago
            * hacemos una segunda comprobación
-           * breve. No existe la espera fija
-           * de diez segundos anterior.
+           * breve.
            */
           if (
             returningFromPayment &&
@@ -453,6 +452,11 @@ export function ActivateAccessButton({
         ) {
           setPaymentReturnFlag()
 
+          /*
+           * Checkout debe permanecer en
+           * el historial mientras Mercado
+           * Pago se abre en la misma pestaña.
+           */
           window.location.assign(
             data.url
           )

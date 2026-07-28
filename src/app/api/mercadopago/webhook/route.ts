@@ -4,6 +4,9 @@ import {
   normalizePaymentId,
   reconcilePaymentById,
 } from "@/lib/mercadopago/reconcile-payment"
+import {
+  expirePreferenceForApprovedPayment,
+} from "@/lib/mercadopago/expire-preference"
 
 export const dynamic =
   "force-dynamic"
@@ -125,6 +128,45 @@ export async function POST(
         ? result.httpStatus
         : 500
     )
+  }
+
+  /*
+   * Cuando el pago ya activó el VIP,
+   * cerramos la preferencia exacta
+   * que generó ese pago.
+   *
+   * Así, una pantalla anterior de
+   * Mercado Pago no debe poder iniciar
+   * otro cobro con la misma preferencia.
+   */
+  if (result.active) {
+    const expiration =
+      await expirePreferenceForApprovedPayment(
+        paymentId
+      )
+
+    if (!expiration.ok) {
+      /*
+       * La membresía ya está activa,
+       * pero devolvemos 500 para que
+       * Mercado Pago vuelva a intentar
+       * la notificación y el cierre.
+       */
+      return json(
+        {
+          received: false,
+          active: true,
+          status: result.status,
+          payment_id:
+            result.paymentId ||
+            paymentId,
+          error:
+            expiration.error ||
+            "No se pudo cerrar la preferencia de pago.",
+        },
+        500
+      )
+    }
   }
 
   return json({

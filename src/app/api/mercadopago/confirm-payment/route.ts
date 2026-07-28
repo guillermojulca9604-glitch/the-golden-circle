@@ -1,4 +1,7 @@
-import { NextResponse } from "next/server"
+import {
+  after,
+  NextResponse,
+} from "next/server"
 
 import {
   expirePreferenceForApprovedPayment,
@@ -37,14 +40,15 @@ export async function POST(
     await supabase.auth.getUser()
 
   /*
-   * Esta ruta solo puede utilizarse
-   * con una sesión válida de TGC.
+   * Solo una sesión válida de
+   * The Golden Circle puede utilizar
+   * esta ruta.
    */
   if (!user) {
     return json(
       {
         active: false,
-        preferenceClosed: false,
+        accessReady: false,
         error: "No autorizado",
       },
       401
@@ -65,7 +69,7 @@ export async function POST(
     return json(
       {
         active: false,
-        preferenceClosed: false,
+        accessReady: false,
         error:
           "Identificador de pago inválido.",
       },
@@ -74,15 +78,15 @@ export async function POST(
   }
 
   /*
-   * Consultamos el pago directamente
-   * en Mercado Pago y comprobamos:
+   * Esta función comprueba directamente:
    *
-   * - usuario;
-   * - intento registrado;
-   * - plan;
-   * - precio;
-   * - moneda;
-   * - estado aprobado.
+   * - el pago real en Mercado Pago;
+   * - el usuario propietario;
+   * - el intento registrado;
+   * - el plan;
+   * - el importe;
+   * - la moneda;
+   * - el estado aprobado.
    */
   const result =
     await reconcilePaymentById(
@@ -90,11 +94,16 @@ export async function POST(
       user.id
     )
 
+  /*
+   * Si la operación todavía no pudo
+   * verificarse con seguridad, no
+   * concedemos el acceso.
+   */
   if (!result.checked) {
     return json(
       {
         active: false,
-        preferenceClosed: false,
+        accessReady: false,
         membership:
           result.membership,
         status: result.status,
@@ -110,15 +119,14 @@ export async function POST(
   }
 
   /*
-   * El pago todavía no está aprobado.
-   * La pantalla de confirmación seguirá
-   * comprobándolo nuevamente.
+   * Mercado Pago todavía no confirmó
+   * un pago aprobado.
    */
   if (!result.active) {
     return json(
       {
         active: false,
-        preferenceClosed: false,
+        accessReady: false,
         membership:
           result.membership,
         status: result.status,
@@ -132,61 +140,69 @@ export async function POST(
   }
 
   /*
-   * La membresía ya está activa.
-   * Antes de confirmar el final del flujo,
-   * vencemos la preferencia exacta que
-   * produjo este pago.
+   * En este punto:
+   *
+   * - el pago ya fue comprobado;
+   * - pertenece al usuario actual;
+   * - la membresía VIP ya está activa.
+   *
+   * Respondemos inmediatamente para
+   * no congelar la pantalla esperando
+   * otra respuesta de Mercado Pago.
    */
-  const expiration =
-    await expirePreferenceForApprovedPayment(
-      paymentId,
-      user.id
-    )
-
-  if (
-    !expiration.ok ||
-    expiration.skipped
-  ) {
-    return json(
-      {
-        active: false,
-        membership:
-          result.membership,
-        preferenceClosed: false,
-        status:
-          expiration.skipped
-            ? "payment_not_approved"
-            : result.status,
-        paymentId:
-          result.paymentId ||
+  after(async () => {
+    try {
+      const expiration =
+        await expirePreferenceForApprovedPayment(
           paymentId,
-        error:
-          expiration.error ||
-          "El pago fue recibido, pero todavía no se pudo cerrar su operación. Se verificará nuevamente.",
-      },
-      expiration.skipped
-        ? 202
-        : 503
-    )
-  }
+          user.id
+        )
+
+      if (
+        !expiration.ok &&
+        !expiration.skipped
+      ) {
+        console.error(
+          "No se pudo cerrar la preferencia después de confirmar el acceso:",
+          {
+            paymentId,
+            userId: user.id,
+            error:
+              expiration.error,
+          }
+        )
+      }
+    } catch (error) {
+      console.error(
+        "Error al cerrar la preferencia en segundo plano:",
+        {
+          paymentId,
+          userId: user.id,
+          error,
+        }
+      )
+    }
+  })
 
   /*
-   * Solo respondemos active: true cuando:
+   * active: true solo aparece después
+   * de validar el pago y activar la
+   * membresía en el servidor.
    *
-   * 1. el pago fue comprobado;
-   * 2. la membresía está activa;
-   * 3. la preferencia quedó vencida.
+   * El cierre de la preferencia continúa
+   * en segundo plano y también permanece
+   * protegido por el webhook.
    */
   return json({
     active: true,
+    accessReady: true,
     membership:
       result.membership,
-    preferenceClosed: true,
+    preferenceCloseScheduled:
+      true,
     status: result.status,
     paymentId:
       result.paymentId ||
       paymentId,
-    preferenceId:
-      expiration.preferenceId,
   })
 }

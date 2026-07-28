@@ -11,7 +11,7 @@ type Props = {
 
 type ConfirmPaymentResponse = {
   active?: boolean
-  preferenceClosed?: boolean
+  accessReady?: boolean
   membership?: unknown
   status?: string | null
   paymentId?: string
@@ -34,10 +34,11 @@ const NORMAL_CHECK_INTERVAL_MS =
   2500
 
 /*
- * La barra avanza exactamente un punto
- * por vez. El recorrido completo dura
- * aproximadamente dos segundos cuando
- * todo ya está confirmado.
+ * La barra avanza un punto por vez.
+ *
+ * Un recorrido completo desde cero
+ * dura aproximadamente dos segundos
+ * cuando todo ya está confirmado.
  */
 const PROGRESS_STEP_DELAY_MS =
   20
@@ -59,9 +60,9 @@ export function PaymentSuccessWaiter({
   paymentId,
 }: Props) {
   /*
-   * Progreso que realmente se muestra.
+   * Progreso realmente visible.
    *
-   * Este valor únicamente avanza:
+   * Siempre avanza:
    * 0, 1, 2, 3, 4...
    */
   const [
@@ -70,9 +71,8 @@ export function PaymentSuccessWaiter({
   ] = useState(0)
 
   /*
-   * Punto hasta el que la barra tiene
-   * permiso de avanzar según los estados
-   * confirmados por el servidor.
+   * Límite confirmado por el servidor
+   * hasta el cual puede avanzar.
    */
   const [
     targetProgress,
@@ -92,12 +92,11 @@ export function PaymentSuccessWaiter({
   ] = useState(false)
 
   /*
-   * Movimiento constante de la barra.
+   * Movimiento uniforme.
    *
-   * Aunque el servidor cambie el objetivo
-   * directamente de 12 a 84, la barra
-   * visible recorre todos los números
-   * intermedios uno por uno.
+   * Aunque el servidor confirme varias
+   * etapas simultáneamente, la barra
+   * recorre todos los puntos intermedios.
    */
   useEffect(() => {
     if (
@@ -132,9 +131,10 @@ export function PaymentSuccessWaiter({
   ])
 
   /*
-   * Cuando el servidor ya confirmó todo,
-   * esperamos únicamente a que la barra
-   * termine su recorrido hasta 100.
+   * Entramos a VIP cuando:
+   *
+   * - el servidor confirmó el acceso;
+   * - la barra terminó su recorrido.
    */
   useEffect(() => {
     if (
@@ -195,9 +195,11 @@ export function PaymentSuccessWaiter({
       }
 
     /*
-     * El servidor solamente cambia el
-     * objetivo. Nunca cambia directamente
-     * el ancho visible de la barra.
+     * El servidor modifica solamente
+     * el destino de la barra.
+     *
+     * El ancho visible nunca cambia
+     * bruscamente.
      */
     const advanceTarget = (
       nextTarget: number,
@@ -206,7 +208,8 @@ export function PaymentSuccessWaiter({
       if (
         cancelled ||
         redirecting ||
-        nextTarget <= highestTarget
+        nextTarget <=
+          highestTarget
       ) {
         return
       }
@@ -260,16 +263,19 @@ export function PaymentSuccessWaiter({
 
       finished = true
 
+      /*
+       * Ya no esperamos que la pantalla
+       * confirme el cierre de la preferencia.
+       *
+       * El pago y la membresía ya fueron
+       * validados. El cierre continúa en
+       * segundo plano y en el webhook.
+       */
       advanceTarget(
         100,
         "Acceso confirmado. Entrando al área VIP..."
       )
 
-      /*
-       * La redirección se realizará cuando
-       * la barra visible llegue naturalmente
-       * a 100, avanzando punto por punto.
-       */
       setAccessReady(true)
     }
 
@@ -285,9 +291,7 @@ export function PaymentSuccessWaiter({
         }
 
         /*
-         * La consulta comenzó realmente.
-         * La barra parte desde cero y
-         * avanza 1, 2, 3... hasta 12.
+         * La primera consulta ya empezó.
          */
         advanceTarget(
           12,
@@ -331,11 +335,8 @@ export function PaymentSuccessWaiter({
               )) as ConfirmPaymentResponse
 
           /*
-           * La operación fue localizada.
-           *
-           * El objetivo puede cambiar a 42,
-           * pero la barra visible continuará:
-           * 13, 14, 15... 41, 42.
+           * El servidor localizó información
+           * sobre la operación.
            */
           if (
             typeof data.status ===
@@ -349,6 +350,10 @@ export function PaymentSuccessWaiter({
             )
           }
 
+          /*
+           * Mercado Pago confirmó
+           * el estado aprobado.
+           */
           if (
             data.status ===
             "approved"
@@ -359,6 +364,10 @@ export function PaymentSuccessWaiter({
             )
           }
 
+          /*
+           * La membresía ya fue registrada
+           * en The Golden Circle.
+           */
           if (data.membership) {
             advanceTarget(
               84,
@@ -367,25 +376,25 @@ export function PaymentSuccessWaiter({
           }
 
           /*
-           * Solo se autoriza el recorrido
-           * final hasta 100 cuando:
+           * La entrada depende ahora de:
            *
-           * - el pago está aprobado;
-           * - la membresía está activa;
-           * - la preferencia quedó cerrada.
+           * - pago validado;
+           * - membresía activa.
+           *
+           * El cierre de la preferencia
+           * no bloquea visualmente al usuario.
            */
           if (
             data.active &&
-            data.preferenceClosed
+            data.accessReady
           ) {
             completeAccess()
             return
           }
 
           /*
-           * Un error temporal mantiene la
-           * verificación. No desbloquea
-           * otro pago.
+           * Un error temporal mantiene
+           * la comprobación activa.
            */
           if (!response.ok) {
             return
@@ -393,8 +402,7 @@ export function PaymentSuccessWaiter({
         } catch {
           /*
            * Una interrupción temporal no
-           * reinicia la barra. La consulta
-           * se repetirá automáticamente.
+           * reinicia la barra.
            */
         }
       }
@@ -460,7 +468,7 @@ export function PaymentSuccessWaiter({
           }
         } catch {
           /*
-           * Se comprobará nuevamente.
+           * Se volverá a comprobar.
            */
         }
       }
@@ -516,9 +524,10 @@ export function PaymentSuccessWaiter({
             startedAt
 
           /*
-           * El límite sigue existiendo como
-           * respaldo, pero no se muestra
-           * ningún contador ni “0s”.
+           * Respaldo para una operación
+           * excepcionalmente demorada.
+           *
+           * No se muestra un contador.
            */
           if (
             elapsedMs >=
@@ -582,7 +591,7 @@ export function PaymentSuccessWaiter({
       }
 
     /*
-     * Primera consulta inmediata.
+     * Primera comprobación inmediata.
      */
     void runCheck()
 

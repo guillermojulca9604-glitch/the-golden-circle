@@ -12,10 +12,26 @@ type Props = {
 type ConfirmPaymentResponse = {
   active?: boolean
   preferenceClosed?: boolean
+  membership?: unknown
+  status?: string | null
+  paymentId?: string
+  error?: string
 }
 
 const PAYMENT_RETURN_CHECK_KEY =
   "tgc:payment-return-check"
+
+const MAX_WAIT_MS =
+  90 * 1000
+
+const FAST_CHECK_WINDOW_MS =
+  15 * 1000
+
+const FAST_CHECK_INTERVAL_MS =
+  1000
+
+const NORMAL_CHECK_INTERVAL_MS =
+  2500
 
 function clearPaymentReturnFlag() {
   try {
@@ -34,19 +50,75 @@ export function PaymentSuccessWaiter({
   paymentId,
 }: Props) {
   const [
-    seconds,
-    setSeconds,
+    progress,
+    setProgress,
   ] = useState(0)
+
+  const [
+    progressMessage,
+    setProgressMessage,
+  ] = useState(
+    "Preparando la confirmación..."
+  )
 
   useEffect(() => {
     let cancelled = false
+    let redirecting = false
+    let checking = false
+
+    let highestProgress = 0
 
     let timeoutId:
       | number
       | undefined
 
-    let attempts = 0
-    let redirecting = false
+    const startedAt =
+      Date.now()
+
+    const clearScheduledCheck =
+      () => {
+        if (
+          timeoutId !== undefined
+        ) {
+          window.clearTimeout(
+            timeoutId
+          )
+
+          timeoutId = undefined
+        }
+      }
+
+    /*
+     * La barra nunca retrocede.
+     *
+     * Cada etapa nueva cambia el destino
+     * de la animación y el navegador se
+     * desplaza suavemente hasta allí.
+     */
+    const advanceProgress = (
+      nextProgress: number,
+      nextMessage: string
+    ) => {
+      if (
+        cancelled ||
+        redirecting ||
+        nextProgress <=
+          highestProgress
+      ) {
+        return
+      }
+
+      highestProgress =
+        nextProgress
+
+      setProgress(
+        nextProgress
+      )
+
+      setProgressMessage(
+        nextMessage
+      )
+    }
 
     const goHome = () => {
       if (redirecting) {
@@ -54,12 +126,9 @@ export function PaymentSuccessWaiter({
       }
 
       redirecting = true
+      clearScheduledCheck()
       clearPaymentReturnFlag()
 
-      /*
-       * La sesión de TGC ya no existe.
-       * Regresamos directamente al Inicio.
-       */
       window.location.replace("/")
     }
 
@@ -69,15 +138,32 @@ export function PaymentSuccessWaiter({
       }
 
       redirecting = true
+      clearScheduledCheck()
       clearPaymentReturnFlag()
 
       /*
-       * Solo llegamos aquí cuando el pago
-       * está aprobado, el VIP está activo
-       * y la preferencia quedó cerrada.
+       * No esperamos a que la animación
+       * termine visualmente.
+       *
+       * Apenas el servidor confirma todo,
+       * entramos directamente al área VIP.
        */
       window.location.replace(
         "/vip"
+      )
+    }
+
+    const goPending = () => {
+      if (redirecting) {
+        return
+      }
+
+      redirecting = true
+      clearScheduledCheck()
+      clearPaymentReturnFlag()
+
+      window.location.replace(
+        "/payment-pending"
       )
     }
 
@@ -91,6 +177,16 @@ export function PaymentSuccessWaiter({
           return
         }
 
+        /*
+         * La página ya inició una consulta
+         * real. La barra parte desde cero
+         * y se mueve suavemente hasta aquí.
+         */
+        advanceProgress(
+          12,
+          "Consultando la operación..."
+        )
+
         try {
           const response =
             await fetch(
@@ -100,10 +196,12 @@ export function PaymentSuccessWaiter({
                 cache: "no-store",
                 credentials:
                   "same-origin",
+
                 headers: {
                   "Content-Type":
                     "application/json",
                 },
+
                 body:
                   JSON.stringify({
                     paymentId,
@@ -118,15 +216,6 @@ export function PaymentSuccessWaiter({
             return
           }
 
-          /*
-           * Un 202, 503 u otro error temporal
-           * significa que todavía no debemos
-           * abandonar esta pantalla.
-           */
-          if (!response.ok) {
-            return
-          }
-
           const data =
             (await response
               .json()
@@ -135,20 +224,79 @@ export function PaymentSuccessWaiter({
               )) as ConfirmPaymentResponse
 
           /*
-           * No basta con que el VIP ya exista.
-           * La operación de Mercado Pago también
-           * debe haber quedado cerrada.
+           * El servidor encontró información
+           * real sobre esta operación.
+           */
+          if (
+            typeof data.status ===
+              "string" ||
+            typeof data.paymentId ===
+              "string"
+          ) {
+            advanceProgress(
+              42,
+              "Pago localizado."
+            )
+          }
+
+          /*
+           * Mercado Pago confirmó que
+           * el pago está aprobado.
+           */
+          if (
+            data.status ===
+            "approved"
+          ) {
+            advanceProgress(
+              68,
+              "Pago aprobado."
+            )
+          }
+
+          /*
+           * La membresía ya existe en
+           * The Golden Circle.
+           */
+          if (data.membership) {
+            advanceProgress(
+              84,
+              "Membresía VIP activada."
+            )
+          }
+
+          /*
+           * Solo se completa cuando:
+           *
+           * - el pago está aprobado;
+           * - la membresía está activa;
+           * - la preferencia quedó cerrada.
            */
           if (
             data.active &&
             data.preferenceClosed
           ) {
+            advanceProgress(
+              100,
+              "Acceso confirmado."
+            )
+
             goVip()
+            return
+          }
+
+          /*
+           * Un error temporal no permite
+           * otro pago ni rompe la operación.
+           * La consulta se repetirá.
+           */
+          if (!response.ok) {
+            return
           }
         } catch {
           /*
-           * El siguiente intento volverá
-           * a consultar el pago.
+           * Si hay una interrupción temporal,
+           * se vuelve a consultar sin reiniciar
+           * la barra.
            */
         }
       }
@@ -161,6 +309,15 @@ export function PaymentSuccessWaiter({
         ) {
           return
         }
+
+        /*
+         * Respaldo excepcional para un
+         * regreso sin payment_id.
+         */
+        advanceProgress(
+          12,
+          "Comprobando tu membresía..."
+        )
 
         try {
           const response =
@@ -194,94 +351,220 @@ export function PaymentSuccessWaiter({
               }
 
           if (data.active) {
+            advanceProgress(
+              84,
+              "Membresía VIP activada."
+            )
+
+            advanceProgress(
+              100,
+              "Acceso confirmado."
+            )
+
             goVip()
           }
         } catch {
           /*
-           * El siguiente intento volverá
-           * a comprobar la membresía.
+           * Se volverá a comprobar.
            */
         }
       }
 
-    const check = async () => {
-      if (
-        cancelled ||
-        redirecting
-      ) {
-        return
-      }
+    const scheduleNextCheck =
+      () => {
+        clearScheduledCheck()
 
-      attempts += 1
-
-      /*
-       * Cuando Mercado Pago devuelve payment_id,
-       * confirm-payment es la única ruta que puede
-       * autorizar el salto final hacia VIP.
-       *
-       * Así evitamos avanzar únicamente porque
-       * el webhook ya activó la membresía mientras
-       * la preferencia todavía se está cerrando.
-       */
-      if (paymentId) {
         if (
-          attempts === 1 ||
-          attempts % 5 === 0
+          cancelled ||
+          redirecting
         ) {
-          await confirmReturnedPayment()
+          return
         }
-      } else {
+
+        const elapsedMs =
+          Date.now() -
+          startedAt
+
         /*
-         * Respaldo para un regreso excepcional
-         * que no incluya payment_id.
+         * Los primeros segundos se revisan
+         * con mayor frecuencia.
+         *
+         * Después se reduce el ritmo para no
+         * realizar solicitudes innecesarias.
          */
-        await checkMembership()
-      }
+        const interval =
+          elapsedMs <
+          FAST_CHECK_WINDOW_MS
+            ? FAST_CHECK_INTERVAL_MS
+            : NORMAL_CHECK_INTERVAL_MS
 
-      if (
-        cancelled ||
-        redirecting
-      ) {
-        return
-      }
-
-      setSeconds(attempts)
-
-      if (attempts < 90) {
         timeoutId =
           window.setTimeout(
-            check,
-            1000
+            () => {
+              void runCheck()
+            },
+            interval
           )
-      } else {
-        /*
-         * Después de noventa segundos no
-         * permitimos otro pago automáticamente.
-         * Se envía a la pantalla pendiente.
-         */
-        window.location.replace(
-          "/payment-pending"
-        )
       }
-    }
 
-    void check()
+    const runCheck =
+      async () => {
+        if (
+          cancelled ||
+          redirecting ||
+          checking
+        ) {
+          return
+        }
+
+        checking = true
+        clearScheduledCheck()
+
+        try {
+          const elapsedMs =
+            Date.now() -
+            startedAt
+
+          if (
+            elapsedMs >=
+            MAX_WAIT_MS
+          ) {
+            goPending()
+            return
+          }
+
+          /*
+           * La primera comprobación ocurre
+           * inmediatamente al cargar.
+           */
+          if (paymentId) {
+            await confirmReturnedPayment()
+          } else {
+            await checkMembership()
+          }
+        } finally {
+          checking = false
+
+          if (
+            !cancelled &&
+            !redirecting
+          ) {
+            scheduleNextCheck()
+          }
+        }
+      }
+
+    const checkImmediately =
+      () => {
+        if (
+          cancelled ||
+          redirecting ||
+          checking
+        ) {
+          return
+        }
+
+        clearScheduledCheck()
+        void runCheck()
+      }
+
+    const handlePageShow =
+      () => {
+        checkImmediately()
+      }
+
+    const handleFocus =
+      () => {
+        checkImmediately()
+      }
+
+    const handleVisibilityChange =
+      () => {
+        if (
+          document.visibilityState ===
+          "visible"
+        ) {
+          checkImmediately()
+        }
+      }
+
+    /*
+     * Primera consulta inmediata.
+     */
+    void runCheck()
+
+    /*
+     * Cuando se regresa mediante Atrás,
+     * Adelante o la caché del navegador,
+     * comprobamos nuevamente sin reiniciar
+     * el progreso alcanzado.
+     */
+    window.addEventListener(
+      "pageshow",
+      handlePageShow
+    )
+
+    window.addEventListener(
+      "focus",
+      handleFocus
+    )
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    )
 
     return () => {
       cancelled = true
+      clearScheduledCheck()
 
-      if (timeoutId) {
-        window.clearTimeout(
-          timeoutId
-        )
-      }
+      window.removeEventListener(
+        "pageshow",
+        handlePageShow
+      )
+
+      window.removeEventListener(
+        "focus",
+        handleFocus
+      )
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      )
     }
   }, [paymentId])
 
   return (
-    <p className="mt-6 text-xs leading-6 text-muted-foreground">
-      Activando acceso...{" "}
-      {seconds}s
-    </p>
+    <div
+      className="mt-7 space-y-4"
+      aria-live="polite"
+    >
+      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+        Confirmando acceso VIP
+      </p>
+
+      <div
+        className="h-2 w-full overflow-hidden rounded-full border border-amber-200/20 bg-white/5"
+        role="progressbar"
+        aria-label="Progreso de confirmación del pago"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress}
+      >
+        <div
+          className="relative h-full overflow-hidden rounded-full bg-[linear-gradient(90deg,#8f6a19,#f1d27a,#b88922)] transition-[width] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+          style={{
+            width: `${progress}%`,
+          }}
+        >
+          <div className="absolute inset-y-0 right-0 w-12 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.35),transparent)] opacity-70 animate-pulse" />
+        </div>
+      </div>
+
+      <p className="text-xs leading-6 text-muted-foreground">
+        {progressMessage}
+      </p>
+    </div>
   )
 }

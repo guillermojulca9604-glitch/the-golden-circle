@@ -33,6 +33,15 @@ const FAST_CHECK_INTERVAL_MS =
 const NORMAL_CHECK_INTERVAL_MS =
   2500
 
+/*
+ * La barra avanza exactamente un punto
+ * por vez. El recorrido completo dura
+ * aproximadamente dos segundos cuando
+ * todo ya está confirmado.
+ */
+const PROGRESS_STEP_DELAY_MS =
+  20
+
 function clearPaymentReturnFlag() {
   try {
     window.sessionStorage.removeItem(
@@ -49,9 +58,25 @@ function clearPaymentReturnFlag() {
 export function PaymentSuccessWaiter({
   paymentId,
 }: Props) {
+  /*
+   * Progreso que realmente se muestra.
+   *
+   * Este valor únicamente avanza:
+   * 0, 1, 2, 3, 4...
+   */
   const [
-    progress,
-    setProgress,
+    visibleProgress,
+    setVisibleProgress,
+  ] = useState(0)
+
+  /*
+   * Punto hasta el que la barra tiene
+   * permiso de avanzar según los estados
+   * confirmados por el servidor.
+   */
+  const [
+    targetProgress,
+    setTargetProgress,
   ] = useState(0)
 
   const [
@@ -61,12 +86,93 @@ export function PaymentSuccessWaiter({
     "Preparando la confirmación..."
   )
 
+  const [
+    accessReady,
+    setAccessReady,
+  ] = useState(false)
+
+  /*
+   * Movimiento constante de la barra.
+   *
+   * Aunque el servidor cambie el objetivo
+   * directamente de 12 a 84, la barra
+   * visible recorre todos los números
+   * intermedios uno por uno.
+   */
+  useEffect(() => {
+    if (
+      visibleProgress >=
+      targetProgress
+    ) {
+      return
+    }
+
+    const animationId =
+      window.setTimeout(
+        () => {
+          setVisibleProgress(
+            (currentProgress) =>
+              Math.min(
+                currentProgress + 1,
+                targetProgress
+              )
+          )
+        },
+        PROGRESS_STEP_DELAY_MS
+      )
+
+    return () => {
+      window.clearTimeout(
+        animationId
+      )
+    }
+  }, [
+    visibleProgress,
+    targetProgress,
+  ])
+
+  /*
+   * Cuando el servidor ya confirmó todo,
+   * esperamos únicamente a que la barra
+   * termine su recorrido hasta 100.
+   */
+  useEffect(() => {
+    if (
+      !accessReady ||
+      visibleProgress < 100
+    ) {
+      return
+    }
+
+    const redirectId =
+      window.setTimeout(
+        () => {
+          clearPaymentReturnFlag()
+
+          window.location.replace(
+            "/vip"
+          )
+        },
+        150
+      )
+
+    return () => {
+      window.clearTimeout(
+        redirectId
+      )
+    }
+  }, [
+    accessReady,
+    visibleProgress,
+  ])
+
   useEffect(() => {
     let cancelled = false
     let redirecting = false
     let checking = false
+    let finished = false
 
-    let highestProgress = 0
+    let highestTarget = 0
 
     let timeoutId:
       | number
@@ -89,30 +195,27 @@ export function PaymentSuccessWaiter({
       }
 
     /*
-     * La barra nunca retrocede.
-     *
-     * Cada etapa nueva cambia el destino
-     * de la animación y el navegador se
-     * desplaza suavemente hasta allí.
+     * El servidor solamente cambia el
+     * objetivo. Nunca cambia directamente
+     * el ancho visible de la barra.
      */
-    const advanceProgress = (
-      nextProgress: number,
+    const advanceTarget = (
+      nextTarget: number,
       nextMessage: string
     ) => {
       if (
         cancelled ||
         redirecting ||
-        nextProgress <=
-          highestProgress
+        nextTarget <= highestTarget
       ) {
         return
       }
 
-      highestProgress =
-        nextProgress
+      highestTarget =
+        nextTarget
 
-      setProgress(
-        nextProgress
+      setTargetProgress(
+        nextTarget
       )
 
       setProgressMessage(
@@ -132,27 +235,6 @@ export function PaymentSuccessWaiter({
       window.location.replace("/")
     }
 
-    const goVip = () => {
-      if (redirecting) {
-        return
-      }
-
-      redirecting = true
-      clearScheduledCheck()
-      clearPaymentReturnFlag()
-
-      /*
-       * No esperamos a que la animación
-       * termine visualmente.
-       *
-       * Apenas el servidor confirma todo,
-       * entramos directamente al área VIP.
-       */
-      window.location.replace(
-        "/vip"
-      )
-    }
-
     const goPending = () => {
       if (redirecting) {
         return
@@ -167,22 +249,47 @@ export function PaymentSuccessWaiter({
       )
     }
 
+    const completeAccess = () => {
+      if (
+        cancelled ||
+        redirecting ||
+        finished
+      ) {
+        return
+      }
+
+      finished = true
+
+      advanceTarget(
+        100,
+        "Acceso confirmado. Entrando al área VIP..."
+      )
+
+      /*
+       * La redirección se realizará cuando
+       * la barra visible llegue naturalmente
+       * a 100, avanzando punto por punto.
+       */
+      setAccessReady(true)
+    }
+
     const confirmReturnedPayment =
       async () => {
         if (
           !paymentId ||
           cancelled ||
-          redirecting
+          redirecting ||
+          finished
         ) {
           return
         }
 
         /*
-         * La página ya inició una consulta
-         * real. La barra parte desde cero
-         * y se mueve suavemente hasta aquí.
+         * La consulta comenzó realmente.
+         * La barra parte desde cero y
+         * avanza 1, 2, 3... hasta 12.
          */
-        advanceProgress(
+        advanceTarget(
           12,
           "Consultando la operación..."
         )
@@ -224,8 +331,11 @@ export function PaymentSuccessWaiter({
               )) as ConfirmPaymentResponse
 
           /*
-           * El servidor encontró información
-           * real sobre esta operación.
+           * La operación fue localizada.
+           *
+           * El objetivo puede cambiar a 42,
+           * pero la barra visible continuará:
+           * 13, 14, 15... 41, 42.
            */
           if (
             typeof data.status ===
@@ -233,39 +343,32 @@ export function PaymentSuccessWaiter({
             typeof data.paymentId ===
               "string"
           ) {
-            advanceProgress(
+            advanceTarget(
               42,
               "Pago localizado."
             )
           }
 
-          /*
-           * Mercado Pago confirmó que
-           * el pago está aprobado.
-           */
           if (
             data.status ===
             "approved"
           ) {
-            advanceProgress(
+            advanceTarget(
               68,
               "Pago aprobado."
             )
           }
 
-          /*
-           * La membresía ya existe en
-           * The Golden Circle.
-           */
           if (data.membership) {
-            advanceProgress(
+            advanceTarget(
               84,
               "Membresía VIP activada."
             )
           }
 
           /*
-           * Solo se completa cuando:
+           * Solo se autoriza el recorrido
+           * final hasta 100 cuando:
            *
            * - el pago está aprobado;
            * - la membresía está activa;
@@ -275,28 +378,23 @@ export function PaymentSuccessWaiter({
             data.active &&
             data.preferenceClosed
           ) {
-            advanceProgress(
-              100,
-              "Acceso confirmado."
-            )
-
-            goVip()
+            completeAccess()
             return
           }
 
           /*
-           * Un error temporal no permite
-           * otro pago ni rompe la operación.
-           * La consulta se repetirá.
+           * Un error temporal mantiene la
+           * verificación. No desbloquea
+           * otro pago.
            */
           if (!response.ok) {
             return
           }
         } catch {
           /*
-           * Si hay una interrupción temporal,
-           * se vuelve a consultar sin reiniciar
-           * la barra.
+           * Una interrupción temporal no
+           * reinicia la barra. La consulta
+           * se repetirá automáticamente.
            */
         }
       }
@@ -305,16 +403,18 @@ export function PaymentSuccessWaiter({
       async () => {
         if (
           cancelled ||
-          redirecting
+          redirecting ||
+          finished
         ) {
           return
         }
 
         /*
-         * Respaldo excepcional para un
-         * regreso sin payment_id.
+         * Respaldo excepcional cuando
+         * Mercado Pago no devuelve
+         * payment_id.
          */
-        advanceProgress(
+        advanceTarget(
           12,
           "Comprobando tu membresía..."
         )
@@ -351,21 +451,16 @@ export function PaymentSuccessWaiter({
               }
 
           if (data.active) {
-            advanceProgress(
+            advanceTarget(
               84,
               "Membresía VIP activada."
             )
 
-            advanceProgress(
-              100,
-              "Acceso confirmado."
-            )
-
-            goVip()
+            completeAccess()
           }
         } catch {
           /*
-           * Se volverá a comprobar.
+           * Se comprobará nuevamente.
            */
         }
       }
@@ -376,7 +471,8 @@ export function PaymentSuccessWaiter({
 
         if (
           cancelled ||
-          redirecting
+          redirecting ||
+          finished
         ) {
           return
         }
@@ -385,13 +481,6 @@ export function PaymentSuccessWaiter({
           Date.now() -
           startedAt
 
-        /*
-         * Los primeros segundos se revisan
-         * con mayor frecuencia.
-         *
-         * Después se reduce el ritmo para no
-         * realizar solicitudes innecesarias.
-         */
         const interval =
           elapsedMs <
           FAST_CHECK_WINDOW_MS
@@ -412,7 +501,8 @@ export function PaymentSuccessWaiter({
         if (
           cancelled ||
           redirecting ||
-          checking
+          checking ||
+          finished
         ) {
           return
         }
@@ -425,6 +515,11 @@ export function PaymentSuccessWaiter({
             Date.now() -
             startedAt
 
+          /*
+           * El límite sigue existiendo como
+           * respaldo, pero no se muestra
+           * ningún contador ni “0s”.
+           */
           if (
             elapsedMs >=
             MAX_WAIT_MS
@@ -433,10 +528,6 @@ export function PaymentSuccessWaiter({
             return
           }
 
-          /*
-           * La primera comprobación ocurre
-           * inmediatamente al cargar.
-           */
           if (paymentId) {
             await confirmReturnedPayment()
           } else {
@@ -447,7 +538,8 @@ export function PaymentSuccessWaiter({
 
           if (
             !cancelled &&
-            !redirecting
+            !redirecting &&
+            !finished
           ) {
             scheduleNextCheck()
           }
@@ -459,7 +551,8 @@ export function PaymentSuccessWaiter({
         if (
           cancelled ||
           redirecting ||
-          checking
+          checking ||
+          finished
         ) {
           return
         }
@@ -493,12 +586,6 @@ export function PaymentSuccessWaiter({
      */
     void runCheck()
 
-    /*
-     * Cuando se regresa mediante Atrás,
-     * Adelante o la caché del navegador,
-     * comprobamos nuevamente sin reiniciar
-     * el progreso alcanzado.
-     */
     window.addEventListener(
       "pageshow",
       handlePageShow
@@ -550,16 +637,17 @@ export function PaymentSuccessWaiter({
         aria-label="Progreso de confirmación del pago"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={progress}
+        aria-valuenow={
+          visibleProgress
+        }
       >
         <div
-          className="relative h-full overflow-hidden rounded-full bg-[linear-gradient(90deg,#8f6a19,#f1d27a,#b88922)] transition-[width] duration-1100 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          className="h-full rounded-full bg-[linear-gradient(90deg,#8f6a19,#f1d27a,#b88922)] transition-[width] duration-75 ease-linear"
           style={{
-            width: `${progress}%`,
+            width:
+              `${visibleProgress}%`,
           }}
-        >
-          <div className="absolute inset-y-0 right-0 w-12 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.35),transparent)] opacity-70 animate-pulse" />
-        </div>
+        />
       </div>
 
       <p className="text-xs leading-6 text-muted-foreground">

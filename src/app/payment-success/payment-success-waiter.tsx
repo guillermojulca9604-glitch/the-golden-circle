@@ -553,7 +553,7 @@ export function PaymentSuccessWaiter({
         aria-valuenow={progress}
       >
         <div
-          className="relative h-full overflow-hidden rounded-full bg-[linear-gradient(90deg,#8f6a19,#f1d27a,#b88922)] transition-[width] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+          className="relative h-full overflow-hidden rounded-full bg-[linear-gradient(90deg,#8f6a19,#f1d27a,#b88922)] transition-[width] duration-1100 ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{
             width: `${progress}%`,
           }}

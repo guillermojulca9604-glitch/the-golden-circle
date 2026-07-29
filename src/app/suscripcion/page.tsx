@@ -1,36 +1,58 @@
 import Link from "next/link"
+import { Source_Serif_4 } from "next/font/google"
 import { redirect } from "next/navigation"
 
 import { supabaseAdmin } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 
-export const dynamic = "force-dynamic"
+const priceFont =
+  Source_Serif_4({
+    subsets: ["latin"],
+    weight: "300",
+    display: "swap",
+  })
+
+export const dynamic =
+  "force-dynamic"
 
 export default async function SubscriptionPage() {
-  const supabase = await createClient()
+  const supabase =
+    await createClient()
 
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } =
+    await supabase.auth.getUser()
 
   /*
    * Si el usuario ya tiene una membresía activa,
    * no necesita escoger nuevamente un plan.
    */
   if (user) {
-    const { data: membership } =
+    const {
+      data: membership,
+    } =
       await supabaseAdmin
         .from("memberships")
         .select("id")
-        .eq("user_id", user.id)
-        .eq("status", "active")
+        .eq(
+          "user_id",
+          user.id
+        )
+        .eq(
+          "status",
+          "active"
+        )
         .gt(
           "expires_at",
           new Date().toISOString()
         )
-        .order("expires_at", {
-          ascending: false,
-        })
+        .order(
+          "expires_at",
+          {
+            ascending: false,
+          }
+        )
         .limit(1)
         .maybeSingle()
 
@@ -71,9 +93,21 @@ export default async function SubscriptionPage() {
                 Acceso privado durante un mes.
               </p>
 
-              <p className="mt-[clamp(1.5rem,4vh,2rem)] text-5xl font-light text-gold">
-                S/ 30
-              </p>
+              <div
+                className={`${priceFont.className} mt-[clamp(1.5rem,4vh,2rem)] flex items-baseline gap-1.5 text-gold/90`}
+                style={{
+                  fontVariantNumeric:
+                    "lining-nums tabular-nums",
+                }}
+              >
+                <span className="text-xl font-light leading-none">
+                  S/
+                </span>
+
+                <span className="text-5xl font-light leading-none tracking-[-0.015em]">
+                  30
+                </span>
+              </div>
 
               <Link
                 href="/suscripcion/acceso?plan=monthly"
@@ -98,9 +132,21 @@ export default async function SubscriptionPage() {
                 Acceso privado durante tres meses.
               </p>
 
-              <p className="mt-[clamp(1.5rem,4vh,2rem)] text-5xl font-light text-gold">
-                S/ 90
-              </p>
+              <div
+                className={`${priceFont.className} mt-[clamp(1.5rem,4vh,2rem)] flex items-baseline gap-1.5 text-gold/90`}
+                style={{
+                  fontVariantNumeric:
+                    "lining-nums tabular-nums",
+                }}
+              >
+                <span className="text-xl font-light leading-none">
+                  S/
+                </span>
+
+                <span className="text-5xl font-light leading-none tracking-[-0.015em]">
+                  80
+                </span>
+              </div>
 
               <Link
                 href="/suscripcion/acceso?plan=quarterly"

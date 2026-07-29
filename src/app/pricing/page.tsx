@@ -1,10 +1,18 @@
 import Link from "next/link"
+import { Source_Serif_4 } from "next/font/google"
 import { redirect } from "next/navigation"
 
 import { AuthTopbarSimple } from "@/components/auth-topbar-simple"
 import { SessionGuard } from "@/components/session-guard"
 import { supabaseAdmin } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
+
+const priceFont =
+  Source_Serif_4({
+    subsets: ["latin"],
+    weight: "300",
+    display: "swap",
+  })
 
 export const dynamic =
   "force-dynamic"
@@ -95,9 +103,21 @@ export default async function PricingPage() {
                   Acceso privado durante un mes.
                 </p>
 
-                <p className="mt-[clamp(1.5rem,4vh,2rem)] text-5xl font-light text-gold">
-                  S/ 30
-                </p>
+                <div
+                  className={`${priceFont.className} mt-[clamp(1.5rem,4vh,2rem)] flex items-baseline gap-1.5 text-gold/90`}
+                  style={{
+                    fontVariantNumeric:
+                      "lining-nums tabular-nums",
+                  }}
+                >
+                  <span className="text-xl font-light leading-none">
+                    S/
+                  </span>
+
+                  <span className="text-5xl font-light leading-none tracking-[-0.015em]">
+                    30
+                  </span>
+                </div>
 
                 <Link
                   href="/checkout?plan=monthly"
@@ -122,9 +142,21 @@ export default async function PricingPage() {
                   Acceso privado durante tres meses.
                 </p>
 
-                <p className="mt-[clamp(1.5rem,4vh,2rem)] text-5xl font-light text-gold">
-                  S/ 90
-                </p>
+                <div
+                  className={`${priceFont.className} mt-[clamp(1.5rem,4vh,2rem)] flex items-baseline gap-1.5 text-gold/90`}
+                  style={{
+                    fontVariantNumeric:
+                      "lining-nums tabular-nums",
+                  }}
+                >
+                  <span className="text-xl font-light leading-none">
+                    S/
+                  </span>
+
+                  <span className="text-5xl font-light leading-none tracking-[-0.015em]">
+                    80
+                  </span>
+                </div>
 
                 <Link
                   href="/checkout?plan=quarterly"

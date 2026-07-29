@@ -9,7 +9,7 @@ export const PAYMENT_PLANS = {
 
   quarterly: {
     title: "TGC Access T",
-    price: 90,
+    price: 80,
     days: 90,
   },
 } as const

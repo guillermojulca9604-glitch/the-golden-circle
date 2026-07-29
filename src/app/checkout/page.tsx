@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { Source_Serif_4 } from "next/font/google"
 import { redirect } from "next/navigation"
 
 import { AuthTopbarSimple } from "@/components/auth-topbar-simple"
@@ -6,6 +7,13 @@ import { SessionGuard } from "@/components/session-guard"
 import { supabaseAdmin } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { ActivateAccessButton } from "./activate-access-button"
+
+const priceFont =
+  Source_Serif_4({
+    subsets: ["latin"],
+    weight: "300",
+    display: "swap",
+  })
 
 type Plan =
   | "monthly"
@@ -34,7 +42,7 @@ const plans: Record<
 
   quarterly: {
     label: "Trimestral",
-    price: "S/ 90",
+    price: "S/ 80",
     description:
       "Acceso privado durante 3 meses.",
   },
@@ -99,6 +107,12 @@ export default async function CheckoutPage({
 
   const selectedPlan =
     plans[plan]
+
+  const [
+    currency,
+    amount,
+  ] =
+    selectedPlan.price.split(" ")
 
   return (
     <main className="min-h-dvh overflow-x-hidden bg-background px-4 pt-11 text-foreground sm:px-6">
@@ -167,8 +181,20 @@ export default async function CheckoutPage({
                   Total
                 </p>
 
-                <div className="checkout-premium-price mb-6 text-5xl font-light">
-                  {selectedPlan.price}
+                <div
+                  className={`${priceFont.className} mb-6 flex items-baseline gap-1.5 text-gold/90`}
+                  style={{
+                    fontVariantNumeric:
+                      "lining-nums tabular-nums",
+                  }}
+                >
+                  <span className="text-xl font-light leading-none">
+                    {currency}
+                  </span>
+
+                  <span className="text-5xl font-light leading-none tracking-[-0.015em]">
+                    {amount}
+                  </span>
                 </div>
 
                 <ActivateAccessButton

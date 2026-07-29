@@ -43,15 +43,15 @@ export function AuthTopbarSimple() {
   }
 
   return (
-    <header className="fixed left-0 top-0 z-50 flex w-full items-center justify-between border-b border-gold/10 bg-black/80 px-6 py-4 backdrop-blur-md">
+    <header className="fixed inset-x-0 top-0 z-50 flex h-11 w-full items-center justify-between border-b border-gold/20 bg-black/80 px-4 backdrop-blur-md sm:px-6">
       <Link
         href="/"
-        className="text-xs uppercase tracking-[0.35em] text-gold"
+        className="shrink-0 whitespace-nowrap text-xs font-medium uppercase leading-none tracking-[0.35em] text-gold/90"
       >
         The Golden Circle
       </Link>
 
-      <div className="flex items-center gap-4">
+      <div className="flex min-w-0 items-center gap-4">
         {logoutError && (
           <p className="hidden text-xs text-red-300 md:block">
             {logoutError}
@@ -62,7 +62,7 @@ export function AuthTopbarSimple() {
           type="button"
           onClick={logout}
           disabled={loggingOut}
-          className="cursor-pointer text-xs uppercase tracking-[0.25em] text-gold/80 transition hover:text-gold disabled:cursor-wait disabled:opacity-50"
+          className="shrink-0 cursor-pointer whitespace-nowrap text-xs font-medium uppercase leading-none tracking-[0.25em] text-gold/85 transition-colors duration-200 hover:text-gold disabled:cursor-wait disabled:opacity-50"
         >
           {loggingOut
             ? "Cerrando..."

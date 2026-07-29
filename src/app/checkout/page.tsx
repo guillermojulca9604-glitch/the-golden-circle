@@ -101,18 +101,18 @@ export default async function CheckoutPage({
     plans[plan]
 
   return (
-    <main className="min-h-dvh bg-background px-6 pt-11 text-foreground">
+    <main className="min-h-dvh overflow-x-hidden bg-background px-4 pt-11 text-foreground sm:px-6">
       <SessionGuard mode="checkout" />
       <AuthTopbarSimple />
 
-      <section className="mx-auto flex min-h-[calc(100dvh-2.75rem)] max-w-5xl items-center">
+      <section className="mx-auto flex min-h-[calc(100dvh-2.75rem)] max-w-5xl items-center py-[clamp(1.5rem,4vh,3rem)]">
         <div className="w-full">
-          <div className="mb-8 text-center">
+          <div className="mb-[clamp(1.5rem,4vh,2rem)] text-center">
             <span className="pricing-label mb-3 block">
               Checkout
             </span>
 
-            <h1 className="checkout-premium-title text-4xl font-light leading-none md:text-6xl">
+            <h1 className="checkout-premium-title text-[clamp(2.25rem,5vw,3.75rem)] font-light leading-none">
               CONFIRMAR COMPRA
             </h1>
 
@@ -122,8 +122,8 @@ export default async function CheckoutPage({
             </p>
           </div>
 
-          <div className="checkout-premium-card rounded-[34px] bg-black p-6 md:p-8">
-            <div className="grid gap-6 md:grid-cols-[1fr_300px]">
+          <div className="checkout-premium-card rounded-[34px] bg-black p-[clamp(1.5rem,3vw,2rem)]">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
               <div className="space-y-5">
                 <div>
                   <p className="checkout-premium-label text-xs uppercase tracking-widest">
@@ -139,7 +139,7 @@ export default async function CheckoutPage({
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-gold/15 bg-black/40 p-5">
+                <div className="rounded-2xl border border-gold/15 bg-black/40 p-[clamp(1.25rem,3vw,1.5rem)]">
                   <p className="checkout-premium-label text-xs uppercase tracking-widest">
                     Acceso
                   </p>
@@ -156,13 +156,13 @@ export default async function CheckoutPage({
 
                 <Link
                   href="/pricing"
-                  className="inline-block text-sm text-gold/70 transition hover:text-gold"
+                  className="inline-block cursor-pointer text-sm text-gold/70 transition hover:text-gold"
                 >
                   Cambiar membresía
                 </Link>
               </div>
 
-              <aside className="rounded-2xl border border-gold/15 bg-black/40 p-6">
+              <aside className="rounded-2xl border border-gold/15 bg-black/40 p-[clamp(1.25rem,3vw,1.5rem)]">
                 <p className="mb-3 text-xs uppercase tracking-[0.3em] text-gold/70">
                   Total
                 </p>

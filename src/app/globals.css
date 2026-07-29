@@ -331,9 +331,22 @@ button,
 /* HERO */
 
 .hero-section {
-  min-height: 100dvh;
+  height: 100vh;
+  min-height: 100vh;
+  max-height: 100vh;
+
   padding: 60px 24px 56px;
+
+  overflow: hidden;
   background: var(--background);
+}
+
+@supports (height: 100dvh) {
+  .hero-section {
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+  }
 }
 
 .hero-vignette {
@@ -389,6 +402,14 @@ button,
 
 .hero-title-zone {
   position: relative;
+
+  /*
+   * No se utiliza transform: scale(...).
+   * Los textos se dibujan directamente
+   * en su tamaño final.
+   */
+  transform: none;
+  transform-origin: center center;
 }
 
 .hero-title-zone::before {
@@ -751,7 +772,7 @@ button,
 
   box-shadow:
     0 0 24px
-    oklch(0.78 0.12 85 / 0.16);
+      oklch(0.78 0.12 85 / 0.16);
 }
 
 .telegram-arrow {
@@ -1542,4 +1563,175 @@ button,
     scale(0.96);
 
   opacity: 0.75;
+}
+
+/* PORTADA ESTABLE: UNA SOLA PANTALLA SIN ESCALAR TEXTO */
+
+/*
+ * Estos ajustes reproducen el tamaño visual anterior,
+ * pero asignando tamaños reales a cada elemento.
+ * Al no usar transform: scale(...), el navegador no
+ * vuelve a rasterizar todo el texto al cambiar de pestaña
+ * o al redimensionar dos ventanas lado a lado.
+ */
+@media (
+  min-width: 769px
+) and (
+  max-height: 860px
+) {
+  .hero-logo {
+    width: 139px;
+    height: 139px;
+    margin-bottom: 39px;
+  }
+
+  .hero-logo-ring-2 {
+    inset: 12px;
+  }
+
+  .hero-logo-ring-3 {
+    inset: 26px;
+  }
+
+  .hero-logo-letter {
+    font-size: 40px;
+  }
+
+  .hero-the {
+    margin-bottom: 21px;
+
+    font-size:
+      clamp(
+        56px,
+        6.16vw,
+        90px
+      );
+  }
+
+  .hero-title {
+    font-size:
+      clamp(
+        72px,
+        8.8vw,
+        137px
+      );
+  }
+
+  .hero-line {
+    width: 84px;
+    margin-top: 42px;
+  }
+
+  .hero-subtitle {
+    margin-top: 30px;
+    font-size: 11px;
+  }
+}
+
+@media (
+  min-width: 769px
+) and (
+  max-height: 780px
+) {
+  .hero-logo {
+    width: 126px;
+    height: 126px;
+    margin-bottom: 35px;
+  }
+
+  .hero-logo-ring-2 {
+    inset: 11px;
+  }
+
+  .hero-logo-ring-3 {
+    inset: 24px;
+  }
+
+  .hero-logo-letter {
+    font-size: 37px;
+  }
+
+  .hero-the {
+    margin-bottom: 19px;
+
+    font-size:
+      clamp(
+        51px,
+        5.6vw,
+        82px
+      );
+  }
+
+  .hero-title {
+    font-size:
+      clamp(
+        66px,
+        8vw,
+        125px
+      );
+  }
+
+  .hero-line {
+    width: 77px;
+    margin-top: 38px;
+  }
+
+  .hero-subtitle {
+    margin-top: 27px;
+    font-size: 10.5px;
+  }
+}
+
+@media (
+  min-width: 769px
+) and (
+  max-height: 700px
+) {
+  .hero-logo {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 33px;
+  }
+
+  .hero-logo-ring-2 {
+    inset: 11px;
+  }
+
+  .hero-logo-ring-3 {
+    inset: 23px;
+  }
+
+  .hero-logo-letter {
+    font-size: 35px;
+  }
+
+  .hero-the {
+    margin-bottom: 18px;
+
+    font-size:
+      clamp(
+        49px,
+        5.32vw,
+        78px
+      );
+  }
+
+  .hero-title {
+    font-size:
+      clamp(
+        62px,
+        7.6vw,
+        119px
+      );
+  }
+
+  .hero-line {
+    width: 73px;
+    margin-top: 36px;
+  }
+
+  .hero-subtitle {
+    margin-top: 26px;
+    font-size: 10px;
+  }
 }

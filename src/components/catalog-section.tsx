@@ -118,6 +118,55 @@ const catalogItems: CatalogItem[] = [
   },
 ]
 
+function PlayIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="28"
+      height="28"
+      fill="none"
+      aria-hidden="true"
+      className="block h-7 w-7 translate-x-px"
+    >
+      <path
+        d="M8.25 5.55v12.9L18.5 12 8.25 5.55Z"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
+
+function PauseIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="28"
+      height="28"
+      fill="none"
+      aria-hidden="true"
+      className="block h-7 w-7"
+    >
+      <rect
+        x="7"
+        y="5.25"
+        width="3.8"
+        height="13.5"
+        rx="0.9"
+        fill="currentColor"
+      />
+
+      <rect
+        x="13.2"
+        y="5.25"
+        width="3.8"
+        height="13.5"
+        rx="0.9"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
+
 function CatalogCard({
   item,
 }: {
@@ -222,7 +271,9 @@ function CatalogCard({
     let finished = false
 
     const finish = () => {
-      if (finished) return
+      if (finished) {
+        return
+      }
 
       finished = true
       revealVideo()
@@ -300,7 +351,9 @@ function CatalogCard({
     const video =
       videoRef.current
 
-    if (!video) return
+    if (!video) {
+      return
+    }
 
     wantsToPlayRef.current = true
     setIsStarting(true)
@@ -343,7 +396,9 @@ function CatalogCard({
     const video =
       videoRef.current
 
-    if (!video) return
+    if (!video) {
+      return
+    }
 
     /*
      * También funciona mientras
@@ -366,7 +421,9 @@ function CatalogCard({
     const video =
       videoRef.current
 
-    if (!video) return
+    if (!video) {
+      return
+    }
 
     setIsVertical(
       video.videoHeight >
@@ -412,8 +469,10 @@ function CatalogCard({
       style={{
         background:
           "linear-gradient(145deg, oklch(0.115 0.012 85 / 0.96), oklch(0.075 0 0 / 0.98))",
+
         border:
           "1px solid oklch(0.78 0.12 85 / 0.28)",
+
         boxShadow:
           "0 0 0 1px oklch(0.78 0.12 85 / 0.025), 0 0 24px oklch(0.78 0.12 85 / 0.065), 0 14px 36px oklch(0 0 0 / 0.42), inset 0 1px 0 oklch(1 0 0 / 0.035)",
       }}
@@ -579,29 +638,47 @@ function CatalogCard({
                 ? "Pausar video"
                 : "Reproducir video"
             }
+            aria-pressed={
+              showPauseControl
+            }
             onClick={
               handleVideoToggle
             }
-            className={`absolute inset-0 z-30 flex cursor-pointer items-center justify-center transition-opacity duration-300 ${
-              isPlaying &&
-              videoVisible
-                ? "opacity-0 hover:opacity-100"
-                : "opacity-100"
-            }`}
+            className="
+              absolute
+              left-1/2
+              top-1/2
+              z-30
+              flex
+              h-12
+              w-17
+              -translate-x-1/2
+              -translate-y-1/2
+              touch-manipulation
+              cursor-pointer
+              items-center
+              justify-center
+              rounded-xl
+              border
+              border-white/10
+              bg-black/65
+              p-0
+              text-white
+              shadow-[0_8px_22px_rgba(0,0,0,0.32)]
+              outline-none
+              focus-visible:ring-1
+              focus-visible:ring-white/60
+              focus-visible:ring-offset-2
+              focus-visible:ring-offset-black
+            "
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-gold/35 bg-black/35 shadow-[0_0_18px_rgba(212,175,55,0.08)] backdrop-blur-sm">
-              <span
-                className={
-                  showPauseControl
-                    ? "text-2xl text-gold"
-                    : "ml-1 text-3xl text-gold"
-                }
-              >
-                {showPauseControl
-                  ? "Ⅱ"
-                  : "▷"}
-              </span>
-            </div>
+            {showPauseControl
+              ? (
+                <PauseIcon />
+              )
+              : (
+                <PlayIcon />
+              )}
           </button>
         )}
 

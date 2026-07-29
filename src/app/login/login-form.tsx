@@ -714,7 +714,7 @@ export function LoginForm({
                 ? "Ocultar contraseña"
                 : "Mostrar contraseña"
             }
-            className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 touch-manipulation items-center justify-center rounded-full text-gold/70 transition hover:bg-gold/5 hover:text-gold active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+            className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-full text-gold/70 transition hover:bg-gold/5 hover:text-gold active:scale-95 disabled:cursor-pointer disabled:opacity-50"
           >
             {showPassword
               ? (
@@ -739,7 +739,7 @@ export function LoginForm({
             ? recoveryButtonDisabled
             : loading
         }
-        className="telegram-button w-full rounded-xl px-6 py-4 disabled:pointer-events-none disabled:opacity-70"
+        className="telegram-button w-full cursor-pointer rounded-xl px-6 py-4 active:scale-[0.98] disabled:cursor-pointer disabled:opacity-70"
       >
         {loading &&
           "Procesando..."}
@@ -779,7 +779,7 @@ export function LoginForm({
             )
           }}
           disabled={loading}
-          className="text-sm text-gold/70 transition hover:text-gold disabled:pointer-events-none disabled:opacity-50"
+          className="cursor-pointer text-sm text-gold/70 transition hover:text-gold disabled:cursor-pointer disabled:opacity-50"
         >
           ¿Olvidaste tu contraseña?
         </button>
@@ -793,7 +793,7 @@ export function LoginForm({
             setMessage("")
           }}
           disabled={loading}
-          className="text-sm text-gold/70 transition hover:text-gold disabled:pointer-events-none disabled:opacity-50"
+          className="cursor-pointer text-sm text-gold/70 transition hover:text-gold disabled:cursor-pointer disabled:opacity-50"
         >
           Volver a iniciar sesión
         </button>
@@ -817,7 +817,7 @@ export function LoginForm({
               )
             }}
             disabled={loading}
-            className="block w-full text-sm text-gold/70 transition hover:text-gold disabled:pointer-events-none disabled:opacity-50"
+            className="block w-full cursor-pointer text-sm text-gold/70 transition hover:text-gold disabled:cursor-pointer disabled:opacity-50"
           >
             {mode === "login"
               ? "¿No tienes cuenta? Regístrate"

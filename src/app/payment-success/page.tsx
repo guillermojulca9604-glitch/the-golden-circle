@@ -85,18 +85,24 @@ export default async function PaymentSuccessPage({
   }
 
   return (
-    <main className="min-h-dvh bg-background px-6 py-24 text-foreground">
+    <main className="flex min-h-dvh items-center bg-background px-4 pb-10 pt-24 text-foreground sm:px-6">
       <SessionGuard mode="payment" />
 
       <AuthTopbarSimple />
 
-      <section className="mx-auto max-w-xl text-center">
-        <div className="checkout-premium-card rounded-[34px] bg-black p-8 md:p-10">
+      <section className="mx-auto w-full max-w-xl text-center">
+        <div
+          className="featured-card rounded-[34px] p-7 sm:p-8 md:p-10"
+          style={{
+            background:
+              "radial-gradient(circle at 50% 0%, oklch(0.78 0.12 85 / 0.055), transparent 46%), linear-gradient(180deg, oklch(0.095 0.008 85 / 0.98), oklch(0.065 0 0 / 0.99))",
+          }}
+        >
           <span className="pricing-label mb-4 block">
             Verificación
           </span>
 
-          <h1 className="checkout-premium-title mb-4 text-5xl font-light">
+          <h1 className="checkout-premium-title mb-4 text-4xl font-light leading-tight sm:text-5xl">
             Activando acceso
           </h1>
 

@@ -633,15 +633,22 @@ export function PaymentSuccessWaiter({
 
   return (
     <div
-      className="mt-7 space-y-4"
+      className="mt-8 space-y-4"
       aria-live="polite"
     >
-      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+      <p className="text-[11px] uppercase tracking-[0.28em] text-gold/65">
         Confirmando acceso VIP
       </p>
 
       <div
-        className="h-2 w-full overflow-hidden rounded-full border border-amber-200/20 bg-white/5"
+        className="h-1.5 w-full overflow-hidden rounded-full border border-gold/20"
+        style={{
+          background:
+            "oklch(0.78 0.12 85 / 0.035)",
+
+          boxShadow:
+            "inset 0 1px 4px oklch(0 0 0 / 0.68), 0 0 14px oklch(0.78 0.12 85 / 0.045)",
+        }}
         role="progressbar"
         aria-label="Progreso de confirmación del pago"
         aria-valuemin={0}
@@ -651,15 +658,21 @@ export function PaymentSuccessWaiter({
         }
       >
         <div
-          className="h-full rounded-full bg-[linear-gradient(90deg,#8f6a19,#f1d27a,#b88922)] transition-[width] duration-75 ease-linear"
+          className="h-full rounded-full transition-[width] duration-100 ease-out"
           style={{
             width:
               `${visibleProgress}%`,
+
+            background:
+              "linear-gradient(90deg, oklch(0.58 0.085 85), oklch(0.78 0.12 85), oklch(0.86 0.11 85))",
+
+            boxShadow:
+              "0 0 7px oklch(0.78 0.12 85 / 0.28), 0 0 16px oklch(0.78 0.12 85 / 0.12)",
           }}
         />
       </div>
 
-      <p className="text-xs leading-6 text-muted-foreground">
+      <p className="text-xs leading-6 text-foreground/55">
         {progressMessage}
       </p>
     </div>

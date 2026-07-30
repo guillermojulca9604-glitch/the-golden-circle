@@ -14,20 +14,15 @@
   align-items: center;
   justify-content: center;
 
-  padding: 24px;
+  padding: 14px 18px;
 
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  overscroll-behavior: contain;
 
   background:
-    rgba(0, 0, 0, 0.44);
-
-  backdrop-filter:
-    blur(6px)
-    saturate(92%);
-
-  -webkit-backdrop-filter:
-    blur(6px)
-    saturate(92%);
+    rgba(0, 0, 0, 0.76);
 }
 
 .accountModal {
@@ -36,16 +31,14 @@
   width:
     min(
       620px,
-      calc(100vw - 48px)
+      calc(100vw - 36px)
     );
-
-  max-height:
-    calc(100dvh - 48px);
 
   box-sizing: border-box;
 
-  overflow-x: hidden;
-  overflow-y: auto;
+  flex: 0 0 auto;
+
+  overflow: visible;
 
   border:
     1px solid
@@ -54,52 +47,35 @@
   border-radius: 24px;
 
   padding:
-    30px
-    30px
-    28px;
+    24px
+    28px
+    22px;
 
   background:
-    linear-gradient(
-      145deg,
-      rgba(13, 13, 12, 0.96),
-      rgba(5, 5, 5, 0.97)
-    );
+    rgb(7, 7, 7);
 
   box-shadow:
     0 28px 80px
-      rgba(0, 0, 0, 0.62),
+      rgba(0, 0, 0, 0.68),
     inset 0 1px 0
-      rgba(255, 255, 255, 0.03);
+      rgba(255, 255, 255, 0.025);
 
   color:
     rgba(241, 238, 230, 0.96);
-}
 
-.accountModal::-webkit-scrollbar {
-  width: 7px;
-}
-
-.accountModal::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.accountModal::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-
-  background:
-    rgba(211, 140, 28, 0.22);
+  isolation: isolate;
 }
 
 .closeButton {
   position: absolute;
 
-  top: 19px;
-  right: 19px;
+  top: 14px;
+  right: 14px;
 
   display: grid;
 
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
 
   place-items: center;
 
@@ -127,8 +103,8 @@
 .closeButton svg {
   display: block;
 
-  width: 20px;
-  height: 20px;
+  width: 19px;
+  height: 19px;
 }
 
 .closeButton:hover,
@@ -146,7 +122,7 @@
 }
 
 .modalHeading {
-  padding-right: 48px;
+  padding-right: 44px;
 }
 
 .modalTitle {
@@ -160,7 +136,7 @@
     "Times New Roman",
     serif;
 
-  font-size: 27px;
+  font-size: 26px;
   font-weight: 400;
   line-height: 1.1;
   letter-spacing: 0.015em;
@@ -168,7 +144,7 @@
 
 .modalDescription {
   margin:
-    8px
+    6px
     0
     0;
 
@@ -180,27 +156,27 @@
     Helvetica,
     sans-serif;
 
-  font-size: 12.5px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .profileSummary {
   display: flex;
 
-  margin-top: 27px;
+  margin-top: 20px;
 
   align-items: center;
 
-  gap: 16px;
+  gap: 14px;
 }
 
 .profileAvatar {
   display: grid;
 
-  width: 62px;
-  height: 62px;
+  width: 56px;
+  height: 56px;
 
-  flex: 0 0 62px;
+  flex: 0 0 56px;
 
   box-sizing: border-box;
 
@@ -213,11 +189,7 @@
   border-radius: 50%;
 
   background:
-    linear-gradient(
-      145deg,
-      rgba(16, 16, 15, 0.9),
-      rgba(7, 7, 7, 0.92)
-    );
+    rgb(9, 9, 9);
 
   color: #e3a42e;
 
@@ -226,7 +198,7 @@
     "Times New Roman",
     serif;
 
-  font-size: 23px;
+  font-size: 22px;
 
   box-shadow:
     0 0 14px
@@ -252,7 +224,7 @@
     Helvetica,
     sans-serif;
 
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
   line-height: 1.25;
 
@@ -265,7 +237,7 @@
   overflow: hidden;
 
   margin:
-    5px
+    4px
     0
     0;
 
@@ -277,7 +249,7 @@
     Helvetica,
     sans-serif;
 
-  font-size: 12px;
+  font-size: 11.5px;
   line-height: 1.3;
 
   text-overflow: ellipsis;
@@ -288,7 +260,7 @@
 .activeBadge {
   display: inline-flex;
 
-  margin-top: 9px;
+  margin-top: 7px;
 
   align-items: center;
 
@@ -301,7 +273,7 @@
     Helvetica,
     sans-serif;
 
-  font-size: 11px;
+  font-size: 10.5px;
   line-height: 1;
 }
 
@@ -325,7 +297,7 @@
   height: 1px;
 
   margin:
-    24px
+    18px
     0;
 
   background:
@@ -346,7 +318,7 @@
   margin:
     0
     0
-    12px;
+    10px;
 
   color:
     rgba(222, 219, 211, 0.88);
@@ -356,7 +328,7 @@
     Helvetica,
     sans-serif;
 
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   line-height: 1;
   letter-spacing: 0.025em;
@@ -366,33 +338,33 @@
   display: grid;
 
   grid-template-columns:
-    46px
+    42px
     minmax(0, 1fr)
     auto;
 
   align-items: center;
 
-  gap: 14px;
+  gap: 12px;
 
   border:
     1px solid
     rgba(215, 143, 27, 0.18);
 
-  border-radius: 16px;
+  border-radius: 15px;
 
   padding:
-    15px
-    17px;
+    12px
+    14px;
 
   background:
-    rgba(255, 255, 255, 0.018);
+    rgba(255, 255, 255, 0.014);
 }
 
 .membershipIcon {
   display: grid;
 
-  width: 46px;
-  height: 46px;
+  width: 42px;
+  height: 42px;
 
   place-items: center;
 
@@ -400,10 +372,10 @@
     1px solid
     rgba(216, 143, 24, 0.28);
 
-  border-radius: 13px;
+  border-radius: 12px;
 
   background:
-    rgba(216, 143, 24, 0.045);
+    rgba(216, 143, 24, 0.04);
 
   color: #dda02a;
 }
@@ -411,8 +383,8 @@
 .membershipIcon svg {
   display: block;
 
-  width: 23px;
-  height: 23px;
+  width: 21px;
+  height: 21px;
 }
 
 .membershipDetails {
@@ -430,14 +402,14 @@
     Helvetica,
     sans-serif;
 
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 1.2;
 }
 
 .membershipDescription {
   margin:
-    5px
+    4px
     0
     0;
 
@@ -449,8 +421,8 @@
     Helvetica,
     sans-serif;
 
-  font-size: 11px;
-  line-height: 1.35;
+  font-size: 10.5px;
+  line-height: 1.3;
 }
 
 .expirationDetails {
@@ -473,17 +445,17 @@
   color:
     rgba(163, 161, 154, 0.7);
 
-  font-size: 10px;
+  font-size: 9.5px;
   line-height: 1;
 }
 
 .expirationDetails strong {
-  margin-top: 6px;
+  margin-top: 5px;
 
   color:
     rgba(225, 176, 81, 0.92);
 
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1.25;
 }
@@ -493,25 +465,25 @@
 
   flex-direction: column;
 
-  gap: 8px;
+  gap: 7px;
 }
 
 .actionButton {
   display: grid;
 
   width: 100%;
-  min-height: 66px;
+  min-height: 58px;
 
   box-sizing: border-box;
 
   grid-template-columns:
-    38px
+    36px
     minmax(0, 1fr)
     20px;
 
   align-items: center;
 
-  gap: 13px;
+  gap: 12px;
 
   border:
     1px solid
@@ -520,11 +492,11 @@
   border-radius: 14px;
 
   padding:
-    10px
-    14px;
+    8px
+    13px;
 
   background:
-    rgba(255, 255, 255, 0.015);
+    rgba(255, 255, 255, 0.013);
 
   color:
     rgba(211, 209, 202, 0.84);
@@ -545,7 +517,7 @@
     rgba(211, 140, 27, 0.14);
 
   background:
-    rgba(255, 255, 255, 0.03);
+    rgba(255, 255, 255, 0.028);
 
   color:
     rgba(241, 238, 230, 0.96);
@@ -553,11 +525,15 @@
   outline: none;
 }
 
+.actionButton:disabled {
+  cursor: default;
+}
+
 .actionIcon {
   display: grid;
 
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
 
   place-items: center;
 
@@ -577,8 +553,8 @@
 .actionIcon svg {
   display: block;
 
-  width: 19px;
-  height: 19px;
+  width: 18px;
+  height: 18px;
 }
 
 .actionText {
@@ -597,7 +573,7 @@
     Helvetica,
     sans-serif;
 
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.2;
 }
@@ -605,7 +581,7 @@
 .actionText small {
   overflow: hidden;
 
-  margin-top: 5px;
+  margin-top: 4px;
 
   color:
     rgba(160, 158, 151, 0.7);
@@ -615,8 +591,8 @@
     Helvetica,
     sans-serif;
 
-  font-size: 10.5px;
-  line-height: 1.3;
+  font-size: 10px;
+  line-height: 1.25;
 
   text-overflow: ellipsis;
 
@@ -649,21 +625,24 @@
 
   display: flex;
 
-  align-items: center;
-  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
 
   box-sizing: border-box;
 
-  padding: 24px;
+  align-items: center;
+  justify-content: center;
+
+  padding: 18px;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  overscroll-behavior: contain;
 
   background:
-    rgba(0, 0, 0, 0.48);
-
-  backdrop-filter:
-    blur(4px);
-
-  -webkit-backdrop-filter:
-    blur(4px);
+    rgba(0, 0, 0, 0.82);
 }
 
 .secondaryModal {
@@ -672,10 +651,14 @@
   width:
     min(
       440px,
-      calc(100vw - 48px)
+      calc(100vw - 36px)
     );
 
   box-sizing: border-box;
+
+  flex: 0 0 auto;
+
+  overflow: visible;
 
   border:
     1px solid
@@ -689,20 +672,18 @@
     24px;
 
   background:
-    linear-gradient(
-      145deg,
-      rgba(15, 15, 14, 0.99),
-      rgba(5, 5, 5, 0.995)
-    );
+    rgb(8, 8, 8);
 
   box-shadow:
     0 28px 72px
-      rgba(0, 0, 0, 0.7),
+      rgba(0, 0, 0, 0.74),
     inset 0 1px 0
-      rgba(255, 255, 255, 0.03);
+      rgba(255, 255, 255, 0.025);
 
   color:
     rgba(241, 238, 230, 0.96);
+
+  isolation: isolate;
 }
 
 .secondaryCloseButton {
@@ -1033,14 +1014,10 @@
   width:
     min(
       470px,
-      calc(100vw - 48px)
+      calc(100vw - 36px)
     );
 
-  max-height:
-    calc(100dvh - 48px);
-
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .passwordFields {
@@ -1233,19 +1210,16 @@
 
 @media (max-width: 760px) {
   .modalLayer {
-    padding: 20px;
+    padding: 14px;
   }
 
   .accountModal {
     width: 100%;
 
-    max-height:
-      calc(100dvh - 40px);
-
     padding:
-      25px
+      22px
       20px
-      23px;
+      20px;
 
     border-radius: 20px;
   }
@@ -1255,7 +1229,7 @@
       42px
       minmax(0, 1fr);
 
-    padding: 14px;
+    padding: 12px 14px;
   }
 
   .membershipIcon {
@@ -1270,7 +1244,7 @@
 
     min-width: 0;
 
-    padding-top: 4px;
+    padding-top: 3px;
 
     align-items: flex-start;
 
@@ -1281,30 +1255,43 @@
 @media (max-width: 520px) {
   .modalLayer,
   .secondaryLayer {
-    padding: 14px;
+    padding: 10px;
   }
 
   .accountModal {
-    max-height:
-      calc(100dvh - 28px);
+    width: 100%;
 
-    border-radius: 20px;
+    border-radius: 18px;
 
     padding:
-      24px
-      18px
-      21px;
+      21px
+      17px
+      18px;
   }
 
   .modalTitle {
     font-size: 24px;
   }
 
-  .profileAvatar {
-    width: 54px;
-    height: 54px;
+  .modalDescription {
+    padding-right: 4px;
+  }
 
-    flex-basis: 54px;
+  .profileSummary {
+    margin-top: 18px;
+  }
+
+  .profileAvatar {
+    width: 52px;
+    height: 52px;
+
+    flex-basis: 52px;
+  }
+
+  .sectionDivider {
+    margin:
+      16px
+      0;
   }
 
   .actionText small {
@@ -1322,9 +1309,6 @@
 
   .passwordModal {
     width: 100%;
-
-    max-height:
-      calc(100dvh - 28px);
   }
 
   .secondaryActions {
@@ -1335,6 +1319,23 @@
   .cancelButton,
   .saveButton {
     width: 100%;
+  }
+}
+
+@media (max-height: 560px) {
+  .modalLayer,
+  .secondaryLayer {
+    align-items: flex-start;
+
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .accountModal,
+  .secondaryModal {
+    margin:
+      auto
+      0;
   }
 }
 

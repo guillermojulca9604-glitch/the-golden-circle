@@ -1,14 +1,21 @@
 import Image from "next/image"
 import Link from "next/link"
+import { Source_Serif_4 } from "next/font/google"
 
 import styles from "./featured-section.module.css"
+
+const numberFont =
+  Source_Serif_4({
+    subsets: ["latin"],
+    weight: "300",
+    display: "swap",
+  })
 
 const featuredContent = {
   badge: "Nuevo",
   title: "Anuncio Importante",
-  subtitle: "Novedades de Mayo 2026",
   description:
-    "Contenido exclusivo disponible para los miembros de The Golden Circle. Accede a las últimas actualizaciones y material premium a través de nuestro canal oficial de Telegram.",
+    "Contenido exclusivo disponible para los miembros de The Golden Circle. Accede a las últimas actualizaciones y material premium.",
   image:
     "/photo_2026-05-17_13-03-48.jpg",
 
@@ -69,9 +76,27 @@ export function FeaturedSection() {
             </div>
 
             <div className="flex flex-col justify-center p-8 md:p-12">
-              <span className="mb-4 text-xs uppercase tracking-[0.35em] text-gold/70">
-                {featuredContent.subtitle}
-              </span>
+              <div
+                className={`${numberFont.className} mb-4 flex items-baseline text-gold/75`}
+              >
+                <span className="text-[0.84rem] font-light uppercase leading-none tracking-[0.14em]">
+                  Novedades
+                </span>
+
+                <span className="mx-2.5 text-[0.72rem] font-light leading-none text-gold/30">
+                  ·
+                </span>
+
+                <span
+                  className="text-[0.84rem] font-light leading-none tracking-[0.06em]"
+                  style={{
+                    fontVariantNumeric:
+                      "lining-nums tabular-nums",
+                  }}
+                >
+                  2026
+                </span>
+              </div>
 
               <h3 className="mb-6 text-2xl font-light tracking-wide text-foreground md:text-4xl">
                 {featuredContent.title}
@@ -81,31 +106,50 @@ export function FeaturedSection() {
                 {featuredContent.description}
               </p>
 
-              <span className={styles.subscriptionOrbit}>
-                <span
-                  className={styles.subscriptionBorderFlow}
-                  aria-hidden="true"
-                >
+              <div className="flex w-fit flex-col items-start">
+                <span className={styles.subscriptionOrbit}>
                   <span
-                    className={`${styles.subscriptionLight} ${styles.subscriptionLightFirst}`}
-                  />
+                    className={styles.subscriptionBorderFlow}
+                    aria-hidden="true"
+                  >
+                    <span
+                      className={`${styles.subscriptionLight} ${styles.subscriptionLightFirst}`}
+                    />
 
-                  <span
-                    className={`${styles.subscriptionLight} ${styles.subscriptionLightSecond}`}
-                  />
+                    <span
+                      className={`${styles.subscriptionLight} ${styles.subscriptionLightSecond}`}
+                    />
+                  </span>
+
+                  <Link
+                    href="/suscripcion"
+                    className={`${styles.subscriptionLink} telegram-button subscription-premium-button inline-flex cursor-pointer items-center gap-3 rounded-2xl px-8 py-5 text-sm uppercase tracking-[0.28em]`}
+                  >
+                    Suscripción
+
+                    <span className="telegram-arrow text-lg">
+                      →
+                    </span>
+                  </Link>
                 </span>
 
-                <Link
-                  href="/suscripcion"
-                  className={`${styles.subscriptionLink} telegram-button subscription-premium-button inline-flex cursor-pointer items-center gap-3 rounded-2xl px-8 py-5 text-sm uppercase tracking-[0.28em]`}
+                <div
+                  className={`${numberFont.className} mt-5 flex items-baseline gap-2`}
+                  style={{
+                    fontVariantNumeric:
+                      "lining-nums tabular-nums",
+                  }}
+                  aria-label="+1.5 mil suscriptores"
                 >
-                  Suscripción
-
-                  <span className="telegram-arrow text-lg">
-                    →
+                  <span className="text-lg font-light leading-none tracking-[-0.015em] text-gold/85">
+                    +1.5 mil
                   </span>
-                </Link>
-              </span>
+
+                  <span className="text-sm font-light leading-none tracking-[0.02em] text-muted-foreground">
+                    suscriptores
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

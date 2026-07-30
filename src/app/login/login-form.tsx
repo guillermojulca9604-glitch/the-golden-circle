@@ -661,7 +661,7 @@ export function LoginForm({
           submitOnEnter
         }
         disabled={loading}
-        className="w-full rounded-xl border border-gold/20 bg-black px-4 py-4 text-foreground outline-none transition focus:border-gold/50 disabled:opacity-60"
+        className="w-full rounded-xl border border-gold/20 bg-black px-4 py-4 text-foreground placeholder:text-foreground/55 outline-none transition focus:border-gold/50 disabled:opacity-60"
       />
 
       {mode !== "forgot" && (
@@ -691,7 +691,7 @@ export function LoginForm({
               submitOnEnter
             }
             disabled={loading}
-            className="w-full rounded-xl border border-gold/20 bg-black px-4 py-4 pr-16 text-foreground outline-none transition focus:border-gold/50 disabled:opacity-60"
+            className="w-full rounded-xl border border-gold/20 bg-black px-4 py-4 pr-16 text-foreground placeholder:text-foreground/55 outline-none transition focus:border-gold/50 disabled:opacity-60"
           />
 
           <button

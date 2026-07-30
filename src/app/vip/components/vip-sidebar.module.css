@@ -10,14 +10,15 @@
   overflow: hidden;
 
   border-right:
-    1px solid rgba(188, 121, 18, 0.36);
+    1px solid
+    oklch(0.78 0.12 85 / 0.3);
 
   padding: 22px 14px 24px;
 
   background:
     radial-gradient(
       circle at 46% 3%,
-      rgba(215, 139, 20, 0.04),
+      oklch(0.78 0.12 85 / 0.035),
       transparent 24%
     ),
     linear-gradient(
@@ -27,16 +28,35 @@
     );
 
   box-shadow:
-    12px 0 32px rgba(0, 0, 0, 0.12);
+    12px 0 32px
+    rgba(0, 0, 0, 0.12);
 
   backdrop-filter:
     blur(11px)
     saturate(106%);
 
   transition:
-    width 300ms cubic-bezier(0.22, 1, 0.36, 1),
-    padding-right 300ms cubic-bezier(0.22, 1, 0.36, 1),
-    padding-left 300ms cubic-bezier(0.22, 1, 0.36, 1);
+    width 300ms
+      cubic-bezier(
+        0.22,
+        1,
+        0.36,
+        1
+      ),
+    padding-right 300ms
+      cubic-bezier(
+        0.22,
+        1,
+        0.36,
+        1
+      ),
+    padding-left 300ms
+      cubic-bezier(
+        0.22,
+        1,
+        0.36,
+        1
+      );
 }
 
 .sidebarHeader {
@@ -80,7 +100,7 @@
   background: transparent;
 
   color:
-    rgba(216, 214, 207, 0.84);
+    rgba(224, 220, 209, 0.82);
 
   cursor: default;
 
@@ -89,7 +109,13 @@
   transform: none;
 
   transition:
-    left 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    left 300ms
+      cubic-bezier(
+        0.22,
+        1,
+        0.36,
+        1
+      ),
     background 160ms ease,
     opacity 160ms ease;
 }
@@ -102,15 +128,21 @@
 
   box-sizing: border-box;
 
-  border: 2px solid #d88d13;
+  border:
+    2px solid
+    oklch(0.78 0.12 85 / 0.96);
+
   border-radius: 50%;
 
   background: transparent;
 
   box-shadow:
-    0 0 5px rgba(218, 135, 15, 0.24),
-    0 0 12px rgba(218, 135, 15, 0.11),
-    0 0 20px rgba(218, 135, 15, 0.045);
+    0 0 6px
+      oklch(0.78 0.12 85 / 0.3),
+    0 0 14px
+      oklch(0.78 0.12 85 / 0.14),
+    0 0 22px
+      oklch(0.78 0.12 85 / 0.06);
 
   opacity: 1;
 
@@ -150,7 +182,8 @@
   flex-direction: column;
   align-items: center;
 
-  color: #dda023;
+  color:
+    oklch(0.78 0.12 85 / 0.94);
 
   font-family:
     Georgia,
@@ -163,7 +196,8 @@
   letter-spacing: 0.17em;
 
   text-shadow:
-    0 0 8px rgba(219, 137, 16, 0.09);
+    0 0 8px
+      oklch(0.78 0.12 85 / 0.1);
 
   opacity: 1;
 
@@ -192,13 +226,15 @@
 
   place-items: center;
 
-  border: 1px solid transparent;
+  border:
+    1px solid transparent;
+
   border-radius: 11px;
 
   background: transparent;
 
   color:
-    rgba(210, 208, 201, 0.76);
+    rgba(224, 220, 209, 0.72);
 
   opacity: 1;
 
@@ -216,12 +252,13 @@
 .collapseButton:hover,
 .collapseButton:focus-visible {
   border-color:
-    rgba(201, 133, 24, 0.16);
+    oklch(0.78 0.12 85 / 0.18);
 
   background:
-    rgba(255, 255, 255, 0.055);
+    oklch(0.78 0.12 85 / 0.04);
 
-  color: #e2a128;
+  color:
+    oklch(0.78 0.12 85 / 0.95);
 
   outline: none;
 }
@@ -262,7 +299,9 @@
 
   overflow: hidden;
 
-  border: 1px solid transparent;
+  border:
+    1px solid transparent;
+
   border-radius: 14px;
 
   padding:
@@ -274,7 +313,7 @@
   background: transparent;
 
   color:
-    rgba(205, 204, 199, 0.82);
+    rgba(214, 211, 203, 0.76);
 
   font-family:
     Arial,
@@ -288,9 +327,27 @@
   cursor: pointer;
 
   transition:
-    width 300ms cubic-bezier(0.22, 1, 0.36, 1),
-    padding-right 300ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-radius 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 300ms
+      cubic-bezier(
+        0.22,
+        1,
+        0.36,
+        1
+      ),
+    padding-right 300ms
+      cubic-bezier(
+        0.22,
+        1,
+        0.36,
+        1
+      ),
+    border-radius 300ms
+      cubic-bezier(
+        0.22,
+        1,
+        0.36,
+        1
+      ),
     color 160ms ease,
     border-color 160ms ease,
     background 160ms ease,
@@ -301,23 +358,27 @@
   .navigationItemActive
 ) {
   color:
-    rgba(240, 238, 233, 0.95);
+    rgba(242, 239, 232, 0.94);
 
   background:
-    rgba(255, 255, 255, 0.025);
+    oklch(0.78 0.12 85 / 0.025);
 }
 
 .navigationItemActive {
   border-color:
-    rgba(220, 145, 24, 0.5);
+    oklch(0.78 0.12 85 / 0.5);
 
   background:
-    rgba(218, 145, 28, 0.08);
+    oklch(0.78 0.12 85 / 0.07);
 
-  color: #e1a027;
+  color:
+    oklch(0.78 0.12 85 / 0.99);
 
   box-shadow:
-    0 0 10px rgba(217, 136, 16, 0.07);
+    0 0 15px
+      oklch(0.78 0.12 85 / 0.085),
+    inset 0 1px 0
+      oklch(0.78 0.12 85 / 0.035);
 }
 
 .navigationIcon {
@@ -331,7 +392,8 @@
 
   color: currentColor;
 
-  transform: translateY(-50%);
+  transform:
+    translateY(-50%);
 }
 
 .navigationText {
@@ -346,7 +408,8 @@
 
   opacity: 1;
 
-  transform: translateX(0);
+  transform:
+    translateX(0);
 
   transition:
     opacity 130ms ease,
@@ -369,7 +432,7 @@
   margin-top: 4px;
 
   color:
-    rgba(159, 158, 153, 0.76);
+    rgba(181, 178, 170, 0.7);
 
   font-size: 10.5px;
   line-height: 1;
@@ -409,7 +472,8 @@
 
   opacity: 0;
 
-  transform: translateX(-5px);
+  transform:
+    translateX(-5px);
 }
 
 .sidebarCollapsed .collapseButton {
@@ -421,7 +485,7 @@
 .sidebarCollapsed .brandButton:hover,
 .sidebarCollapsed .brandButton:focus-visible {
   background:
-    rgba(255, 255, 255, 0.06);
+    oklch(0.78 0.12 85 / 0.045);
 
   outline: none;
 }
@@ -458,15 +522,19 @@
     40px;
 }
 
-.sidebarCollapsed .navigationItemActive {
+.sidebarCollapsed
+  .navigationItemActive {
   border-color:
-    rgba(220, 145, 24, 0.4);
+    oklch(0.78 0.12 85 / 0.48);
 
   background:
-    rgba(218, 145, 28, 0.08);
+    oklch(0.78 0.12 85 / 0.07);
 
   box-shadow:
-    0 0 10px rgba(217, 136, 16, 0.07);
+    0 0 15px
+      oklch(0.78 0.12 85 / 0.085),
+    inset 0 1px 0
+      oklch(0.78 0.12 85 / 0.035);
 }
 
 .sidebarCollapsed .navigationText {
@@ -480,10 +548,14 @@
 
   opacity: 0;
 
-  transform: translateX(-5px);
+  transform:
+    translateX(-5px);
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (
+  prefers-reduced-motion:
+    reduce
+) {
   .sidebar,
   .brandButton,
   .brandRing,

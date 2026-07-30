@@ -99,7 +99,7 @@ export default async function PricingPage() {
                   Plan mensual
                 </h2>
 
-                <p className="mt-4 text-sm leading-7 text-muted-foreground">
+                <p className="mt-4 text-sm leading-7 text-foreground/60">
                   Acceso privado durante un mes.
                 </p>
 
@@ -138,7 +138,7 @@ export default async function PricingPage() {
                   Plan trimestral
                 </h2>
 
-                <p className="mt-4 text-sm leading-7 text-muted-foreground">
+                <p className="mt-4 text-sm leading-7 text-foreground/60">
                   Acceso privado durante tres meses.
                 </p>
 

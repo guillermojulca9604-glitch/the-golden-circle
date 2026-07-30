@@ -37,14 +37,14 @@ const plans: Record<
     label: "Mensual",
     price: "S/ 30",
     description:
-      "Acceso privado durante 1 mes.",
+      "Descubre una nueva experiencia.",
   },
 
   quarterly: {
     label: "Trimestral",
     price: "S/ 80",
     description:
-      "Acceso privado durante 3 meses.",
+      "Descubre una nueva experiencia.",
   },
 }
 
@@ -148,29 +148,30 @@ export default async function CheckoutPage({
                     {selectedPlan.label}
                   </h2>
 
-                  <p className="mt-3 text-sm text-muted-foreground">
+                  <p className="mt-3 text-sm text-foreground/60">
                     {selectedPlan.description}
                   </p>
                 </div>
 
                 <div className="rounded-2xl border border-gold/15 bg-black/40 p-[clamp(1.25rem,3vw,1.5rem)]">
                   <p className="checkout-premium-label text-xs uppercase tracking-widest">
-                    Acceso
+                    Acceso a
                   </p>
 
                   <p className="mt-3 text-2xl text-gold">
-                    Miembros activos
+                    Comunidad VIP
                   </p>
 
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    Acceso privado y futuras
-                    actualizaciones exclusivas.
+                  <p className="mt-3 text-sm leading-6 text-foreground/60">
+                    Contenido privado y futuras
+                    actualizaciones durante toda
+                    tu membresía.
                   </p>
                 </div>
 
                 <Link
                   href="/pricing"
-                  className="inline-block cursor-pointer text-sm text-gold/70 transition hover:text-gold"
+                  className="inline-block cursor-pointer text-sm text-gold/80 transition hover:text-gold"
                 >
                   Cambiar membresía
                 </Link>
@@ -201,7 +202,7 @@ export default async function CheckoutPage({
                   plan={plan}
                 />
 
-                <p className="mt-5 text-xs leading-6 text-muted-foreground">
+                <p className="mt-5 text-xs leading-6 text-foreground/55">
                   Serás redirigido a Mercado
                   Pago para completar la
                   operación.

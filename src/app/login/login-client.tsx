@@ -83,7 +83,7 @@ export function LoginClient({
             mb-[clamp(1.25rem,3.5vh,2rem)]
             text-sm
             leading-relaxed
-            text-muted-foreground
+            text-foreground/60
           "
         >
           Inicia sesión para continuar.
@@ -127,7 +127,7 @@ export function LoginClient({
               text-[10px]
               uppercase
               tracking-[0.3em]
-              text-gold/45
+              text-gold/60
             "
           >
             o

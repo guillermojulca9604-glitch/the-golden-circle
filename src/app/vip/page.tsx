@@ -24,6 +24,16 @@ type AccountLimits = {
   password: ChangeLimit
 }
 
+type AuthUser = {
+  app_metadata?: Record<
+    string,
+    unknown
+  >
+  identities?: Array<{
+    provider?: string
+  }> | null
+}
+
 function readProfileName(
   metadata: Record<string, unknown>
 ) {
@@ -48,6 +58,36 @@ function readProfileName(
   }
 
   return ""
+}
+
+function userHasEmailPasswordProvider(
+  user: AuthUser
+) {
+  const providers =
+    user.app_metadata
+      ?.providers
+
+  if (
+    Array.isArray(providers) &&
+    providers.includes("email")
+  ) {
+    return true
+  }
+
+  if (
+    user.app_metadata
+      ?.provider === "email"
+  ) {
+    return true
+  }
+
+  return (
+    user.identities?.some(
+      (identity) =>
+        identity.provider ===
+        "email"
+    ) ?? false
+  )
 }
 
 function createChangeLimit(
@@ -204,6 +244,15 @@ export default async function VipPage() {
       ),
   }
 
+  const hasPassword =
+    userHasEmailPasswordProvider(
+      user
+    ) ||
+    Boolean(
+      storedLimits
+        ?.password_changed_at
+    )
+
   return (
     <VipBackground
       accountName={profileName}
@@ -213,6 +262,9 @@ export default async function VipPage() {
         ""
       }
       accountLimits={accountLimits}
+      initialHasPassword={
+        hasPassword
+      }
     />
   )
 }

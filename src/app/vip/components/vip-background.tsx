@@ -25,6 +25,7 @@ type VipBackgroundProps = {
   accountEmail: string
   membershipExpiresAt: string
   accountLimits: AccountLimits
+  initialHasPassword: boolean
 }
 
 const breathingPoints = [
@@ -55,6 +56,7 @@ export function VipBackground({
   accountEmail,
   membershipExpiresAt,
   accountLimits,
+  initialHasPassword,
 }: VipBackgroundProps) {
   const visualSceneRef =
     useRef<HTMLDivElement>(null)
@@ -249,6 +251,9 @@ export function VipBackground({
           }
           initialLimits={
             accountLimits
+          }
+          initialHasPassword={
+            initialHasPassword
           }
         />
 

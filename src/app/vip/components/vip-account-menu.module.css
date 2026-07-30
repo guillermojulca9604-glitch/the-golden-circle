@@ -32,7 +32,7 @@
 
   border:
     1px solid
-    rgba(216, 143, 24, 0.58);
+    oklch(0.78 0.12 85 / 0.56);
 
   border-radius: 50%;
 
@@ -41,30 +41,30 @@
   background:
     radial-gradient(
       circle at 36% 28%,
-      rgba(255, 186, 58, 0.13),
+      oklch(0.78 0.12 85 / 0.075),
       transparent 46%
     ),
     linear-gradient(
       145deg,
-      rgba(29, 21, 10, 0.72),
-      rgba(5, 5, 5, 0.76)
+      rgba(10, 10, 9, 0.78),
+      rgba(3, 3, 3, 0.84)
     );
 
   box-shadow:
     0 0 0 1px
-      rgba(255, 191, 68, 0.04),
-    0 0 12px
-      rgba(218, 137, 18, 0.11),
+      oklch(0.78 0.12 85 / 0.035),
+    0 0 13px
+      oklch(0.78 0.12 85 / 0.1),
     inset 0 0 10px
-      rgba(255, 177, 36, 0.035);
+      oklch(0.78 0.12 85 / 0.025);
 
   backdrop-filter:
     blur(10px)
-    saturate(115%);
+    saturate(108%);
 
   -webkit-backdrop-filter:
     blur(10px)
-    saturate(115%);
+    saturate(108%);
 
   cursor: pointer;
 
@@ -88,27 +88,27 @@
 .accountTrigger:active {
   border:
     1px solid
-    rgba(216, 143, 24, 0.58);
+    oklch(0.78 0.12 85 / 0.56);
 
   background:
     radial-gradient(
       circle at 36% 28%,
-      rgba(255, 186, 58, 0.13),
+      oklch(0.78 0.12 85 / 0.075),
       transparent 46%
     ),
     linear-gradient(
       145deg,
-      rgba(29, 21, 10, 0.72),
-      rgba(5, 5, 5, 0.76)
+      rgba(10, 10, 9, 0.78),
+      rgba(3, 3, 3, 0.84)
     );
 
   box-shadow:
     0 0 0 1px
-      rgba(255, 191, 68, 0.04),
-    0 0 12px
-      rgba(218, 137, 18, 0.11),
+      oklch(0.78 0.12 85 / 0.035),
+    0 0 13px
+      oklch(0.78 0.12 85 / 0.1),
     inset 0 0 10px
-      rgba(255, 177, 36, 0.035);
+      oklch(0.78 0.12 85 / 0.025);
 
   transform: none;
 
@@ -116,7 +116,8 @@
 }
 
 .triggerLetter {
-  color: #e0a12b;
+  color:
+    oklch(0.78 0.12 85 / 0.96);
 
   font-family:
     Georgia,
@@ -126,6 +127,10 @@
   font-size: 17px;
   font-weight: 400;
   line-height: 1;
+
+  text-shadow:
+    0 0 8px
+      oklch(0.78 0.12 85 / 0.12);
 
   transform: none;
 
@@ -140,7 +145,8 @@
   .triggerLetter,
 .accountTrigger:active
   .triggerLetter {
-  color: #e0a12b;
+  color:
+    oklch(0.78 0.12 85 / 0.96);
 
   transform: none;
 }
@@ -160,7 +166,7 @@
 
   border:
     1px solid
-    rgba(211, 143, 32, 0.3);
+    oklch(0.78 0.12 85 / 0.36);
 
   border-radius: 18px;
 
@@ -169,38 +175,38 @@
   background:
     radial-gradient(
       circle at 91% 5%,
-      rgba(214, 139, 24, 0.055),
+      oklch(0.78 0.12 85 / 0.035),
       transparent 35%
     ),
     radial-gradient(
       circle at 6% 95%,
-      rgba(174, 104, 14, 0.025),
+      oklch(0.78 0.12 85 / 0.018),
       transparent 42%
     ),
     linear-gradient(
       145deg,
-      rgba(13, 13, 12, 0.42),
-      rgba(2, 2, 2, 0.54)
+      rgba(10, 10, 9, 0.76),
+      rgba(2, 2, 2, 0.86)
     );
 
   box-shadow:
     0 18px 46px
-      rgba(0, 0, 0, 0.38),
+      rgba(0, 0, 0, 0.42),
     0 0 22px
-      rgba(164, 98, 8, 0.045),
+      oklch(0.78 0.12 85 / 0.055),
     inset 0 1px 0
       rgba(255, 255, 255, 0.035),
     inset 0 0 22px
-      rgba(255, 171, 43, 0.012);
+      oklch(0.78 0.12 85 / 0.018);
 
   backdrop-filter:
     blur(21px)
-    saturate(112%)
+    saturate(106%)
     contrast(104%);
 
   -webkit-backdrop-filter:
     blur(21px)
-    saturate(112%)
+    saturate(106%)
     contrast(104%);
 
   opacity: 0;
@@ -229,7 +235,7 @@
       rgba(255, 255, 255, 0.018),
       transparent 32%,
       transparent 72%,
-      rgba(220, 143, 24, 0.012)
+      oklch(0.78 0.12 85 / 0.015)
     );
 
   pointer-events: none;
@@ -273,19 +279,20 @@
 
   border:
     1px solid
-    rgba(219, 145, 25, 0.52);
+    oklch(0.78 0.12 85 / 0.5);
 
   border-radius: 50%;
 
   background:
     radial-gradient(
       circle at 35% 27%,
-      rgba(255, 192, 71, 0.075),
+      oklch(0.78 0.12 85 / 0.07),
       transparent 47%
     ),
-    rgba(6, 6, 5, 0.28);
+    rgba(5, 5, 4, 0.36);
 
-  color: #e2a42f;
+  color:
+    oklch(0.78 0.12 85 / 0.95);
 
   font-family:
     Georgia,
@@ -295,8 +302,8 @@
   font-size: 19px;
 
   box-shadow:
-    0 0 11px
-      rgba(212, 131, 13, 0.075);
+    0 0 12px
+      oklch(0.78 0.12 85 / 0.09);
 
   backdrop-filter:
     blur(7px);
@@ -342,7 +349,7 @@
     0;
 
   color:
-    rgba(181, 179, 172, 0.78);
+    rgba(191, 188, 180, 0.8);
 
   font-family:
     Arial,
@@ -366,7 +373,8 @@
 
   gap: 6px;
 
-  color: #dca02a;
+  color:
+    oklch(0.78 0.12 85 / 0.9);
 
   font-family:
     Arial,
@@ -383,11 +391,12 @@
 
   border-radius: 50%;
 
-  background: #e2a62d;
+  background:
+    oklch(0.78 0.12 85 / 0.95);
 
   box-shadow:
     0 0 7px
-      rgba(226, 166, 45, 0.55);
+      oklch(0.78 0.12 85 / 0.5);
 }
 
 .accountDivider {
@@ -403,8 +412,8 @@
     linear-gradient(
       90deg,
       transparent,
-      rgba(193, 128, 23, 0.22) 16%,
-      rgba(193, 128, 23, 0.22) 84%,
+      oklch(0.78 0.12 85 / 0.22) 16%,
+      oklch(0.78 0.12 85 / 0.22) 84%,
       transparent
     );
 }
@@ -471,10 +480,10 @@
 
 .accountAction:focus-visible {
   border-color:
-    rgba(203, 135, 27, 0.11);
+    oklch(0.78 0.12 85 / 0.16);
 
   background:
-    rgba(255, 255, 255, 0.035);
+    oklch(0.78 0.12 85 / 0.04);
 
   color:
     rgba(245, 242, 234, 0.96);
@@ -487,10 +496,10 @@
     :disabled
   ):hover {
     border-color:
-      rgba(203, 135, 27, 0.11);
+      oklch(0.78 0.12 85 / 0.16);
 
     background:
-      rgba(255, 255, 255, 0.035);
+      oklch(0.78 0.12 85 / 0.04);
 
     color:
       rgba(245, 242, 234, 0.96);
@@ -501,10 +510,10 @@
   :disabled
 ):active {
   border-color:
-    rgba(203, 135, 27, 0.11);
+    oklch(0.78 0.12 85 / 0.19);
 
   background:
-    rgba(255, 255, 255, 0.055);
+    oklch(0.78 0.12 85 / 0.065);
 
   color:
     rgba(245, 242, 234, 0.96);

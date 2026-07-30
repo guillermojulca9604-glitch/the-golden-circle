@@ -30,6 +30,7 @@ type VipAccountMenuProps = {
   accountEmail: string
   membershipExpiresAt: string
   initialLimits: AccountLimits
+  initialHasPassword: boolean
 }
 
 function unlockExpiredLimits(
@@ -186,6 +187,7 @@ export function VipAccountMenu({
   accountEmail,
   membershipExpiresAt,
   initialLimits,
+  initialHasPassword,
 }: VipAccountMenuProps) {
   const [
     currentAccountName,
@@ -633,9 +635,7 @@ export function VipAccountMenu({
               />
 
               <span>
-                {loggingOut
-                  ? "Cerrando sesión..."
-                  : "Cerrar sesión"}
+                Cerrar sesión
               </span>
             </button>
 
@@ -664,6 +664,9 @@ export function VipAccountMenu({
         }
         initialLimits={
           accountLimits
+        }
+        initialHasPassword={
+          initialHasPassword
         }
         onLimitsChange={
           handleLimitsChange

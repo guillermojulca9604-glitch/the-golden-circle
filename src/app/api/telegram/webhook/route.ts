@@ -26,21 +26,31 @@ type TelegramMessage = {
   from?: TelegramUser
 }
 
+type TelegramInviteLink = {
+  invite_link: string
+  expire_date?: number
+  creates_join_request?: boolean
+  is_revoked?: boolean
+}
+
+type TelegramChatJoinRequest = {
+  chat: TelegramChat
+  from: TelegramUser
+  user_chat_id: number
+  date: number
+  invite_link?: TelegramInviteLink
+}
+
 type TelegramUpdate = {
   update_id: number
   message?: TelegramMessage
+  chat_join_request?: TelegramChatJoinRequest
 }
 
 type TelegramApiResponse<T> = {
   ok: boolean
   result?: T
   description?: string
-}
-
-type TelegramInviteLink = {
-  invite_link: string
-  expire_date?: number
-  member_limit?: number
 }
 
 type TokenRow = {
@@ -78,8 +88,21 @@ type ExistingLink = {
   change_count: number
 }
 
+type JoinTelegramLink = {
+  user_id: string
+  membership_id: string | null
+  telegram_user_id:
+    | number
+    | string
+    | null
+  linked_at: string | null
+}
+
 const TELEGRAM_API =
   "https://api.telegram.org"
+
+const WEBSITE_URL =
+  "https://the-golden-circle-149p.vercel.app"
 
 function json(
   body: Record<string, unknown>,
@@ -296,6 +319,192 @@ async function removeOldTelegramAccount(
   )
 }
 
+async function declineJoinRequest(
+  chatId: number,
+  telegramUserId: number
+) {
+  await telegramApi<boolean>(
+    "declineChatJoinRequest",
+    {
+      chat_id:
+        chatId,
+
+      user_id:
+        telegramUserId,
+    }
+  )
+}
+
+async function approveJoinRequest(
+  chatId: number,
+  telegramUserId: number
+) {
+  await telegramApi<boolean>(
+    "approveChatJoinRequest",
+    {
+      chat_id:
+        chatId,
+
+      user_id:
+        telegramUserId,
+    }
+  )
+}
+
+async function handleChatJoinRequest(
+  joinRequest: TelegramChatJoinRequest
+) {
+  const configuredChannelId =
+    requiredEnv(
+      "TELEGRAM_CHANNEL_ID"
+    )
+
+  /*
+   * Solo procesamos solicitudes
+   * del canal VIP configurado.
+   */
+  if (
+    String(
+      joinRequest.chat.id
+    ) !==
+    configuredChannelId
+  ) {
+    return
+  }
+
+  const telegramUserId =
+    joinRequest.from.id
+
+  const nowIso =
+    new Date().toISOString()
+
+  /*
+   * Buscar qué cuenta VIP está
+   * vinculada exactamente con
+   * este Telegram ID.
+   */
+  const {
+    data: telegramLink,
+    error: telegramLinkError,
+  } =
+    await supabaseAdmin
+      .from(
+        "telegram_links"
+      )
+      .select(
+        "user_id,membership_id,telegram_user_id,linked_at"
+      )
+      .eq(
+        "telegram_user_id",
+        telegramUserId
+      )
+      .maybeSingle<JoinTelegramLink>()
+
+  if (telegramLinkError) {
+    throw telegramLinkError
+  }
+
+  /*
+   * Telegram no vinculado:
+   * rechazo automático.
+   */
+  if (
+    !telegramLink ||
+    !telegramLink.membership_id ||
+    !telegramLink.linked_at
+  ) {
+    await declineJoinRequest(
+      joinRequest.chat.id,
+      telegramUserId
+    )
+
+    return
+  }
+
+  /*
+   * Volvemos a verificar que la
+   * membresía asociada al Telegram
+   * siga activa en este momento.
+   */
+  const {
+    data: membership,
+    error: membershipError,
+  } =
+    await supabaseAdmin
+      .from(
+        "memberships"
+      )
+      .select(
+        "id,user_id,status,expires_at"
+      )
+      .eq(
+        "id",
+        telegramLink.membership_id
+      )
+      .eq(
+        "user_id",
+        telegramLink.user_id
+      )
+      .eq(
+        "status",
+        "active"
+      )
+      .gt(
+        "expires_at",
+        nowIso
+      )
+      .maybeSingle()
+
+  if (membershipError) {
+    throw membershipError
+  }
+
+  /*
+   * Telegram vinculado, pero
+   * membresía inexistente,
+   * vencida o inactiva.
+   */
+  if (!membership) {
+    await declineJoinRequest(
+      joinRequest.chat.id,
+      telegramUserId
+    )
+
+    return
+  }
+
+  /*
+   * ID de Telegram correcto
+   * + cuenta vinculada
+   * + membresía VIP activa.
+   *
+   * Se aprueba automáticamente.
+   */
+  await approveJoinRequest(
+    joinRequest.chat.id,
+    telegramUserId
+  )
+
+  /*
+   * Una vez que el usuario correcto
+   * utilizó esta invitación,
+   * intentamos revocarla.
+   *
+   * Así tampoco queda circulando
+   * innecesariamente.
+   */
+  if (
+    joinRequest.invite_link
+      ?.invite_link
+  ) {
+    await revokeInviteLink(
+      joinRequest
+        .invite_link
+        .invite_link
+    )
+  }
+}
+
 export async function POST(
   request: Request
 ) {
@@ -336,6 +545,25 @@ export async function POST(
       (await request.json()) as
         TelegramUpdate
 
+    /*
+     * SOLICITUD DE ENTRADA
+     * AL CANAL.
+     *
+     * Se procesa antes que los
+     * mensajes privados del bot.
+     */
+    if (
+      update.chat_join_request
+    ) {
+      await handleChatJoinRequest(
+        update.chat_join_request
+      )
+
+      return json({
+        ok: true,
+      })
+    }
+
     const message =
       update.message
 
@@ -373,12 +601,7 @@ export async function POST(
     }
 
     /*
-     * Ocultar el comando /start
-     * para mantener limpio el chat.
-     *
-     * Si Telegram no pudiera
-     * eliminarlo por algún motivo,
-     * la vinculación continúa.
+     * Ocultar /start.
      */
     await deleteIncomingMessage(
       chatId,
@@ -391,13 +614,9 @@ export async function POST(
       )
 
     /*
-     * Si alguien entra directamente
-     * al bot o comparte el bot,
-     * no tendrá token.
-     *
-     * No se genera acceso al canal.
-     * Solo se muestra el botón
-     * para regresar a la web.
+     * Entrada directa al bot,
+     * sin token generado por
+     * la web VIP.
      */
     if (!token) {
       await sendMessage(
@@ -412,7 +631,7 @@ export async function POST(
             "Ir a la página",
 
           url:
-            "https://the-golden-circle-149p.vercel.app",
+            WEBSITE_URL,
         }
       )
 
@@ -464,7 +683,7 @@ export async function POST(
             "Ir a la página",
 
           url:
-            "https://the-golden-circle-149p.vercel.app",
+            WEBSITE_URL,
         }
       )
 
@@ -474,12 +693,10 @@ export async function POST(
     }
 
     /*
-     * Token ya utilizado.
+     * Token anterior ya utilizado.
      *
-     * Se rechaza silenciosamente
-     * para evitar mostrar mensajes
-     * viejos cuando Telegram procesa
-     * un /start anterior.
+     * Se ignora silenciosamente
+     * para evitar mensajes viejos.
      */
     if (tokenRow.used_at) {
       return json({
@@ -514,7 +731,7 @@ export async function POST(
             "Ir a la página",
 
           url:
-            "https://the-golden-circle-149p.vercel.app",
+            WEBSITE_URL,
         }
       )
 
@@ -524,11 +741,8 @@ export async function POST(
     }
 
     /*
-     * Volvemos a verificar
-     * membresía.
-     *
-     * Tener un token válido
-     * por sí solo NO basta.
+     * Comprobar nuevamente
+     * la membresía.
      */
     const {
       data: membership,
@@ -576,7 +790,7 @@ export async function POST(
             "Ir a la página",
 
           url:
-            "https://the-golden-circle-149p.vercel.app",
+            WEBSITE_URL,
         }
       )
 
@@ -639,7 +853,7 @@ export async function POST(
             "Ir a la página",
 
           url:
-            "https://the-golden-circle-149p.vercel.app",
+            WEBSITE_URL,
         }
       )
 
@@ -649,8 +863,8 @@ export async function POST(
     }
 
     /*
-     * Ver vinculación actual de
-     * la cuenta VIP.
+     * Vinculación Telegram actual
+     * de esta cuenta VIP.
      */
     const {
       data: currentLink,
@@ -674,10 +888,7 @@ export async function POST(
     }
 
     /*
-     * Consumir token.
-     *
-     * Solo puede pasar de NULL
-     * a usado una vez.
+     * Consumir el token una vez.
      */
     const {
       data: consumedToken,
@@ -713,12 +924,6 @@ export async function POST(
     }
 
     if (!consumedToken) {
-      /*
-       * Si otro intento consumió
-       * este mismo token primero,
-       * simplemente no mostramos
-       * un mensaje antiguo.
-       */
       return json({
         ok: true,
       })
@@ -741,9 +946,8 @@ export async function POST(
         telegramUserId
 
     /*
-     * Si se cambia a otra cuenta
-     * de Telegram, retiramos la
-     * cuenta anterior del canal.
+     * Al cambiar de cuenta
+     * Telegram, retirar la anterior.
      */
     if (
       changingTelegram &&
@@ -756,12 +960,11 @@ export async function POST(
     }
 
     /*
-     * Crear invitación personal.
+     * Crear invitación con
+     * SOLICITUD DE INGRESO.
      *
-     * - máximo 1 usuario
-     * - máximo 10 minutos
-     * - nunca después del
-     *   vencimiento de la membresía
+     * Ya NO permite entrar
+     * directamente.
      */
     const channelId =
       requiredEnv(
@@ -805,8 +1008,14 @@ export async function POST(
           expire_date:
             inviteExpiresAt,
 
-          member_limit:
-            1,
+          /*
+           * IMPORTANTE:
+           * el usuario solicita acceso.
+           * El webhook decide por ID
+           * si se aprueba o rechaza.
+           */
+          creates_join_request:
+            true,
         }
       )
 
@@ -959,7 +1168,7 @@ export async function POST(
               "Ir a la página",
 
             url:
-              "https://the-golden-circle-149p.vercel.app",
+              WEBSITE_URL,
           }
         )
       } catch {}

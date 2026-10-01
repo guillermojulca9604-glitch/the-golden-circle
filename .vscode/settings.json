@@ -3,6 +3,8 @@
   "less.validate": false,
   "scss.validate": false,
   "tailwindCSS.validate": true,
+  "tailwindCSS.colorDecorators": false,
+  "tailwindCSS.lint.suggestCanonicalClasses": "ignore",
   "files.exclude": {
     "**/node_modules": true,
     "**/.next": true

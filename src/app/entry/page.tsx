@@ -19,16 +19,35 @@ export default async function EntryPage() {
     redirect("/login")
   }
 
-  const adminEmail =
-    process.env.ADMIN_EMAIL
-      ?.trim()
-      .toLowerCase()
+  const {
+    data: adminUser,
+    error: adminError,
+  } =
+    await supabaseAdmin
+      .from("admin_users")
+      .select("user_id")
+      .eq(
+        "user_id",
+        user.id
+      )
+      .eq(
+        "is_active",
+        true
+      )
+      .maybeSingle()
 
-  if (
-    adminEmail &&
-    user.email?.toLowerCase() ===
-      adminEmail
-  ) {
+  if (adminError) {
+    console.error(
+      "No se pudo comprobar el acceso administrativo:",
+      adminError
+    )
+
+    throw new Error(
+      "No se pudo comprobar el acceso administrativo."
+    )
+  }
+
+  if (adminUser) {
     redirect("/admin")
   }
 

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase/admin"
 
 export const runtime = "nodejs"
+
 export const dynamic = "force-dynamic"
 
 type TelegramUser = {
@@ -198,6 +199,29 @@ async function sendMessage(
   )
 }
 
+async function deleteIncomingMessage(
+  chatId: number,
+  messageId: number
+) {
+  try {
+    await telegramApi<boolean>(
+      "deleteMessage",
+      {
+        chat_id:
+          chatId,
+
+        message_id:
+          messageId,
+      }
+    )
+  } catch (error) {
+    console.error(
+      "No se pudo ocultar el mensaje /start:",
+      error
+    )
+  }
+}
+
 async function revokeInviteLink(
   inviteLink: string
 ) {
@@ -347,6 +371,19 @@ export async function POST(
         ok: true,
       })
     }
+
+    /*
+     * Ocultar el comando /start
+     * para mantener limpio el chat.
+     *
+     * Si Telegram no pudiera
+     * eliminarlo por algún motivo,
+     * la vinculación continúa.
+     */
+    await deleteIncomingMessage(
+      chatId,
+      message.message_id
+    )
 
     const token =
       getStartToken(

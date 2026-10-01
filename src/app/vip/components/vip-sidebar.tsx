@@ -6,8 +6,6 @@ import styles from "./vip-sidebar.module.css"
 
 type VipSection =
   | "inicio"
-  | "biblioteca"
-  | "favoritos"
   | "comunidad"
 
 type IconProps = {
@@ -24,54 +22,6 @@ function HomeIcon({ className }: IconProps) {
       <path
         fill="currentColor"
         d="M3.7 10.65 12 3.65l8.3 7a.88.88 0 0 1-1.14 1.34l-.5-.42v7.68a1.3 1.3 0 0 1-1.3 1.3h-3.53v-6.02h-3.66v6.02H6.64a1.3 1.3 0 0 1-1.3-1.3v-7.68l-.5.42a.88.88 0 1 1-1.14-1.34Z"
-      />
-    </svg>
-  )
-}
-
-function LibraryIcon({ className }: IconProps) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <rect
-        x="3.8"
-        y="5.3"
-        width="16.4"
-        height="13.4"
-        rx="2.2"
-        stroke="currentColor"
-        strokeWidth="1.45"
-      />
-
-      <path
-        d="m10.1 9.15 4.7 2.85-4.7 2.85v-5.7Z"
-        stroke="currentColor"
-        strokeWidth="1.35"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function HeartIcon({ className }: IconProps) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M20.2 6.15a4.9 4.9 0 0 0-6.94 0L12 7.4l-1.26-1.25a4.9 4.9 0 1 0-6.94 6.93L12 20.75l8.2-7.67a4.9 4.9 0 0 0 0-6.93Z"
-        stroke="currentColor"
-        strokeWidth="1.45"
-        strokeLinecap="round"
-        strokeLinejoin="round"
       />
     </svg>
   )
@@ -165,16 +115,6 @@ const navigationItems = [
     id: "inicio" as const,
     label: "Inicio",
     Icon: HomeIcon,
-  },
-  {
-    id: "biblioteca" as const,
-    label: "Biblioteca",
-    Icon: LibraryIcon,
-  },
-  {
-    id: "favoritos" as const,
-    label: "Favoritos",
-    Icon: HeartIcon,
   },
   {
     id: "comunidad" as const,

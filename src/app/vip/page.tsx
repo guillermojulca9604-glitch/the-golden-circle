@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 
+import { VipHome } from "./components/home/vip-home"
 import { VipBackground } from "./components/vip-background"
 
 import { supabaseAdmin } from "@/lib/supabase/admin"
@@ -228,6 +229,47 @@ export default async function VipPage() {
     )
   }
 
+  const {
+    data: telegramLink,
+    error: telegramLinkError,
+  } =
+    await supabaseAdmin
+      .from("telegram_links")
+      .select(
+        "telegram_user_id, telegram_username, linked_at"
+      )
+      .eq(
+        "user_id",
+        user.id
+      )
+      .maybeSingle()
+
+  if (telegramLinkError) {
+    console.error(
+      "No se pudo consultar Telegram:",
+      telegramLinkError
+    )
+  }
+
+  const telegramLinked =
+    Boolean(
+      telegramLink
+        ?.telegram_user_id
+    ) &&
+    Boolean(
+      telegramLink
+        ?.linked_at
+    )
+
+  const telegramUsername =
+    telegramLinked &&
+    typeof telegramLink
+      ?.telegram_username ===
+      "string" &&
+    telegramLink.telegram_username.trim()
+      ? telegramLink.telegram_username.trim()
+      : null
+
   const accountLimits: AccountLimits = {
     username:
       createChangeLimit(
@@ -265,6 +307,19 @@ export default async function VipPage() {
       initialHasPassword={
         hasPassword
       }
-    />
+      initialTelegramLinked={
+        telegramLinked
+      }
+      initialTelegramUsername={
+        telegramUsername
+      }
+    >
+      <VipHome
+        accountName={profileName}
+        continueWatching={null}
+        latestVideos={[]}
+        popularVideos={[]}
+      />
+    </VipBackground>
   )
 }

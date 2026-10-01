@@ -11,9 +11,13 @@
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.1",
-    "next": "15.2.6",
+    "next": "15.5.21",
+    "only": "^0.0.2",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "server": "^1.0.42",
+    "server-only": "^0.0.1",
+    "tus-js-client": "4.3.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -22,7 +26,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.2.6",
+    "eslint-config-next": "15.5.21",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

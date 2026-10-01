@@ -1,7 +1,3 @@
-import {
-  createClient as createVerificationClient,
-} from "@supabase/supabase-js"
-
 import { NextResponse } from "next/server"
 
 import { supabaseAdmin } from "@/lib/supabase/admin"
@@ -20,7 +16,6 @@ const CHANGE_COOLDOWN_MS =
   1000
 
 type ChangePasswordBody = {
-  currentPassword?: unknown
   newPassword?: unknown
 }
 
@@ -323,12 +318,6 @@ export async function POST(
     )
   }
 
-  const currentPassword =
-    typeof body.currentPassword ===
-      "string"
-      ? body.currentPassword
-      : ""
-
   const newPassword =
     body.newPassword
 
@@ -371,41 +360,6 @@ export async function POST(
     ) ||
     Boolean(passwordChangedAt)
 
-  /*
-   * Una cuenta que ya tiene contraseña
-   * debe confirmar la contraseña actual.
-   *
-   * Una cuenta que solamente utiliza
-   * Google puede crear su primera
-   * contraseña sin este campo.
-   */
-  if (
-    hasPassword &&
-    !currentPassword
-  ) {
-    return json(
-      {
-        error:
-          "Ingresa tu contraseña actual.",
-      },
-      400
-    )
-  }
-
-  if (
-    hasPassword &&
-    newPassword ===
-      currentPassword
-  ) {
-    return json(
-      {
-        error:
-          "La nueva contraseña debe ser diferente a la actual.",
-      },
-      400
-    )
-  }
-
   const nextChangeAt =
     getNextChangeAt(
       passwordChangedAt
@@ -428,58 +382,6 @@ export async function POST(
     )
   }
 
-  /*
-   * Cuando ya existe una contraseña,
-   * primero comprobamos que la actual
-   * sea correcta.
-   */
-  if (hasPassword) {
-    const verificationClient =
-      createVerificationClient(
-        process.env
-          .NEXT_PUBLIC_SUPABASE_URL!,
-        process.env
-          .NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          auth: {
-            persistSession: false,
-            autoRefreshToken: false,
-            detectSessionInUrl:
-              false,
-          },
-        }
-      )
-
-    const {
-      error: verificationError,
-    } =
-      await verificationClient
-        .auth
-        .signInWithPassword({
-          email: user.email,
-          password:
-            currentPassword,
-        })
-
-    if (verificationError) {
-      return json(
-        {
-          error:
-            "La contraseña actual no es correcta.",
-        },
-        400
-      )
-    }
-  }
-
-  /*
-   * Si la cuenta solo utiliza Google,
-   * añadimos una contraseña propia para
-   * iniciar sesión mediante correo.
-   *
-   * Si ya tiene contraseña, conservamos
-   * el proceso de cambio existente.
-   */
   const updatePasswordResult =
     hasPassword
       ? await supabaseAdmin
@@ -508,6 +410,37 @@ export async function POST(
     )
   }
 
+  /*
+   * Al cambiar la contraseña,
+   * iniciamos una nueva sesión
+   * inmediatamente con la nueva
+   * contraseña.
+   *
+   * De esta forma el usuario no
+   * es enviado nuevamente al login.
+   */
+  const {
+    error: sessionError,
+  } =
+    await supabase.auth
+      .signInWithPassword({
+        email:
+          user.email,
+
+        password:
+          newPassword,
+      })
+
+  if (sessionError) {
+    return json(
+      {
+        error:
+          "La contraseña se cambió, pero no pudimos mantener tu sesión iniciada.",
+      },
+      500
+    )
+  }
+
   const changedAt =
     new Date().toISOString()
 
@@ -520,7 +453,8 @@ export async function POST(
       )
       .upsert(
         {
-          user_id: user.id,
+          user_id:
+            user.id,
 
           password_changed_at:
             changedAt,

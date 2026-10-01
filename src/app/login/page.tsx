@@ -1,8 +1,18 @@
-import { redirect } from "next/navigation"
+import {
+  redirect,
+} from "next/navigation"
 
-import { supabaseAdmin } from "@/lib/supabase/admin"
-import { createClient } from "@/lib/supabase/server"
-import { LoginClient } from "./login-client"
+import {
+  supabaseAdmin,
+} from "@/lib/supabase/admin"
+
+import {
+  createClient,
+} from "@/lib/supabase/server"
+
+import {
+  LoginClient,
+} from "./login-client"
 
 type Props = {
   searchParams: Promise<{
@@ -72,24 +82,63 @@ export default async function LoginPage({
     await createClient()
 
   const {
-    data: { user },
+    data: {
+      user,
+    },
   } =
-    await supabase.auth.getUser()
+    await supabase.auth
+      .getUser()
 
   if (user) {
-    const adminEmail =
-      process.env.ADMIN_EMAIL
-        ?.trim()
-        .toLowerCase()
+    /*
+     * La cuenta administrativa se
+     * reconoce por el UID real de la
+     * sesión, no por correo ni metadata.
+     */
+    const {
+      data: adminUser,
+      error: adminError,
+    } =
+      await supabaseAdmin
+        .from("admin_users")
+        .select("user_id")
+        .eq(
+          "user_id",
+          user.id
+        )
+        .eq(
+          "is_active",
+          true
+        )
+        .maybeSingle()
 
-    if (
-      adminEmail &&
-      user.email?.toLowerCase() ===
-        adminEmail
-    ) {
+    /*
+     * Un error consultando admin_users
+     * no debe convertir accidentalmente
+     * al administrador en cliente.
+     *
+     * Se detiene la carga para no
+     * redirigirlo a /entry o /vip.
+     */
+    if (adminError) {
+      console.error(
+        "No se pudo comprobar el acceso administrativo:",
+        adminError
+      )
+
+      throw new Error(
+        "No se pudo comprobar el acceso administrativo."
+      )
+    }
+
+    if (adminUser) {
       redirect("/admin")
     }
 
+    /*
+     * Desde aquí continúa exactamente
+     * el flujo anterior de los clientes.
+     */
     const {
       data: membership,
     } =

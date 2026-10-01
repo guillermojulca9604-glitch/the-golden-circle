@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -10,6 +11,9 @@ import { createClient } from "@/lib/supabase/client"
 
 import { VipAccountModal } from "./account/vip-account-modal"
 import styles from "./vip-account-menu.module.css"
+
+const VIP_ACCOUNT_NAME_CHANGED_EVENT =
+  "vip-account-name-changed"
 
 type IconProps = {
   className?: string
@@ -25,12 +29,20 @@ type AccountLimits = {
   password: ChangeLimit
 }
 
+type TelegramStatusResponse = {
+  ok?: boolean
+  linked?: boolean
+  username?: string | null
+}
+
 type VipAccountMenuProps = {
   accountName: string
   accountEmail: string
   membershipExpiresAt: string
   initialLimits: AccountLimits
   initialHasPassword: boolean
+  initialTelegramLinked: boolean
+  initialTelegramUsername: string | null
 }
 
 function unlockExpiredLimits(
@@ -188,6 +200,8 @@ export function VipAccountMenu({
   membershipExpiresAt,
   initialLimits,
   initialHasPassword,
+  initialTelegramLinked,
+  initialTelegramUsername,
 }: VipAccountMenuProps) {
   const [
     currentAccountName,
@@ -202,6 +216,20 @@ export function VipAccountMenu({
       unlockExpiredLimits(
         initialLimits
       )
+  )
+
+  const [
+    telegramLinked,
+    setTelegramLinked,
+  ] = useState(
+    initialTelegramLinked
+  )
+
+  const [
+    telegramUsername,
+    setTelegramUsername,
+  ] = useState<string | null>(
+    initialTelegramUsername
   )
 
   const [open, setOpen] =
@@ -230,6 +258,49 @@ export function VipAccountMenu({
       currentAccountName
     )
 
+  const refreshTelegramStatus =
+    useCallback(async () => {
+      try {
+        const response =
+          await fetch(
+            "/api/telegram/status",
+            {
+              method: "GET",
+              cache: "no-store",
+            }
+          )
+
+        const result =
+          (await response.json()) as
+            TelegramStatusResponse
+
+        if (
+          !response.ok ||
+          !result.ok
+        ) {
+          return
+        }
+
+        setTelegramLinked(
+          result.linked === true
+        )
+
+        setTelegramUsername(
+          typeof result.username ===
+            "string" &&
+          result.username.trim()
+            ? result.username.trim()
+            : null
+        )
+      } catch {
+        /*
+         * Actualización silenciosa.
+         * Si falla, conservamos el
+         * estado cargado al entrar a VIP.
+         */
+      }
+    }, [])
+
   useEffect(() => {
     setCurrentAccountName(
       accountName
@@ -243,6 +314,66 @@ export function VipAccountMenu({
       )
     )
   }, [initialLimits])
+
+  useEffect(() => {
+    setTelegramLinked(
+      initialTelegramLinked
+    )
+
+    setTelegramUsername(
+      initialTelegramUsername
+    )
+  }, [
+    initialTelegramLinked,
+    initialTelegramUsername,
+  ])
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (
+        document.visibilityState ===
+        "visible"
+      ) {
+        void refreshTelegramStatus()
+      }
+    }
+
+    const handlePageShow = () => {
+      void refreshTelegramStatus()
+    }
+
+    window.addEventListener(
+      "focus",
+      refreshWhenVisible
+    )
+
+    window.addEventListener(
+      "pageshow",
+      handlePageShow
+    )
+
+    document.addEventListener(
+      "visibilitychange",
+      refreshWhenVisible
+    )
+
+    return () => {
+      window.removeEventListener(
+        "focus",
+        refreshWhenVisible
+      )
+
+      window.removeEventListener(
+        "pageshow",
+        handlePageShow
+      )
+
+      document.removeEventListener(
+        "visibilitychange",
+        refreshWhenVisible
+      )
+    }
+  }, [refreshTelegramStatus])
 
   useEffect(() => {
     let usernameTimer:
@@ -461,6 +592,23 @@ export function VipAccountMenu({
     )
   }
 
+  const handleAccountNameChange = (
+    nextAccountName: string
+  ) => {
+    setCurrentAccountName(
+      nextAccountName
+    )
+
+    window.dispatchEvent(
+      new CustomEvent<string>(
+        VIP_ACCOUNT_NAME_CHANGED_EVENT,
+        {
+          detail: nextAccountName,
+        }
+      )
+    )
+  }
+
   const handleLogout = async () => {
     if (loggingOut) {
       return
@@ -668,11 +816,17 @@ export function VipAccountMenu({
         initialHasPassword={
           initialHasPassword
         }
+        telegramLinked={
+          telegramLinked
+        }
+        telegramUsername={
+          telegramUsername
+        }
         onLimitsChange={
           handleLimitsChange
         }
         onAccountNameChange={
-          setCurrentAccountName
+          handleAccountNameChange
         }
         onClose={
           handleCloseAccount

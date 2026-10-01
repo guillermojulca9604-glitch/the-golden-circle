@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  type ReactNode,
   useEffect,
   useRef,
 } from "react"
@@ -26,6 +27,9 @@ type VipBackgroundProps = {
   membershipExpiresAt: string
   accountLimits: AccountLimits
   initialHasPassword: boolean
+  initialTelegramLinked: boolean
+  initialTelegramUsername: string | null
+  children: ReactNode
 }
 
 const breathingPoints = [
@@ -57,6 +61,9 @@ export function VipBackground({
   membershipExpiresAt,
   accountLimits,
   initialHasPassword,
+  initialTelegramLinked,
+  initialTelegramUsername,
+  children,
 }: VipBackgroundProps) {
   const visualSceneRef =
     useRef<HTMLDivElement>(null)
@@ -243,6 +250,8 @@ export function VipBackground({
       <div className={styles.vipContent}>
         <VipSidebar />
 
+        {children}
+
         <VipAccountMenu
           accountName={accountName}
           accountEmail={accountEmail}
@@ -254,6 +263,12 @@ export function VipBackground({
           }
           initialHasPassword={
             initialHasPassword
+          }
+          initialTelegramLinked={
+            initialTelegramLinked
+          }
+          initialTelegramUsername={
+            initialTelegramUsername
           }
         />
 

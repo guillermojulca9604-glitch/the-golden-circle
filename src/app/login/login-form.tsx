@@ -7,18 +7,13 @@ import type {
   SetStateAction,
 } from "react"
 import {
-  useEffect,
   useRef,
   useState,
 } from "react"
 
-import { createClient } from "@/lib/supabase/client"
-
-const RECOVERY_STORAGE_KEY =
-  "golden-circle-password-recovery-retry-at"
-
-const EMAIL_PATTERN =
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+import {
+  createClient,
+} from "@/lib/supabase/client"
 
 type Mode =
   | "login"
@@ -34,13 +29,10 @@ type Props = {
   nextPath?: string
 }
 
-type PasswordResetResponse = {
-  success?: boolean
-  message?: string
+type LoginDestinationResponse = {
+  destination?: string | null
+  isAdmin?: boolean
   error?: string
-  reason?: string
-  retryAt?: string
-  retryAfterSeconds?: number
 }
 
 function getSafeNextPath(
@@ -48,78 +40,13 @@ function getSafeNextPath(
 ) {
   if (
     !nextPath.startsWith("/") ||
-    nextPath.startsWith("//")
+    nextPath.startsWith("//") ||
+    nextPath.includes("\\")
   ) {
     return "/entry"
   }
 
   return nextPath
-}
-
-function getRemainingSeconds(
-  retryAt: number
-) {
-  return Math.max(
-    0,
-    Math.ceil(
-      (
-        retryAt -
-        Date.now()
-      ) / 1000
-    )
-  )
-}
-
-function formatCooldown(
-  totalSeconds: number
-) {
-  const safeSeconds =
-    Math.max(
-      0,
-      Math.floor(
-        totalSeconds
-      )
-    )
-
-  const hours =
-    Math.floor(
-      safeSeconds / 3600
-    )
-
-  const minutes =
-    Math.floor(
-      (
-        safeSeconds % 3600
-      ) / 60
-    )
-
-  const seconds =
-    safeSeconds % 60
-
-  const paddedMinutes =
-    String(minutes)
-      .padStart(2, "0")
-
-  const paddedSeconds =
-    String(seconds)
-      .padStart(2, "0")
-
-  if (hours > 0) {
-    const paddedHours =
-      String(hours)
-        .padStart(2, "0")
-
-    return (
-      `${paddedHours}:` +
-      `${paddedMinutes}:` +
-      paddedSeconds
-    )
-  }
-
-  return (
-    `${paddedMinutes}:` +
-    paddedSeconds
-  )
 }
 
 function EyeIcon() {
@@ -229,180 +156,72 @@ export function LoginForm({
     setLoading,
   ] = useState(false)
 
-  const [
-    recoveryRetryAt,
-    setRecoveryRetryAt,
-  ] =
-    useState<number | null>(
-      null
-    )
-
-  const [
-    recoveryCooldown,
-    setRecoveryCooldown,
-  ] = useState(0)
+  /*
+   * Se conserva "forgot" en el tipo
+   * para no romper los componentes
+   * externos que comparten Mode.
+   *
+   * Dentro de este formulario ya no
+   * existe recuperación de contraseña.
+   */
+  const activeMode =
+    mode === "register"
+      ? "register"
+      : "login"
 
   const safeNext =
     getSafeNextPath(
       nextPath
     )
 
-  const normalizedRecoveryEmail =
-    email
-      .trim()
-      .toLowerCase()
-
-  const recoveryEmailIsValid =
-    EMAIL_PATTERN.test(
-      normalizedRecoveryEmail
-    )
-
-  useEffect(() => {
-    const storedRetryAt =
-      window.localStorage
-        .getItem(
-          RECOVERY_STORAGE_KEY
+  const resolveLoginDestination =
+    async () => {
+      const response =
+        await fetch(
+          "/api/auth/login-destination",
+          {
+            method: "GET",
+            credentials:
+              "same-origin",
+            cache: "no-store",
+          }
         )
 
-    if (!storedRetryAt) {
-      return
-    }
-
-    const parsedRetryAt =
-      Number(storedRetryAt)
-
-    if (
-      !Number.isFinite(
-        parsedRetryAt
-      ) ||
-      parsedRetryAt <=
-        Date.now()
-    ) {
-      window.localStorage
-        .removeItem(
-          RECOVERY_STORAGE_KEY
-        )
-
-      return
-    }
-
-    setRecoveryRetryAt(
-      parsedRetryAt
-    )
-
-    setRecoveryCooldown(
-      getRemainingSeconds(
-        parsedRetryAt
-      )
-    )
-  }, [])
-
-  useEffect(() => {
-    if (!recoveryRetryAt) {
-      setRecoveryCooldown(0)
-      return
-    }
-
-    const updateCooldown =
-      () => {
-        const remaining =
-          getRemainingSeconds(
-            recoveryRetryAt
-          )
-
-        if (remaining <= 0) {
-          setRecoveryCooldown(0)
-          setRecoveryRetryAt(
-            null
-          )
-
-          window.localStorage
-            .removeItem(
-              RECOVERY_STORAGE_KEY
+      const result =
+        (
+          await response
+            .json()
+            .catch(
+              () => ({})
             )
+        ) as
+          LoginDestinationResponse
 
-          return
-        }
-
-        setRecoveryCooldown(
-          remaining
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            "No se pudo comprobar el acceso."
         )
       }
 
-    updateCooldown()
-
-    const intervalId =
-      window.setInterval(
-        updateCooldown,
-        1000
-      )
-
-    return () => {
-      window.clearInterval(
-        intervalId
-      )
-    }
-  }, [recoveryRetryAt])
-
-  const startRecoveryCooldown =
-    (
-      retryAtValue:
-        string | undefined,
-
-      retryAfterSeconds:
-        number | undefined
-    ) => {
-      const parsedRetryAt =
-        retryAtValue
-          ? new Date(
-              retryAtValue
-            ).getTime()
-          : Number.NaN
-
-      const fallbackSeconds =
-        typeof retryAfterSeconds ===
-          "number" &&
-        Number.isFinite(
-          retryAfterSeconds
+      if (
+        typeof result.destination ===
+          "string"
+      ) {
+        return getSafeNextPath(
+          result.destination
         )
-          ? Math.max(
-              1,
-              retryAfterSeconds
-            )
-          : 60
+      }
 
-      const retryAt =
-        Number.isFinite(
-          parsedRetryAt
-        ) &&
-        parsedRetryAt >
-          Date.now()
-          ? parsedRetryAt
-          : Date.now() +
-            fallbackSeconds *
-              1000
-
-      window.localStorage
-        .setItem(
-          RECOVERY_STORAGE_KEY,
-          String(retryAt)
-        )
-
-      setRecoveryRetryAt(
-        retryAt
-      )
-
-      setRecoveryCooldown(
-        getRemainingSeconds(
-          retryAt
-        )
-      )
+      return safeNext
     }
 
   const handleSubmit =
     async () => {
       const cleanEmail =
-        email.trim()
+        email
+          .trim()
+          .toLowerCase()
 
       if (
         !cleanEmail ||
@@ -426,7 +245,8 @@ export function LoginForm({
       )
 
       if (
-        mode === "register"
+        activeMode ===
+        "register"
       ) {
         const {
           error,
@@ -486,115 +306,21 @@ export function LoginForm({
         return
       }
 
-      window.location.replace(
-        safeNext
-      )
-    }
-
-  const handleForgotPassword =
-    async () => {
-      if (
-        !recoveryEmailIsValid
-      ) {
-        setMessage(
-          "Ingresa un correo válido."
-        )
-
-        return
-      }
-
-      if (
-        loading ||
-        recoveryCooldown > 0
-      ) {
-        return
-      }
-
-      setLoading(true)
-
-      setMessage(
-        "Enviando correo de recuperación..."
-      )
-
       try {
-        const response =
-          await fetch(
-            "/api/auth/request-password-reset",
-            {
-              method:
-                "POST",
+        const destination =
+          await resolveLoginDestination()
 
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-
-              credentials:
-                "same-origin",
-
-              cache:
-                "no-store",
-
-              body:
-                JSON.stringify({
-                  email:
-                    normalizedRecoveryEmail,
-                }),
-            }
-          )
-
-        const result =
-          (
-            await response
-              .json()
-              .catch(
-                () => ({})
-              )
-          ) as
-            PasswordResetResponse
-
-        if (
-          result.retryAt ||
-          result.retryAfterSeconds
-        ) {
-          startRecoveryCooldown(
-            result.retryAt,
-            result.retryAfterSeconds
-          )
-        }
-
-        if (
-          !response.ok ||
-          !result.success
-        ) {
-          if (
-            response.status ===
-              429 ||
-            result.reason ===
-              "rate_limit"
-          ) {
-            setMessage("")
-            return
-          }
-
-          setMessage(
-            result.error ||
-              "No se pudo enviar el correo de recuperación."
-          )
-
-          return
-        }
-
-        setMessage(
-          result.message ||
-            "Confirma el enlace enviado a tu correo."
+        window.location.replace(
+          destination
         )
-      } catch {
-        setMessage(
-          "No se pudo enviar el correo de recuperación. Inténtalo nuevamente."
-        )
-      } finally {
+      } catch (error) {
         setLoading(false)
+
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "La sesión se inició, pero no se pudo comprobar el acceso."
+        )
       }
     }
 
@@ -609,13 +335,6 @@ export function LoginForm({
     }
 
     event.preventDefault()
-
-    if (
-      mode === "forgot"
-    ) {
-      void handleForgotPassword()
-      return
-    }
 
     void handleSubmit()
   }
@@ -638,11 +357,6 @@ export function LoginForm({
         .blur()
     }
 
-  const recoveryButtonDisabled =
-    loading ||
-    !recoveryEmailIsValid ||
-    recoveryCooldown > 0
-
   return (
     <div className="space-y-4">
       <input
@@ -664,114 +378,99 @@ export function LoginForm({
         className="w-full rounded-xl border border-gold/20 bg-black px-4 py-4 text-foreground placeholder:text-foreground/55 outline-none transition focus:border-gold/50 disabled:opacity-60"
       />
 
-      {mode !== "forgot" && (
-        <div className="relative">
-          <input
-            ref={
-              passwordInputRef
-            }
-            type={
-              showPassword
-                ? "text"
-                : "password"
-            }
-            autoComplete={
-              mode === "login"
-                ? "current-password"
-                : "new-password"
-            }
-            placeholder="Contraseña"
-            value={password}
-            onChange={(event) =>
-              setPassword(
-                event.target.value
-              )
-            }
-            onKeyDown={
-              submitOnEnter
-            }
-            disabled={loading}
-            className="w-full rounded-xl border border-gold/20 bg-black px-4 py-4 pr-16 text-foreground placeholder:text-foreground/55 outline-none transition focus:border-gold/50 disabled:opacity-60"
-          />
+      <div className="relative">
+        <input
+          ref={
+            passwordInputRef
+          }
+          type={
+            showPassword
+              ? "text"
+              : "password"
+          }
+          autoComplete={
+            activeMode ===
+              "login"
+              ? "current-password"
+              : "new-password"
+          }
+          placeholder="Contraseña"
+          value={password}
+          onChange={(event) => {
+            setPassword(
+              event.target.value
+            )
 
-          <button
-            type="button"
-            tabIndex={-1}
-            onClick={
-              togglePasswordVisibility
-            }
-            disabled={loading}
-            aria-label={
-              showPassword
-                ? "Ocultar contraseña"
-                : "Mostrar contraseña"
-            }
-            aria-pressed={
-              showPassword
-            }
-            title={
-              showPassword
-                ? "Ocultar contraseña"
-                : "Mostrar contraseña"
-            }
-            className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-full text-gold/70 transition hover:bg-gold/5 hover:text-gold active:scale-95 disabled:cursor-pointer disabled:opacity-50"
-          >
-            {showPassword
-              ? (
-                <EyeIcon />
-              )
-              : (
-                <EyeOffIcon />
-              )}
-          </button>
-        </div>
-      )}
+            setMessage("")
+          }}
+          onKeyDown={
+            submitOnEnter
+          }
+          disabled={loading}
+          className="w-full rounded-xl border border-gold/20 bg-black px-4 py-4 pr-16 text-foreground placeholder:text-foreground/55 outline-none transition focus:border-gold/50 disabled:opacity-60"
+        />
+
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={
+            togglePasswordVisibility
+          }
+          disabled={loading}
+          aria-label={
+            showPassword
+              ? "Ocultar contraseña"
+              : "Mostrar contraseña"
+          }
+          aria-pressed={
+            showPassword
+          }
+          title={
+            showPassword
+              ? "Ocultar contraseña"
+              : "Mostrar contraseña"
+          }
+          className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-full text-gold/70 transition hover:bg-gold/5 hover:text-gold active:scale-95 disabled:cursor-pointer disabled:opacity-50"
+        >
+          {showPassword
+            ? (
+              <EyeIcon />
+            )
+            : (
+              <EyeOffIcon />
+            )}
+        </button>
+      </div>
 
       <button
         type="button"
         onClick={
-          mode === "forgot"
-            ? handleForgotPassword
-            : handleSubmit
+          handleSubmit
         }
         disabled={
-          mode === "forgot"
-            ? recoveryButtonDisabled
-            : loading
+          loading
         }
         className="telegram-button w-full cursor-pointer rounded-xl px-6 py-4 active:scale-[0.98] disabled:cursor-pointer disabled:opacity-70"
       >
-        {loading &&
-          "Procesando..."}
-
-        {!loading &&
-          mode === "login" &&
-          "Iniciar sesión"}
-
-        {!loading &&
-          mode === "register" &&
-          "Crear cuenta"}
-
-        {!loading &&
-          mode === "forgot" &&
-          recoveryCooldown >
-            0 &&
-          `Nuevo intento en ${formatCooldown(
-            recoveryCooldown
-          )}`}
-
-        {!loading &&
-          mode === "forgot" &&
-          recoveryCooldown ===
-            0 &&
-          "Enviar enlace"}
+        {loading
+          ? "Procesando..."
+          : activeMode ===
+              "login"
+            ? "Iniciar sesión"
+            : "Crear cuenta"}
       </button>
 
-      {mode === "login" && (
+      {!onlyLogin && (
         <button
           type="button"
           onClick={() => {
-            setMode("forgot")
+            setMode(
+              activeMode ===
+                "login"
+                ? "register"
+                : "login"
+            )
+
             setMessage("")
             setPassword("")
             setShowPassword(
@@ -779,51 +478,14 @@ export function LoginForm({
             )
           }}
           disabled={loading}
-          className="cursor-pointer text-sm text-gold/70 transition hover:text-gold disabled:cursor-pointer disabled:opacity-50"
+          className="block w-full cursor-pointer text-sm text-gold/70 transition hover:text-gold disabled:cursor-pointer disabled:opacity-50"
         >
-          ¿Olvidaste tu contraseña?
+          {activeMode ===
+            "login"
+            ? "¿No tienes cuenta? Regístrate"
+            : "Ya tengo cuenta"}
         </button>
       )}
-
-      {mode === "forgot" && (
-        <button
-          type="button"
-          onClick={() => {
-            setMode("login")
-            setMessage("")
-          }}
-          disabled={loading}
-          className="cursor-pointer text-sm text-gold/70 transition hover:text-gold disabled:cursor-pointer disabled:opacity-50"
-        >
-          Volver a iniciar sesión
-        </button>
-      )}
-
-      {!onlyLogin &&
-        mode !== "forgot" && (
-          <button
-            type="button"
-            onClick={() => {
-              setMode(
-                mode === "login"
-                  ? "register"
-                  : "login"
-              )
-
-              setMessage("")
-              setPassword("")
-              setShowPassword(
-                false
-              )
-            }}
-            disabled={loading}
-            className="block w-full cursor-pointer text-sm text-gold/70 transition hover:text-gold disabled:cursor-pointer disabled:opacity-50"
-          >
-            {mode === "login"
-              ? "¿No tienes cuenta? Regístrate"
-              : "Ya tengo cuenta"}
-          </button>
-        )}
 
       <p
         className="min-h-5 text-sm text-muted-foreground"

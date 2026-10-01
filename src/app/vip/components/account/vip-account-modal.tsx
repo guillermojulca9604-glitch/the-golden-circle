@@ -74,8 +74,17 @@ type VipAccountModalProps = {
   membershipExpiresAt: string;
   initialLimits: AccountLimits;
   initialHasPassword: boolean;
-  onLimitsChange: (limits: AccountLimits) => void;
-  onAccountNameChange: (accountName: string) => void;
+  telegramLinked: boolean;
+  telegramUsername: string | null;
+
+  onLimitsChange: (
+    limits: AccountLimits
+  ) => void;
+
+  onAccountNameChange: (
+    accountName: string
+  ) => void;
+
   onClose: () => void;
 };
 
@@ -88,7 +97,16 @@ type ChangeResponse = {
   error?: string;
 };
 
-function capitalizeUsername(value: string) {
+type TelegramCreateLinkResponse = {
+  ok?: boolean;
+  url?: string;
+  expiresAt?: string;
+  error?: string;
+};
+
+function capitalizeUsername(
+  value: string
+) {
   if (!value) {
     return "";
   }
@@ -99,7 +117,9 @@ function capitalizeUsername(value: string) {
   );
 }
 
-function sanitizeUsername(value: string) {
+function sanitizeUsername(
+  value: string
+) {
   const withoutAccents = value
     .normalize("NFD")
     .replace(
@@ -219,7 +239,9 @@ function isUsernameComplete(
     return false;
   }
 
-  return !isReservedUsername(value);
+  return !isReservedUsername(
+    value
+  );
 }
 
 function formatExpirationDate(
@@ -231,7 +253,11 @@ function formatExpirationDate(
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return "No disponible";
   }
 
@@ -254,7 +280,11 @@ function formatNextChangeDate(
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return "";
   }
 
@@ -371,6 +401,20 @@ function LockIcon() {
   );
 }
 
+function TelegramIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M20.67 3.44 2.93 10.28c-1.21.49-1.2 1.17-.22 1.47l4.55 1.42 1.75 5.36c.21.58.1.81.72.81.48 0 .69-.22.96-.48l2.19-2.13 4.56 3.37c.84.46 1.44.22 1.65-.78L22.08 5.2c.31-1.24-.47-1.8-1.41-1.76ZM8.01 12.84l10.54-6.65c.53-.32 1.01-.15.61.21l-8.7 7.86-.34 3.61-2.11-5.03Z"
+      />
+    </svg>
+  );
+}
+
 function ChevronIcon() {
   return (
     <svg
@@ -456,18 +500,21 @@ export function VipAccountModal({
   membershipExpiresAt,
   initialLimits,
   initialHasPassword,
+  telegramLinked,
+  telegramUsername,
   onLimitsChange,
   onAccountNameChange,
   onClose,
 }: VipAccountModalProps) {
-  const currentPasswordRef =
-    useRef<HTMLInputElement>(null);
-
   const newPasswordRef =
-    useRef<HTMLInputElement>(null);
+    useRef<HTMLInputElement>(
+      null
+    );
 
   const confirmPasswordRef =
-    useRef<HTMLInputElement>(null);
+    useRef<HTMLInputElement>(
+      null
+    );
 
   const [
     editNameOpen,
@@ -482,7 +529,9 @@ export function VipAccountModal({
   const [
     username,
     setUsername,
-  ] = useState(accountName);
+  ] = useState(
+    accountName
+  );
 
   const [
     savingUsername,
@@ -500,11 +549,6 @@ export function VipAccountModal({
   ] = useState("");
 
   const [
-    currentPassword,
-    setCurrentPassword,
-  ] = useState("");
-
-  const [
     newPassword,
     setNewPassword,
   ] = useState("");
@@ -513,11 +557,6 @@ export function VipAccountModal({
     confirmPassword,
     setConfirmPassword,
   ] = useState("");
-
-  const [
-    showCurrentPassword,
-    setShowCurrentPassword,
-  ] = useState(false);
 
   const [
     showNewPassword,
@@ -542,6 +581,16 @@ export function VipAccountModal({
   const [
     passwordSuccess,
     setPasswordSuccess,
+  ] = useState("");
+
+  const [
+    telegramOpening,
+    setTelegramOpening,
+  ] = useState(false);
+
+  const [
+    telegramMessage,
+    setTelegramMessage,
   ] = useState("");
 
   const [
@@ -591,31 +640,23 @@ export function VipAccountModal({
       MAXIMUM_PASSWORD_LENGTH;
 
   const passwordsMatch =
-    confirmPassword.length > 0 &&
-    newPassword === confirmPassword;
-
-  const newPasswordIsDifferent =
-    !hasPassword ||
-    (
-      currentPassword.length > 0 &&
-      newPassword !== currentPassword
-    );
+    confirmPassword.length >
+      0 &&
+    newPassword ===
+      confirmPassword;
 
   const passwordFormIsComplete =
-    (
-      !hasPassword ||
-      currentPassword.length > 0
-    ) &&
     newPasswordLengthIsValid &&
     passwordsMatch &&
-    newPasswordIsDifferent &&
-    accountEmail.trim().length > 0;
+    accountEmail.trim().length >
+      0;
 
   const accountInitial =
     accountName
       .trim()
       .charAt(0)
-      .toUpperCase() || "U";
+      .toUpperCase() ||
+    "U";
 
   const expirationDate =
     useMemo(
@@ -623,12 +664,18 @@ export function VipAccountModal({
         formatExpirationDate(
           membershipExpiresAt
         ),
-      [membershipExpiresAt]
+      [
+        membershipExpiresAt,
+      ]
     );
 
   useEffect(() => {
-    setUsername(accountName);
-  }, [accountName]);
+    setUsername(
+      accountName
+    );
+  }, [
+    accountName,
+  ]);
 
   useEffect(() => {
     setUsernameLimit(
@@ -638,65 +685,126 @@ export function VipAccountModal({
     setPasswordLimit(
       initialLimits.password
     );
-  }, [initialLimits]);
+  }, [
+    initialLimits,
+  ]);
 
   useEffect(() => {
     setHasPassword(
       initialHasPassword
     );
-  }, [initialHasPassword]);
+  }, [
+    initialHasPassword,
+  ]);
 
   useEffect(() => {
     if (!open) {
-      setEditNameOpen(false);
-      setChangePasswordOpen(false);
+      setEditNameOpen(
+        false
+      );
 
-      setUsername(accountName);
-      setUsernameMessage("");
-      setUsernameSuccess("");
+      setChangePasswordOpen(
+        false
+      );
 
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      setUsername(
+        accountName
+      );
 
-      setShowCurrentPassword(false);
-      setShowNewPassword(false);
-      setShowConfirmPassword(false);
+      setUsernameMessage(
+        ""
+      );
 
-      setPasswordMessage("");
-      setPasswordSuccess("");
+      setUsernameSuccess(
+        ""
+      );
+
+      setNewPassword(
+        ""
+      );
+
+      setConfirmPassword(
+        ""
+      );
+
+      setShowNewPassword(
+        false
+      );
+
+      setShowConfirmPassword(
+        false
+      );
+
+      setPasswordMessage(
+        ""
+      );
+
+      setPasswordSuccess(
+        ""
+      );
 
       return;
     }
 
     const handleKeyDown = (
-      event: globalThis.KeyboardEvent
+      event:
+        globalThis.KeyboardEvent
     ) => {
-      if (event.key !== "Escape") {
+      if (
+        event.key !==
+        "Escape"
+      ) {
         return;
       }
 
-      if (changePasswordOpen) {
-        if (changingPassword) {
+      if (
+        changePasswordOpen
+      ) {
+        if (
+          changingPassword
+        ) {
           return;
         }
 
-        setChangePasswordOpen(false);
-        setPasswordMessage("");
-        setPasswordSuccess("");
+        setChangePasswordOpen(
+          false
+        );
+
+        setPasswordMessage(
+          ""
+        );
+
+        setPasswordSuccess(
+          ""
+        );
 
         return;
       }
 
-      if (editNameOpen) {
-        if (savingUsername) {
+      if (
+        editNameOpen
+      ) {
+        if (
+          savingUsername
+        ) {
           return;
         }
 
-        setEditNameOpen(false);
-        setUsername(accountName);
-        setUsernameMessage("");
-        setUsernameSuccess("");
+        setEditNameOpen(
+          false
+        );
+
+        setUsername(
+          accountName
+        );
+
+        setUsernameMessage(
+          ""
+        );
+
+        setUsernameSuccess(
+          ""
+        );
 
         return;
       }
@@ -727,186 +835,273 @@ export function VipAccountModal({
 
   if (
     !open ||
-    typeof document === "undefined"
+    typeof document ===
+      "undefined"
   ) {
     return null;
   }
 
-  const clearPasswordMessages = () => {
-    setPasswordMessage("");
-    setPasswordSuccess("");
-  };
+  const clearPasswordMessages =
+    () => {
+      setPasswordMessage(
+        ""
+      );
 
-  const handleBackdropClick = (
-    event: MouseEvent<HTMLDivElement>
-  ) => {
-    if (
-      event.target ===
-        event.currentTarget &&
-      !editNameOpen &&
-      !changePasswordOpen
-    ) {
-      onClose();
-    }
-  };
+      setPasswordSuccess(
+        ""
+      );
+    };
 
-  const handleOpenEditName = () => {
-    if (!usernameLimit.canChange) {
-      return;
-    }
+  const handleBackdropClick =
+    (
+      event:
+        MouseEvent<HTMLDivElement>
+    ) => {
+      if (
+        event.target ===
+          event.currentTarget &&
+        !editNameOpen &&
+        !changePasswordOpen
+      ) {
+        onClose();
+      }
+    };
 
-    setUsername(accountName);
-    setUsernameMessage("");
-    setUsernameSuccess("");
-    setEditNameOpen(true);
-  };
+  const handleOpenEditName =
+    () => {
+      if (
+        !usernameLimit.canChange
+      ) {
+        return;
+      }
 
-  const handleCloseEditName = () => {
-    if (savingUsername) {
-      return;
-    }
+      setUsername(
+        accountName
+      );
 
-    setEditNameOpen(false);
-    setUsername(accountName);
-    setUsernameMessage("");
-    setUsernameSuccess("");
-  };
+      setUsernameMessage(
+        ""
+      );
 
-  const handleUsernameChange = (
-    value: string
-  ) => {
-    setUsername(
-      sanitizeUsername(value)
-    );
+      setUsernameSuccess(
+        ""
+      );
 
-    setUsernameMessage("");
-    setUsernameSuccess("");
-  };
+      setEditNameOpen(
+        true
+      );
+    };
 
-  const handleUsernameKeyDown = (
-    event: KeyboardEvent<HTMLInputElement>
-  ) => {
-    if (event.key === " ") {
+  const handleCloseEditName =
+    () => {
+      if (
+        savingUsername
+      ) {
+        return;
+      }
+
+      setEditNameOpen(
+        false
+      );
+
+      setUsername(
+        accountName
+      );
+
+      setUsernameMessage(
+        ""
+      );
+
+      setUsernameSuccess(
+        ""
+      );
+    };
+
+  const handleUsernameChange =
+    (
+      value: string
+    ) => {
+      setUsername(
+        sanitizeUsername(
+          value
+        )
+      );
+
+      setUsernameMessage(
+        ""
+      );
+
+      setUsernameSuccess(
+        ""
+      );
+    };
+
+  const handleUsernameKeyDown =
+    (
+      event:
+        KeyboardEvent<HTMLInputElement>
+    ) => {
+      if (
+        event.key === " "
+      ) {
+        event.preventDefault();
+      }
+    };
+
+  const handleSaveUsername =
+    async (
+      event:
+        FormEvent<HTMLFormElement>
+    ) => {
       event.preventDefault();
-    }
-  };
-
-  const handleSaveUsername = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
-
-    if (
-      !usernameIsComplete ||
-      savingUsername ||
-      !usernameLimit.canChange
-    ) {
-      return;
-    }
-
-    if (username === accountName) {
-      setEditNameOpen(false);
-      return;
-    }
-
-    setSavingUsername(true);
-    setUsernameMessage("");
-    setUsernameSuccess("");
-
-    try {
-      const response =
-        await fetch(
-          "/api/vip/change-username",
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body: JSON.stringify({
-              username,
-            }),
-          }
-        );
-
-      const result =
-        (await response.json()) as
-          ChangeResponse;
 
       if (
-        !response.ok ||
-        !result.success ||
-        !result.username
+        !usernameIsComplete ||
+        savingUsername ||
+        !usernameLimit.canChange
       ) {
-        if (result.nextChangeAt) {
-          const nextLimit = {
-            canChange: false,
-            nextChangeAt:
-              result.nextChangeAt,
-          };
+        return;
+      }
 
-          setUsernameLimit(
-            nextLimit
-          );
-
-          onLimitsChange({
-            username:
-              nextLimit,
-
-            password:
-              passwordLimit,
-          });
-        }
-
-        setUsernameMessage(
-          result.error ||
-            "No pudimos guardar tu nombre. Inténtalo nuevamente."
+      if (
+        username ===
+        accountName
+      ) {
+        setEditNameOpen(
+          false
         );
 
         return;
       }
 
-      onAccountNameChange(
-        result.username
+      setSavingUsername(
+        true
       );
 
-      const nextLimit = {
-        canChange: false,
-        nextChangeAt:
-          result.nextChangeAt ??
-          null,
-      };
-
-      setUsernameLimit(
-        nextLimit
+      setUsernameMessage(
+        ""
       );
-
-      onLimitsChange({
-        username:
-          nextLimit,
-
-        password:
-          passwordLimit,
-      });
 
       setUsernameSuccess(
-        "Nombre actualizado correctamente."
+        ""
       );
 
-      window.setTimeout(() => {
-        setEditNameOpen(false);
-        setUsernameSuccess("");
-      }, 800);
-    } catch {
-      setUsernameMessage(
-        "No pudimos guardar tu nombre. Inténtalo nuevamente."
-      );
-    } finally {
-      setSavingUsername(false);
-    }
-  };
+      try {
+        const response =
+          await fetch(
+            "/api/vip/change-username",
+            {
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify(
+                  {
+                    username,
+                  }
+                ),
+            }
+          );
+
+        const result =
+          (await response.json()) as
+            ChangeResponse;
+
+        if (
+          !response.ok ||
+          !result.success ||
+          !result.username
+        ) {
+          if (
+            result.nextChangeAt
+          ) {
+            const nextLimit =
+              {
+                canChange:
+                  false,
+
+                nextChangeAt:
+                  result.nextChangeAt,
+              };
+
+            setUsernameLimit(
+              nextLimit
+            );
+
+            onLimitsChange({
+              username:
+                nextLimit,
+
+              password:
+                passwordLimit,
+            });
+          }
+
+          setUsernameMessage(
+            result.error ||
+              "No pudimos guardar tu nombre. Inténtalo nuevamente."
+          );
+
+          return;
+        }
+
+        onAccountNameChange(
+          result.username
+        );
+
+        const nextLimit =
+          {
+            canChange:
+              false,
+
+            nextChangeAt:
+              result.nextChangeAt ??
+              null,
+          };
+
+        setUsernameLimit(
+          nextLimit
+        );
+
+        onLimitsChange({
+          username:
+            nextLimit,
+
+          password:
+            passwordLimit,
+        });
+
+        setUsernameSuccess(
+          "Nombre actualizado correctamente."
+        );
+
+        window.setTimeout(
+          () => {
+            setEditNameOpen(
+              false
+            );
+
+            setUsernameSuccess(
+              ""
+            );
+          },
+          800
+        );
+      } catch {
+        setUsernameMessage(
+          "No pudimos guardar tu nombre. Inténtalo nuevamente."
+        );
+      } finally {
+        setSavingUsername(
+          false
+        );
+      }
+    };
 
   const handleOpenChangePassword =
     () => {
@@ -916,203 +1111,348 @@ export function VipAccountModal({
         return;
       }
 
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      setNewPassword(
+        ""
+      );
 
-      setShowCurrentPassword(false);
-      setShowNewPassword(false);
-      setShowConfirmPassword(false);
+      setConfirmPassword(
+        ""
+      );
 
-      setPasswordMessage("");
-      setPasswordSuccess("");
+      setShowNewPassword(
+        false
+      );
 
-      setChangePasswordOpen(true);
+      setShowConfirmPassword(
+        false
+      );
+
+      setPasswordMessage(
+        ""
+      );
+
+      setPasswordSuccess(
+        ""
+      );
+
+      setChangePasswordOpen(
+        true
+      );
     };
 
   const handleCloseChangePassword =
     () => {
-      if (changingPassword) {
-        return;
-      }
-
-      setChangePasswordOpen(false);
-
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-
-      setShowCurrentPassword(false);
-      setShowNewPassword(false);
-      setShowConfirmPassword(false);
-
-      setPasswordMessage("");
-      setPasswordSuccess("");
-    };
-
-  const handleToggleCurrentPassword = (
-    event: MouseEvent<HTMLButtonElement>
-  ) => {
-    setShowCurrentPassword(
-      (currentValue) =>
-        !currentValue
-    );
-
-    currentPasswordRef.current?.blur();
-    event.currentTarget.blur();
-  };
-
-  const handleToggleNewPassword = (
-    event: MouseEvent<HTMLButtonElement>
-  ) => {
-    setShowNewPassword(
-      (currentValue) =>
-        !currentValue
-    );
-
-    newPasswordRef.current?.blur();
-    event.currentTarget.blur();
-  };
-
-  const handleToggleConfirmPassword = (
-    event: MouseEvent<HTMLButtonElement>
-  ) => {
-    setShowConfirmPassword(
-      (currentValue) =>
-        !currentValue
-    );
-
-    confirmPasswordRef.current?.blur();
-    event.currentTarget.blur();
-  };
-
-  const handleSavePassword = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
-
-    if (
-      !passwordFormIsComplete ||
-      changingPassword ||
-      !passwordLimit.canChange
-    ) {
-      return;
-    }
-
-    setChangingPassword(true);
-    setPasswordMessage("");
-    setPasswordSuccess("");
-
-    try {
-      const response =
-        await fetch(
-          "/api/vip/change-password",
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body: JSON.stringify({
-              currentPassword,
-              newPassword,
-            }),
-          }
-        );
-
-      const result =
-        (await response.json()) as
-          ChangeResponse;
-
       if (
-        !response.ok ||
-        !result.success
+        changingPassword
       ) {
-        if (result.nextChangeAt) {
-          const nextLimit = {
-            canChange: false,
-            nextChangeAt:
-              result.nextChangeAt,
-          };
-
-          setPasswordLimit(
-            nextLimit
-          );
-
-          onLimitsChange({
-            username:
-              usernameLimit,
-
-            password:
-              nextLimit,
-          });
-        }
-
-        setPasswordMessage(
-          result.error ||
-            (hasPassword
-              ? "No pudimos cambiar tu contraseña. Inténtalo nuevamente."
-              : "No pudimos crear tu contraseña. Inténtalo nuevamente.")
-        );
-
         return;
       }
 
-      const passwordWasCreated =
-        result.created === true ||
-        hasPassword === false;
-
-      setHasPassword(true);
-
-      const nextLimit = {
-        canChange: false,
-        nextChangeAt:
-          result.nextChangeAt ??
-          null,
-      };
-
-      setPasswordLimit(
-        nextLimit
+      setChangePasswordOpen(
+        false
       );
 
-      onLimitsChange({
-        username:
-          usernameLimit,
+      setNewPassword(
+        ""
+      );
 
-        password:
-          nextLimit,
-      });
+      setConfirmPassword(
+        ""
+      );
 
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      setShowNewPassword(
+        false
+      );
 
-      setShowCurrentPassword(false);
-      setShowNewPassword(false);
-      setShowConfirmPassword(false);
+      setShowConfirmPassword(
+        false
+      );
+
+      setPasswordMessage(
+        ""
+      );
 
       setPasswordSuccess(
-        passwordWasCreated
-          ? "Contraseña creada correctamente."
-          : "Contraseña actualizada correctamente."
+        ""
+      );
+    };
+
+  const handleToggleNewPassword =
+    (
+      event:
+        MouseEvent<HTMLButtonElement>
+    ) => {
+      setShowNewPassword(
+        (currentValue) =>
+          !currentValue
       );
 
-      window.setTimeout(() => {
-        setChangePasswordOpen(false);
-        setPasswordSuccess("");
-      }, 900);
-    } catch {
-      setPasswordMessage(
-        hasPassword
-          ? "No pudimos cambiar tu contraseña. Inténtalo nuevamente."
-          : "No pudimos crear tu contraseña. Inténtalo nuevamente."
+      newPasswordRef.current?.blur();
+
+      event.currentTarget.blur();
+    };
+
+  const handleToggleConfirmPassword =
+    (
+      event:
+        MouseEvent<HTMLButtonElement>
+    ) => {
+      setShowConfirmPassword(
+        (currentValue) =>
+          !currentValue
       );
-    } finally {
-      setChangingPassword(false);
-    }
-  };
+
+      confirmPasswordRef.current?.blur();
+
+      event.currentTarget.blur();
+    };
+
+  const handleSavePassword =
+    async (
+      event:
+        FormEvent<HTMLFormElement>
+    ) => {
+      event.preventDefault();
+
+      if (
+        !passwordFormIsComplete ||
+        changingPassword ||
+        !passwordLimit.canChange
+      ) {
+        return;
+      }
+
+      setChangingPassword(
+        true
+      );
+
+      setPasswordMessage(
+        ""
+      );
+
+      setPasswordSuccess(
+        ""
+      );
+
+      try {
+        const response =
+          await fetch(
+            "/api/vip/change-password",
+            {
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify(
+                  {
+                    newPassword,
+                  }
+                ),
+            }
+          );
+
+        const result =
+          (await response.json()) as
+            ChangeResponse;
+
+        if (
+          !response.ok ||
+          !result.success
+        ) {
+          if (
+            result.nextChangeAt
+          ) {
+            const nextLimit =
+              {
+                canChange:
+                  false,
+
+                nextChangeAt:
+                  result.nextChangeAt,
+              };
+
+            setPasswordLimit(
+              nextLimit
+            );
+
+            onLimitsChange({
+              username:
+                usernameLimit,
+
+              password:
+                nextLimit,
+            });
+          }
+
+          setPasswordMessage(
+            result.error ||
+              (
+                hasPassword
+                  ? "No pudimos cambiar tu contraseña. Inténtalo nuevamente."
+                  : "No pudimos crear tu contraseña. Inténtalo nuevamente."
+              )
+          );
+
+          return;
+        }
+
+        const passwordWasCreated =
+          result.created ===
+            true ||
+          hasPassword ===
+            false;
+
+        setHasPassword(
+          true
+        );
+
+        const nextLimit =
+          {
+            canChange:
+              false,
+
+            nextChangeAt:
+              result.nextChangeAt ??
+              null,
+          };
+
+        setPasswordLimit(
+          nextLimit
+        );
+
+        onLimitsChange({
+          username:
+            usernameLimit,
+
+          password:
+            nextLimit,
+        });
+
+        setNewPassword(
+          ""
+        );
+
+        setConfirmPassword(
+          ""
+        );
+
+        setShowNewPassword(
+          false
+        );
+
+        setShowConfirmPassword(
+          false
+        );
+
+        setPasswordSuccess(
+          passwordWasCreated
+            ? "Contraseña creada correctamente."
+            : "Contraseña actualizada correctamente."
+        );
+
+        window.setTimeout(
+          () => {
+            setChangePasswordOpen(
+              false
+            );
+
+            setPasswordSuccess(
+              ""
+            );
+          },
+          900
+        );
+      } catch {
+        setPasswordMessage(
+          hasPassword
+            ? "No pudimos cambiar tu contraseña. Inténtalo nuevamente."
+            : "No pudimos crear tu contraseña. Inténtalo nuevamente."
+        );
+      } finally {
+        setChangingPassword(
+          false
+        );
+      }
+    };
+
+  const handleTelegramAction =
+    async () => {
+      if (
+        telegramOpening
+      ) {
+        return;
+      }
+
+      setTelegramOpening(
+        true
+      );
+
+      setTelegramMessage(
+        ""
+      );
+
+      try {
+        const response =
+          await fetch(
+            "/api/telegram/create-link",
+            {
+              method:
+                "POST",
+            }
+          );
+
+        const result =
+          (await response.json()) as
+            TelegramCreateLinkResponse;
+
+        if (
+          !response.ok ||
+          !result.ok ||
+          !result.url
+        ) {
+          setTelegramMessage(
+            result.error ||
+              "No se pudo preparar Telegram."
+          );
+
+          return;
+        }
+
+        window.location.href =
+          result.url;
+      } catch {
+        setTelegramMessage(
+          "No se pudo preparar Telegram."
+        );
+      } finally {
+        setTelegramOpening(
+          false
+        );
+      }
+    };
+
+  const cleanTelegramUsername =
+    telegramUsername
+      ?.trim()
+      .replace(
+        /^@/,
+        ""
+      ) ||
+    "";
+
+  const telegramDescription =
+    telegramMessage
+      ? telegramMessage
+      : telegramLinked
+        ? cleanTelegramUsername
+          ? `@${cleanTelegramUsername} · Cuenta vinculada.`
+          : "Cuenta de Telegram vinculada."
+        : "Vincula tu cuenta para acceder al canal privado.";
 
   const usernameBlockedText =
     usernameLimit.canChange
@@ -1132,13 +1472,17 @@ export function VipAccountModal({
 
   return createPortal(
     <div
-      className={styles.modalLayer}
+      className={
+        styles.modalLayer
+      }
       onMouseDown={
         handleBackdropClick
       }
     >
       <div
-        className={styles.accountModal}
+        className={
+          styles.accountModal
+        }
         role="dialog"
         aria-modal="true"
         aria-labelledby="vip-account-title"
@@ -1149,7 +1493,9 @@ export function VipAccountModal({
             styles.closeButton
           }
           aria-label="Cerrar Mi cuenta"
-          onClick={onClose}
+          onClick={
+            onClose
+          }
         >
           <CloseIcon />
         </button>
@@ -1201,7 +1547,9 @@ export function VipAccountModal({
               className={
                 styles.profileName
               }
-              title={accountName}
+              title={
+                accountName
+              }
             >
               {accountName}
             </p>
@@ -1210,7 +1558,9 @@ export function VipAccountModal({
               className={
                 styles.profileEmail
               }
-              title={accountEmail}
+              title={
+                accountEmail
+              }
             >
               {accountEmail}
             </p>
@@ -1294,12 +1644,88 @@ export function VipAccountModal({
                 styles.expirationDetails
               }
             >
-              <span>Vence el</span>
+              <span>
+                Vence el
+              </span>
 
               <strong>
                 {expirationDate}
               </strong>
             </div>
+          </div>
+        </section>
+
+        <div
+          className={
+            styles.sectionDivider
+          }
+          aria-hidden="true"
+        />
+
+        <section
+          className={
+            styles.modalSection
+          }
+        >
+          <h3
+            className={
+              styles.sectionTitle
+            }
+          >
+            Telegram
+          </h3>
+
+          <div
+            className={
+              styles.accountActions
+            }
+          >
+            <button
+              type="button"
+              className={
+                styles.actionButton
+              }
+              disabled={
+                telegramOpening
+              }
+              onClick={
+                handleTelegramAction
+              }
+            >
+              <span
+                className={
+                  styles.actionIcon
+                }
+                aria-hidden="true"
+              >
+                <TelegramIcon />
+              </span>
+
+              <span
+                className={
+                  styles.actionText
+                }
+              >
+                <strong>
+                  {telegramLinked
+                    ? "Cambiar Telegram"
+                    : "Vincular Telegram"}
+                </strong>
+
+                <small>
+                  {telegramDescription}
+                </small>
+              </span>
+
+              <span
+                className={
+                  styles.chevronIcon
+                }
+                aria-hidden="true"
+              >
+                <ChevronIcon />
+              </span>
+            </button>
           </div>
         </section>
 
@@ -1453,7 +1879,9 @@ export function VipAccountModal({
                 styles.secondaryCloseButton
               }
               aria-label="Cerrar edición de nombre"
-              disabled={savingUsername}
+              disabled={
+                savingUsername
+              }
               onClick={
                 handleCloseEditName
               }
@@ -1501,7 +1929,9 @@ export function VipAccountModal({
                 styles.nameInput
               }
               type="text"
-              value={username}
+              value={
+                username
+              }
               placeholder="Usuario"
               minLength={
                 MINIMUM_USERNAME_LENGTH
@@ -1512,7 +1942,9 @@ export function VipAccountModal({
               autoComplete="off"
               autoCapitalize="words"
               spellCheck="false"
-              disabled={savingUsername}
+              disabled={
+                savingUsername
+              }
               onKeyDown={
                 handleUsernameKeyDown
               }
@@ -1582,7 +2014,9 @@ export function VipAccountModal({
                 className={
                   styles.cancelButton
                 }
-                disabled={savingUsername}
+                disabled={
+                  savingUsername
+                }
                 onClick={
                   handleCloseEditName
                 }
@@ -1598,12 +2032,11 @@ export function VipAccountModal({
                 disabled={
                   !usernameIsComplete ||
                   savingUsername ||
-                  username === accountName
+                  username ===
+                    accountName
                 }
               >
-                {savingUsername
-                  ? "Guardando..."
-                  : "Guardar cambios"}
+                Guardar cambios
               </button>
             </div>
           </form>
@@ -1638,7 +2071,9 @@ export function VipAccountModal({
                 styles.secondaryCloseButton
               }
               aria-label="Cerrar cambio de contraseña"
-              disabled={changingPassword}
+              disabled={
+                changingPassword
+              }
               onClick={
                 handleCloseChangePassword
               }
@@ -1668,18 +2103,8 @@ export function VipAccountModal({
                 }
               >
                 {hasPassword
-                  ? (
-                    <>
-                      Confirma tu contraseña actual
-                      y elige una nueva.
-                    </>
-                  )
-                  : (
-                    <>
-                      Crea una contraseña para
-                      iniciar sesión con tu correo.
-                    </>
-                  )}
+                  ? "Elige una nueva contraseña para tu cuenta."
+                  : "Crea una contraseña para iniciar sesión con tu correo."}
               </p>
             </header>
 
@@ -1688,86 +2113,6 @@ export function VipAccountModal({
                 styles.passwordFields
               }
             >
-              {hasPassword && (
-                <div
-                  className={
-                    styles.passwordFieldGroup
-                  }
-                >
-                  <label
-                    className={
-                      styles.fieldLabel
-                    }
-                    htmlFor="vip-current-password"
-                  >
-                    Contraseña actual
-                  </label>
-
-                  <div
-                    className={
-                      styles.passwordInputShell
-                    }
-                  >
-                    <input
-                      ref={
-                        currentPasswordRef
-                      }
-                      id="vip-current-password"
-                      className={
-                        styles.passwordInput
-                      }
-                      type={
-                        showCurrentPassword
-                          ? "text"
-                          : "password"
-                      }
-                      value={
-                        currentPassword
-                      }
-                      placeholder="Contraseña actual"
-                      autoComplete="current-password"
-                      disabled={
-                        changingPassword
-                      }
-                      onChange={(event) => {
-                        setCurrentPassword(
-                          event.target.value
-                        );
-
-                        clearPasswordMessages();
-                      }}
-                    />
-
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      className={
-                        styles.passwordEyeButton
-                      }
-                      aria-label={
-                        showCurrentPassword
-                          ? "Ocultar contraseña actual"
-                          : "Mostrar contraseña actual"
-                      }
-                      disabled={
-                        changingPassword
-                      }
-                      onClick={
-                        handleToggleCurrentPassword
-                      }
-                    >
-                      {showCurrentPassword
-                        ? (
-                          <EyeIcon />
-                        )
-                        : (
-                          <EyeOffIcon />
-                        )}
-                    </button>
-                  </div>
-                </div>
-              )}
-
               <div
                 className={
                   styles.passwordFieldGroup
@@ -1802,7 +2147,9 @@ export function VipAccountModal({
                         ? "text"
                         : "password"
                     }
-                    value={newPassword}
+                    value={
+                      newPassword
+                    }
                     placeholder={
                       hasPassword
                         ? "Nueva contraseña"
@@ -1971,21 +2318,6 @@ export function VipAccountModal({
                       coinciden.
                     </p>
                   )}
-
-                {hasPassword &&
-                  newPassword.length > 0 &&
-                  currentPassword.length >
-                    0 &&
-                  !newPasswordIsDifferent && (
-                    <p
-                      className={
-                        styles.inlineError
-                      }
-                    >
-                      La nueva contraseña debe
-                      ser diferente a la actual.
-                    </p>
-                  )}
               </div>
             </div>
 
@@ -2041,17 +2373,9 @@ export function VipAccountModal({
                   changingPassword
                 }
               >
-                {changingPassword
-                  ? (
-                    hasPassword
-                      ? "Actualizando..."
-                      : "Creando..."
-                  )
-                  : (
-                    hasPassword
-                      ? "Cambiar contraseña"
-                      : "Crear contraseña"
-                  )}
+                {hasPassword
+                  ? "Guardar cambios"
+                  : "Crear contraseña"}
               </button>
             </div>
           </form>

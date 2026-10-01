@@ -1,0 +1,1031 @@
+.home {
+  position: relative;
+  z-index: 2;
+
+  width:
+    calc(
+      100% -
+      var(
+        --vip-sidebar-width,
+        220px
+      )
+    );
+
+  min-height: 100vh;
+  min-height: 100dvh;
+
+  box-sizing: border-box;
+
+  margin-left:
+    var(
+      --vip-sidebar-width,
+      220px
+    );
+
+  padding:
+    34px
+    30px
+    54px;
+
+  color:
+    rgba(
+      241,
+      238,
+      230,
+      0.96
+    );
+
+  transition:
+    width 300ms
+      cubic-bezier(
+        0.22,
+        1,
+        0.36,
+        1
+      ),
+    margin-left 300ms
+      cubic-bezier(
+        0.22,
+        1,
+        0.36,
+        1
+      );
+}
+
+/* ================================= */
+/* CABECERA                          */
+/* ================================= */
+
+.homeHeader {
+  width:
+    min(
+      760px,
+      100%
+    );
+
+  margin: 0;
+}
+
+.welcomeLabel {
+  margin: 0;
+
+  color:
+    oklch(
+      0.78
+      0.12
+      85 / 0.9
+    );
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size:
+    clamp(
+      16px,
+      1.25vw,
+      20px
+    );
+
+  font-weight: 400;
+
+  line-height: 1.2;
+}
+
+.homeTitle {
+  overflow: hidden;
+
+  margin:
+    3px
+    0
+    0;
+
+  color:
+    oklch(
+      0.78
+      0.12
+      85 / 0.98
+    );
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size:
+    clamp(
+      38px,
+      4.1vw,
+      62px
+    );
+
+  font-weight: 400;
+
+  line-height: 0.98;
+
+  letter-spacing:
+    -0.025em;
+
+  text-overflow: ellipsis;
+
+  text-shadow:
+    0 0 14px
+      oklch(
+        0.78
+        0.12
+        85 / 0.08
+      );
+
+  white-space: nowrap;
+}
+
+.homeDescription {
+  margin:
+    14px
+    0
+    0;
+
+  color:
+    rgba(
+      197,
+      194,
+      186,
+      0.78
+    );
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size:
+    clamp(
+      13px,
+      1.05vw,
+      15px
+    );
+
+  line-height: 1.45;
+}
+
+/* ================================= */
+/* TELEGRAM - ESCRITORIO             */
+/* ================================= */
+
+.telegramSection {
+  display: grid;
+
+  width:
+    min(
+      940px,
+      100%
+    );
+
+  margin:
+    54px
+    0
+    0;
+
+  grid-template-columns:
+    minmax(
+      240px,
+      0.85fr
+    )
+    minmax(
+      350px,
+      1.15fr
+    );
+
+  align-items: center;
+
+  gap:
+    clamp(
+      24px,
+      4vw,
+      48px
+    );
+}
+
+/* ================================= */
+/* LOGO TELEGRAM                     */
+/* ================================= */
+
+.telegramVisual {
+  position: relative;
+
+  display: grid;
+
+  grid-column: 1;
+  grid-row: 1;
+
+  width:
+    min(
+      300px,
+      100%
+    );
+
+  aspect-ratio: 1;
+
+  place-items: center;
+
+  justify-self: start;
+
+  isolation: isolate;
+}
+
+.telegramGlow {
+  position: absolute;
+  z-index: 0;
+
+  width: 76%;
+  height: 76%;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      oklch(
+        0.78
+        0.14
+        80 / 0.16
+      )
+      0%,
+      oklch(
+        0.7
+        0.13
+        74 / 0.07
+      )
+      35%,
+      transparent
+      70%
+    );
+
+  filter:
+    blur(16px);
+
+  pointer-events: none;
+}
+
+.telegramBadge {
+  position: relative;
+  z-index: 5;
+
+  display: grid;
+
+  width: 42%;
+  aspect-ratio: 1;
+
+  place-items: center;
+
+  border:
+    1px solid
+    oklch(
+      0.78
+      0.12
+      85 / 0.72
+    );
+
+  border-radius: 25%;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(
+        33,
+        28,
+        20,
+        0.96
+      ),
+      rgba(
+        7,
+        6,
+        4,
+        0.99
+      )
+    );
+
+  color:
+    oklch(
+      0.83
+      0.13
+      85
+    );
+
+  box-shadow:
+    0 16px 38px
+      rgba(
+        0,
+        0,
+        0,
+        0.46
+      ),
+    0 0 28px
+      oklch(
+        0.76
+        0.13
+        80 / 0.22
+      ),
+    inset 0 0 22px
+      oklch(
+        0.78
+        0.12
+        85 / 0.07
+      );
+
+  transform:
+    rotate(-4deg);
+}
+
+.telegramBadge svg {
+  display: block;
+
+  width: 56%;
+  height: 56%;
+
+  filter:
+    drop-shadow(
+      0 0 8px
+      oklch(
+        0.8
+        0.13
+        84 / 0.24
+      )
+    );
+}
+
+/* ================================= */
+/* ÓRBITAS                           */
+/* ================================= */
+
+.telegramOrbitOne,
+.telegramOrbitTwo,
+.telegramOrbitThree {
+  position: absolute;
+  z-index: 2;
+
+  border:
+    1px solid
+    oklch(
+      0.78
+      0.12
+      85 / 0.3
+    );
+
+  border-radius: 50%;
+
+  box-shadow:
+    0 0 11px
+      oklch(
+        0.78
+        0.12
+        85 / 0.08
+      );
+
+  pointer-events: none;
+}
+
+.telegramOrbitOne {
+  width: 74%;
+  height: 41%;
+
+  transform:
+    rotate(-17deg);
+}
+
+.telegramOrbitTwo {
+  width: 71%;
+  height: 37%;
+
+  transform:
+    rotate(29deg);
+}
+
+.telegramOrbitThree {
+  width: 65%;
+  height: 51%;
+
+  transform:
+    rotate(72deg);
+}
+
+/* ================================= */
+/* CONTENIDO TELEGRAM                */
+/* ================================= */
+
+.telegramContent {
+  position: relative;
+  z-index: 3;
+
+  grid-column: 2;
+  grid-row: 1;
+
+  width:
+    min(
+      500px,
+      100%
+    );
+
+  min-width: 0;
+
+  justify-self: start;
+}
+
+.telegramTitle {
+  max-width: 500px;
+
+  margin: 0;
+
+  color:
+    rgba(
+      239,
+      236,
+      227,
+      0.96
+    );
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size:
+    clamp(
+      32px,
+      3vw,
+      48px
+    );
+
+  font-weight: 400;
+
+  line-height: 1.04;
+
+  letter-spacing:
+    -0.025em;
+}
+
+.telegramTitle span {
+  color:
+    oklch(
+      0.78
+      0.12
+      85 / 0.98
+    );
+
+  text-shadow:
+    0 0 15px
+      oklch(
+        0.78
+        0.12
+        85 / 0.07
+      );
+}
+
+.telegramDescription {
+  max-width: 455px;
+
+  margin:
+    18px
+    0
+    0;
+
+  color:
+    rgba(
+      205,
+      201,
+      192,
+      0.78
+    );
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size:
+    clamp(
+      14px,
+      1.25vw,
+      18px
+    );
+
+  line-height: 1.45;
+}
+
+/* ================================= */
+/* BOTÓN                             */
+/* ================================= */
+
+.telegramButton {
+  display: inline-flex;
+
+  width:
+    min(
+      450px,
+      100%
+    );
+
+  min-height: 62px;
+
+  box-sizing: border-box;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 16px;
+
+  margin-top: 25px;
+
+  border:
+    1px solid
+    oklch(
+      0.84
+      0.12
+      86 / 0.82
+    );
+
+  border-radius: 14px;
+
+  padding:
+    0
+    22px;
+
+  background:
+    linear-gradient(
+      180deg,
+      oklch(
+        0.86
+        0.11
+        88
+      ),
+      oklch(
+        0.72
+        0.13
+        79
+      )
+    );
+
+  color:
+    rgba(
+      20,
+      15,
+      7,
+      0.96
+    );
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size:
+    clamp(
+      13px,
+      1.2vw,
+      18px
+    );
+
+  font-weight: 600;
+
+  letter-spacing: 0.12em;
+
+  text-transform: uppercase;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 9px 27px
+      rgba(
+        0,
+        0,
+        0,
+        0.38
+      ),
+    0 0 24px
+      oklch(
+        0.78
+        0.12
+        85 / 0.11
+      );
+
+  transform:
+    scale(1);
+
+  transform-origin: center;
+
+  transition:
+    transform 80ms ease;
+}
+
+/*
+  Hover:
+  no cambia nada.
+*/
+
+.telegramButton:hover {
+  transform:
+    scale(1);
+}
+
+/*
+  Clic:
+  solamente se achica.
+  NO baja.
+*/
+
+.telegramButton:active {
+  transform:
+    scale(0.985);
+}
+
+.telegramButton:focus-visible {
+  outline:
+    1px solid
+    oklch(
+      0.88
+      0.11
+      87
+    );
+
+  outline-offset: 4px;
+}
+
+.telegramButtonIcon {
+  display: grid;
+
+  width: 24px;
+  height: 24px;
+
+  flex:
+    0 0
+    24px;
+
+  place-items: center;
+}
+
+.telegramButtonIcon svg {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+}
+
+/* ================================= */
+/* INTERMEDIO                        */
+/* ================================= */
+
+@media (max-width: 1000px) {
+  .home {
+    padding:
+      30px
+      24px
+      46px;
+  }
+
+  .telegramSection {
+    grid-template-columns:
+      minmax(
+        190px,
+        230px
+      )
+      minmax(
+        0,
+        1fr
+      );
+
+    gap: 24px;
+  }
+
+  .telegramVisual {
+    width:
+      min(
+        230px,
+        100%
+      );
+  }
+
+  .telegramTitle {
+    font-size:
+      clamp(
+        30px,
+        4vw,
+        40px
+      );
+  }
+
+  .telegramDescription {
+    font-size:
+      clamp(
+        14px,
+        1.7vw,
+        16px
+      );
+  }
+}
+
+/* ================================= */
+/* MODO MÓVIL                        */
+/* ================================= */
+
+@media (max-width: 760px) {
+  .home {
+    padding:
+      26px
+      18px
+      40px;
+  }
+
+  .homeHeader {
+    padding-right: 52px;
+  }
+
+  .homeTitle {
+    font-size:
+      clamp(
+        34px,
+        7vw,
+        44px
+      );
+  }
+
+  .telegramSection {
+    width: 100%;
+
+    margin:
+      44px
+      0
+      0;
+
+    grid-template-columns: 1fr;
+
+    gap: 16px;
+
+    justify-items: center;
+  }
+
+  .telegramVisual {
+    grid-column: 1;
+    grid-row: 1;
+
+    width:
+      clamp(
+        165px,
+        38vw,
+        195px
+      );
+
+    justify-self: center;
+  }
+
+  .telegramContent {
+    grid-column: 1;
+    grid-row: 2;
+
+    width:
+      min(
+        430px,
+        100%
+      );
+
+    justify-self: center;
+
+    text-align: center;
+  }
+
+  .telegramTitle {
+    width: 100%;
+
+    max-width: 430px;
+
+    margin:
+      0
+      auto;
+
+    font-size:
+      clamp(
+        28px,
+        6.5vw,
+        34px
+      );
+
+    line-height: 1.05;
+
+    text-align: center;
+  }
+
+  .telegramDescription {
+    width:
+      min(
+        390px,
+        100%
+      );
+
+    max-width: none;
+
+    margin:
+      15px
+      auto
+      0;
+
+    font-size:
+      clamp(
+        13.5px,
+        2.8vw,
+        15px
+      );
+
+    line-height: 1.45;
+
+    text-align: center;
+  }
+
+  .telegramButton {
+    display: flex;
+
+    width:
+      min(
+        390px,
+        100%
+      );
+
+    min-height: 55px;
+
+    margin:
+      22px
+      auto
+      0;
+
+    padding:
+      0
+      16px;
+
+    font-size:
+      clamp(
+        12px,
+        2.5vw,
+        13px
+      );
+
+    letter-spacing: 0.09em;
+  }
+
+  .telegramButtonIcon {
+    width: 21px;
+    height: 21px;
+
+    flex-basis: 21px;
+  }
+}
+
+/* ================================= */
+/* MÓVIL PEQUEÑO                     */
+/* ================================= */
+
+@media (max-width: 520px) {
+  .home {
+    padding:
+      22px
+      12px
+      34px;
+  }
+
+  .homeHeader {
+    padding-right: 42px;
+  }
+
+  .welcomeLabel {
+    font-size: 15px;
+  }
+
+  .homeTitle {
+    font-size:
+      clamp(
+        30px,
+        8vw,
+        38px
+      );
+  }
+
+  .homeDescription {
+    margin-top: 10px;
+
+    font-size: 12.5px;
+  }
+
+  .telegramSection {
+    margin-top: 40px;
+
+    gap: 12px;
+  }
+
+  .telegramVisual {
+    width:
+      clamp(
+        145px,
+        38vw,
+        170px
+      );
+  }
+
+  .telegramContent {
+    width: 100%;
+  }
+
+  .telegramTitle {
+    width:
+      min(
+        360px,
+        100%
+      );
+
+    font-size:
+      clamp(
+        26px,
+        7vw,
+        30px
+      );
+  }
+
+  .telegramDescription {
+    width:
+      min(
+        340px,
+        100%
+      );
+
+    margin-top: 13px;
+
+    font-size: 13px;
+  }
+
+  .telegramButton {
+    width:
+      min(
+        340px,
+        100%
+      );
+
+    min-height: 52px;
+
+    margin-top: 20px;
+
+    font-size: 11.5px;
+
+    letter-spacing: 0.07em;
+  }
+}
+
+/* ================================= */
+/* MUY PEQUEÑO                       */
+/* ================================= */
+
+@media (max-width: 400px) {
+  .home {
+    padding:
+      20px
+      10px
+      32px;
+  }
+
+  .homeTitle {
+    font-size: 29px;
+  }
+
+  .telegramVisual {
+    width: 140px;
+  }
+
+  .telegramTitle {
+    font-size: 25px;
+  }
+
+  .telegramDescription {
+    font-size: 12.5px;
+  }
+
+  .telegramButton {
+    width: 100%;
+
+    min-height: 50px;
+
+    font-size: 11px;
+  }
+}
+
+/* ================================= */
+/* ACCESIBILIDAD                     */
+/* ================================= */
+
+@media (
+  prefers-reduced-motion:
+  reduce
+) {
+  .home {
+    transition: none;
+  }
+
+  .telegramButton {
+    transition: none;
+  }
+}

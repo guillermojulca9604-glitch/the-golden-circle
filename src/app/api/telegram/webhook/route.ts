@@ -391,9 +391,13 @@ export async function POST(
       )
 
     /*
-     * Si alguien simplemente
-     * encontró o compartió el bot,
+     * Si alguien entra directamente
+     * al bot o comparte el bot,
      * no tendrá token.
+     *
+     * No se genera acceso al canal.
+     * Solo se muestra el botón
+     * para regresar a la web.
      */
     if (!token) {
       await sendMessage(
@@ -401,8 +405,15 @@ export async function POST(
         [
           "Acceso exclusivo para miembros de The Golden Circle.",
           "",
-          "Ingresa a tu cuenta VIP en la web y pulsa “Unirse a Telegram” para vincular tu cuenta.",
-        ].join("\n")
+          "Ingresa a tu cuenta VIP para obtener acceso.",
+        ].join("\n"),
+        {
+          text:
+            "Ir a la página",
+
+          url:
+            "https://the-golden-circle-149p.vercel.app",
+        }
       )
 
       return json({
@@ -447,7 +458,14 @@ export async function POST(
           "Este enlace no es válido.",
           "",
           "Vuelve a tu cuenta VIP y genera uno nuevo.",
-        ].join("\n")
+        ].join("\n"),
+        {
+          text:
+            "Ir a la página",
+
+          url:
+            "https://the-golden-circle-149p.vercel.app",
+        }
       )
 
       return json({
@@ -456,18 +474,14 @@ export async function POST(
     }
 
     /*
-     * Token utilizado.
+     * Token ya utilizado.
+     *
+     * Se rechaza silenciosamente
+     * para evitar mostrar mensajes
+     * viejos cuando Telegram procesa
+     * un /start anterior.
      */
     if (tokenRow.used_at) {
-      await sendMessage(
-        chatId,
-        [
-          "Este enlace ya fue utilizado.",
-          "",
-          "Vuelve a tu cuenta VIP para generar uno nuevo.",
-        ].join("\n")
-      )
-
       return json({
         ok: true,
       })
@@ -494,7 +508,14 @@ export async function POST(
           "Este enlace ha vencido.",
           "",
           "Vuelve a tu cuenta VIP y pulsa nuevamente “Unirse a Telegram”.",
-        ].join("\n")
+        ].join("\n"),
+        {
+          text:
+            "Ir a la página",
+
+          url:
+            "https://the-golden-circle-149p.vercel.app",
+        }
       )
 
       return json({
@@ -549,7 +570,14 @@ export async function POST(
           "Tu membresía VIP ya no está activa.",
           "",
           "No se puede generar acceso al canal.",
-        ].join("\n")
+        ].join("\n"),
+        {
+          text:
+            "Ir a la página",
+
+          url:
+            "https://the-golden-circle-149p.vercel.app",
+        }
       )
 
       return json({
@@ -605,7 +633,14 @@ export async function POST(
           "Esta cuenta de Telegram ya está vinculada a otra cuenta VIP.",
           "",
           "No se realizó ningún cambio.",
-        ].join("\n")
+        ].join("\n"),
+        {
+          text:
+            "Ir a la página",
+
+          url:
+            "https://the-golden-circle-149p.vercel.app",
+        }
       )
 
       return json({
@@ -678,15 +713,12 @@ export async function POST(
     }
 
     if (!consumedToken) {
-      await sendMessage(
-        chatId,
-        [
-          "Este enlace ya no está disponible.",
-          "",
-          "Genera uno nuevo desde tu cuenta VIP.",
-        ].join("\n")
-      )
-
+      /*
+       * Si otro intento consumió
+       * este mismo token primero,
+       * simplemente no mostramos
+       * un mensaje antiguo.
+       */
       return json({
         ok: true,
       })
@@ -921,7 +953,14 @@ export async function POST(
             "No pudimos completar la vinculación.",
             "",
             "Vuelve a tu cuenta VIP y genera un nuevo enlace.",
-          ].join("\n")
+          ].join("\n"),
+          {
+            text:
+              "Ir a la página",
+
+            url:
+              "https://the-golden-circle-149p.vercel.app",
+          }
         )
       } catch {}
     }

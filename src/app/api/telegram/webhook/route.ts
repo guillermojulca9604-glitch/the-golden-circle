@@ -3,7 +3,6 @@ import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase/admin"
 
 export const runtime = "nodejs"
-
 export const dynamic = "force-dynamic"
 
 type TelegramUser = {
@@ -86,16 +85,35 @@ type ExistingLink = {
     | null
 
   change_count: number
+
+  active_invite_link:
+    | string
+    | null
+
+  active_invite_expires_at:
+    | string
+    | null
 }
 
 type JoinTelegramLink = {
   user_id: string
-  membership_id: string | null
+
+  membership_id:
+    | string
+    | null
+
   telegram_user_id:
     | number
     | string
     | null
-  linked_at: string | null
+
+  linked_at:
+    | string
+    | null
+
+  active_invite_link:
+    | string
+    | null
 }
 
 const TELEGRAM_API =
@@ -352,7 +370,8 @@ async function approveJoinRequest(
 }
 
 async function handleChatJoinRequest(
-  joinRequest: TelegramChatJoinRequest
+  joinRequest:
+    TelegramChatJoinRequest
 ) {
   const configuredChannelId =
     requiredEnv(
@@ -392,7 +411,7 @@ async function handleChatJoinRequest(
         "telegram_links"
       )
       .select(
-        "user_id,membership_id,telegram_user_id,linked_at"
+        "user_id,membership_id,telegram_user_id,linked_at,active_invite_link"
       )
       .eq(
         "telegram_user_id",
@@ -422,6 +441,39 @@ async function handleChatJoinRequest(
   }
 
   /*
+   * Solo la invitación más reciente
+   * guardada para esta cuenta puede
+   * utilizarse para ingresar.
+   */
+  const requestInviteLink =
+    joinRequest
+      .invite_link
+      ?.invite_link ??
+    null
+
+  if (
+    !requestInviteLink ||
+    !telegramLink
+      .active_invite_link ||
+    requestInviteLink !==
+      telegramLink
+        .active_invite_link
+  ) {
+    await declineJoinRequest(
+      joinRequest.chat.id,
+      telegramUserId
+    )
+
+    if (requestInviteLink) {
+      await revokeInviteLink(
+        requestInviteLink
+      )
+    }
+
+    return
+  }
+
+  /*
    * Volvemos a verificar que la
    * membresía asociada al Telegram
    * siga activa en este momento.
@@ -439,11 +491,13 @@ async function handleChatJoinRequest(
       )
       .eq(
         "id",
-        telegramLink.membership_id
+        telegramLink
+          .membership_id
       )
       .eq(
         "user_id",
-        telegramLink.user_id
+        telegramLink
+          .user_id
       )
       .eq(
         "status",
@@ -476,7 +530,8 @@ async function handleChatJoinRequest(
   /*
    * ID de Telegram correcto
    * + cuenta vinculada
-   * + membresía VIP activa.
+   * + membresía VIP activa
+   * + invitación vigente correcta.
    *
    * Se aprueba automáticamente.
    */
@@ -486,21 +541,51 @@ async function handleChatJoinRequest(
   )
 
   /*
-   * Una vez que el usuario correcto
-   * utilizó esta invitación,
-   * intentamos revocarla.
-   *
-   * Así tampoco queda circulando
-   * innecesariamente.
+   * Una vez utilizada,
+   * revocamos esa invitación.
    */
-  if (
-    joinRequest.invite_link
-      ?.invite_link
-  ) {
-    await revokeInviteLink(
-      joinRequest
-        .invite_link
-        .invite_link
+  await revokeInviteLink(
+    requestInviteLink
+  )
+
+  /*
+   * Limpiar la invitación utilizada.
+   *
+   * Solo se limpia si sigue siendo
+   * exactamente la invitación que
+   * acaba de utilizarse.
+   */
+  const {
+    error:
+      clearInviteError,
+  } =
+    await supabaseAdmin
+      .from(
+        "telegram_links"
+      )
+      .update({
+        active_invite_link:
+          null,
+
+        active_invite_expires_at:
+          null,
+
+        updated_at:
+          nowIso,
+      })
+      .eq(
+        "user_id",
+        telegramLink.user_id
+      )
+      .eq(
+        "active_invite_link",
+        requestInviteLink
+      )
+
+  if (clearInviteError) {
+    console.error(
+      "No se pudo limpiar la invitación utilizada:",
+      clearInviteError
     )
   }
 }
@@ -757,11 +842,13 @@ export async function POST(
         )
         .eq(
           "id",
-          tokenRow.membership_id
+          tokenRow
+            .membership_id
         )
         .eq(
           "user_id",
-          tokenRow.user_id
+          tokenRow
+            .user_id
         )
         .eq(
           "status",
@@ -875,7 +962,7 @@ export async function POST(
           "telegram_links"
         )
         .select(
-          "user_id,telegram_user_id,telegram_username,membership_id,linked_at,last_changed_at,change_count"
+          "user_id,telegram_user_id,telegram_username,membership_id,linked_at,last_changed_at,change_count,active_invite_link,active_invite_expires_at"
         )
         .eq(
           "user_id",
@@ -960,6 +1047,65 @@ export async function POST(
     }
 
     /*
+     * CORRECCIÓN:
+     *
+     * Antes de crear una nueva
+     * invitación, dejamos de aceptar
+     * la invitación anterior.
+     *
+     * Primero se limpia en Supabase
+     * para que aunque Telegram no
+     * consiga revocarla, el webhook
+     * ya no pueda aprobarla.
+     */
+    if (
+      currentLink &&
+      currentLink
+        .active_invite_link
+    ) {
+      const previousInviteLink =
+        currentLink
+          .active_invite_link
+
+      const {
+        error:
+          clearPreviousInviteError,
+      } =
+        await supabaseAdmin
+          .from(
+            "telegram_links"
+          )
+          .update({
+            active_invite_link:
+              null,
+
+            active_invite_expires_at:
+              null,
+
+            updated_at:
+              nowIso,
+          })
+          .eq(
+            "user_id",
+            tokenRow.user_id
+          )
+          .eq(
+            "active_invite_link",
+            previousInviteLink
+          )
+
+      if (
+        clearPreviousInviteError
+      ) {
+        throw clearPreviousInviteError
+      }
+
+      await revokeInviteLink(
+        previousInviteLink
+      )
+    }
+
+    /*
      * Crear invitación con
      * SOLICITUD DE INGRESO.
      *
@@ -1019,6 +1165,12 @@ export async function POST(
         }
       )
 
+    const activeInviteExpiresAt =
+      new Date(
+        inviteExpiresAt *
+          1000
+      ).toISOString()
+
     /*
      * Guardar vinculación.
      */
@@ -1058,6 +1210,16 @@ export async function POST(
                   1
                 : currentLink
                     .change_count,
+
+            /*
+             * Única invitación
+             * actualmente válida.
+             */
+            active_invite_link:
+              invite.invite_link,
+
+            active_invite_expires_at:
+              activeInviteExpiresAt,
 
             updated_at:
               nowIso,
@@ -1105,6 +1267,12 @@ export async function POST(
 
             change_count:
               0,
+
+            active_invite_link:
+              invite.invite_link,
+
+            active_invite_expires_at:
+              activeInviteExpiresAt,
 
             created_at:
               nowIso,

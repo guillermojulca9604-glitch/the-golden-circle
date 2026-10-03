@@ -28,8 +28,24 @@ type TelegramMessage = {
 type TelegramInviteLink = {
   invite_link: string
   expire_date?: number
+  member_limit?: number
   creates_join_request?: boolean
   is_revoked?: boolean
+}
+
+type TelegramChatMemberState = {
+  status: string
+  user: TelegramUser
+  is_member?: boolean
+}
+
+type TelegramChatMemberUpdated = {
+  chat: TelegramChat
+  from: TelegramUser
+  date: number
+  old_chat_member: TelegramChatMemberState
+  new_chat_member: TelegramChatMemberState
+  invite_link?: TelegramInviteLink
 }
 
 type TelegramChatJoinRequest = {
@@ -43,6 +59,7 @@ type TelegramChatJoinRequest = {
 type TelegramUpdate = {
   update_id: number
   message?: TelegramMessage
+  chat_member?: TelegramChatMemberUpdated
   chat_join_request?: TelegramChatJoinRequest
 }
 
@@ -95,15 +112,19 @@ type ExistingLink = {
     | null
 }
 
-type JoinTelegramLink = {
+type ActiveInviteLink = {
   user_id: string
-
-  membership_id:
-    | string
-    | null
 
   telegram_user_id:
     | number
+    | string
+    | null
+
+  telegram_username:
+    | string
+    | null
+
+  membership_id:
     | string
     | null
 
@@ -112,6 +133,10 @@ type JoinTelegramLink = {
     | null
 
   active_invite_link:
+    | string
+    | null
+
+  active_invite_expires_at:
     | string
     | null
 }
@@ -168,15 +193,19 @@ async function telegramApi<T>(
       `${TELEGRAM_API}/bot${botToken}/${method}`,
       {
         method: "POST",
+
         headers: {
           "Content-Type":
             "application/json",
         },
+
         body:
           JSON.stringify(
             body
           ),
-        cache: "no-store",
+
+        cache:
+          "no-store",
       }
     )
 
@@ -303,7 +332,7 @@ function getStartToken(
   return match?.[1] ?? null
 }
 
-async function removeOldTelegramAccount(
+async function removeTelegramAccount(
   telegramUserId: number
 ) {
   const channelId =
@@ -337,227 +366,50 @@ async function removeOldTelegramAccount(
   )
 }
 
-async function declineJoinRequest(
-  chatId: number,
-  telegramUserId: number
+function isActiveMember(
+  member:
+    TelegramChatMemberState
 ) {
-  await telegramApi<boolean>(
-    "declineChatJoinRequest",
-    {
-      chat_id:
-        chatId,
+  if (
+    member.status ===
+      "creator" ||
+    member.status ===
+      "administrator" ||
+    member.status ===
+      "member"
+  ) {
+    return true
+  }
 
-      user_id:
-        telegramUserId,
-    }
+  return (
+    member.status ===
+      "restricted" &&
+    member.is_member === true
   )
 }
 
-async function approveJoinRequest(
-  chatId: number,
-  telegramUserId: number
+function isRegularMember(
+  member:
+    TelegramChatMemberState
 ) {
-  await telegramApi<boolean>(
-    "approveChatJoinRequest",
-    {
-      chat_id:
-        chatId,
-
-      user_id:
-        telegramUserId,
-    }
+  return (
+    member.status ===
+      "member" ||
+    (
+      member.status ===
+        "restricted" &&
+      member.is_member === true
+    )
   )
 }
 
-async function handleChatJoinRequest(
-  joinRequest:
-    TelegramChatJoinRequest
+async function clearActiveInvite(
+  userId: string,
+  inviteLink: string,
+  nowIso: string
 ) {
-  const configuredChannelId =
-    requiredEnv(
-      "TELEGRAM_CHANNEL_ID"
-    )
-
-  /*
-   * Solo procesamos solicitudes
-   * del canal VIP configurado.
-   */
-  if (
-    String(
-      joinRequest.chat.id
-    ) !==
-    configuredChannelId
-  ) {
-    return
-  }
-
-  const telegramUserId =
-    joinRequest.from.id
-
-  const nowIso =
-    new Date().toISOString()
-
-  /*
-   * Buscar qué cuenta VIP está
-   * vinculada exactamente con
-   * este Telegram ID.
-   */
   const {
-    data: telegramLink,
-    error: telegramLinkError,
-  } =
-    await supabaseAdmin
-      .from(
-        "telegram_links"
-      )
-      .select(
-        "user_id,membership_id,telegram_user_id,linked_at,active_invite_link"
-      )
-      .eq(
-        "telegram_user_id",
-        telegramUserId
-      )
-      .maybeSingle<JoinTelegramLink>()
-
-  if (telegramLinkError) {
-    throw telegramLinkError
-  }
-
-  /*
-   * Telegram no vinculado:
-   * rechazo automático.
-   */
-  if (
-    !telegramLink ||
-    !telegramLink.membership_id ||
-    !telegramLink.linked_at
-  ) {
-    await declineJoinRequest(
-      joinRequest.chat.id,
-      telegramUserId
-    )
-
-    return
-  }
-
-  /*
-   * Solo la invitación más reciente
-   * guardada para esta cuenta puede
-   * utilizarse para ingresar.
-   */
-  const requestInviteLink =
-    joinRequest
-      .invite_link
-      ?.invite_link ??
-    null
-
-  if (
-    !requestInviteLink ||
-    !telegramLink
-      .active_invite_link ||
-    requestInviteLink !==
-      telegramLink
-        .active_invite_link
-  ) {
-    await declineJoinRequest(
-      joinRequest.chat.id,
-      telegramUserId
-    )
-
-    if (requestInviteLink) {
-      await revokeInviteLink(
-        requestInviteLink
-      )
-    }
-
-    return
-  }
-
-  /*
-   * Volvemos a verificar que la
-   * membresía asociada al Telegram
-   * siga activa en este momento.
-   */
-  const {
-    data: membership,
-    error: membershipError,
-  } =
-    await supabaseAdmin
-      .from(
-        "memberships"
-      )
-      .select(
-        "id,user_id,status,expires_at"
-      )
-      .eq(
-        "id",
-        telegramLink
-          .membership_id
-      )
-      .eq(
-        "user_id",
-        telegramLink
-          .user_id
-      )
-      .eq(
-        "status",
-        "active"
-      )
-      .gt(
-        "expires_at",
-        nowIso
-      )
-      .maybeSingle()
-
-  if (membershipError) {
-    throw membershipError
-  }
-
-  /*
-   * Telegram vinculado, pero
-   * membresía inexistente,
-   * vencida o inactiva.
-   */
-  if (!membership) {
-    await declineJoinRequest(
-      joinRequest.chat.id,
-      telegramUserId
-    )
-
-    return
-  }
-
-  /*
-   * ID de Telegram correcto
-   * + cuenta vinculada
-   * + membresía VIP activa
-   * + invitación vigente correcta.
-   *
-   * Se aprueba automáticamente.
-   */
-  await approveJoinRequest(
-    joinRequest.chat.id,
-    telegramUserId
-  )
-
-  /*
-   * Una vez utilizada,
-   * revocamos esa invitación.
-   */
-  await revokeInviteLink(
-    requestInviteLink
-  )
-
-  /*
-   * Limpiar la invitación utilizada.
-   *
-   * Solo se limpia si sigue siendo
-   * exactamente la invitación que
-   * acaba de utilizarse.
-   */
-  const {
-    error:
-      clearInviteError,
+    error,
   } =
     await supabaseAdmin
       .from(
@@ -575,17 +427,483 @@ async function handleChatJoinRequest(
       })
       .eq(
         "user_id",
-        telegramLink.user_id
+        userId
       )
       .eq(
         "active_invite_link",
-        requestInviteLink
+        inviteLink
       )
 
-  if (clearInviteError) {
+  if (error) {
     console.error(
-      "No se pudo limpiar la invitación utilizada:",
-      clearInviteError
+      "No se pudo limpiar la invitación activa:",
+      error
+    )
+  }
+}
+
+async function handleChatMemberUpdate(
+  memberUpdate:
+    TelegramChatMemberUpdated
+) {
+  const configuredChannelId =
+    requiredEnv(
+      "TELEGRAM_CHANNEL_ID"
+    )
+
+  if (
+    String(
+      memberUpdate.chat.id
+    ) !==
+    configuredChannelId
+  ) {
+    return
+  }
+
+  const wasMember =
+    isActiveMember(
+      memberUpdate
+        .old_chat_member
+    )
+
+  const isMember =
+    isActiveMember(
+      memberUpdate
+        .new_chat_member
+    )
+
+  /*
+   * Solo procesamos una
+   * nueva entrada al canal.
+   */
+  if (
+    wasMember ||
+    !isMember ||
+    !isRegularMember(
+      memberUpdate
+        .new_chat_member
+    )
+  ) {
+    return
+  }
+
+  const telegramUser =
+    memberUpdate
+      .new_chat_member
+      .user
+
+  if (telegramUser.is_bot) {
+    return
+  }
+
+  const telegramUserId =
+    telegramUser.id
+
+  const telegramUsername =
+    telegramUser.username
+      ?.trim() ||
+    null
+
+  const now =
+    new Date()
+
+  const nowIso =
+    now.toISOString()
+
+  const usedInviteLink =
+    memberUpdate
+      .invite_link
+      ?.invite_link ??
+    null
+
+  /*
+   * Una entrada sin uno de
+   * nuestros pases no está
+   * autorizada.
+   */
+  if (!usedInviteLink) {
+    await removeTelegramAccount(
+      telegramUserId
+    )
+
+    return
+  }
+
+  /*
+   * Buscar a qué VIP pertenece
+   * exactamente la invitación.
+   */
+  const {
+    data: inviteOwner,
+    error:
+      inviteOwnerError,
+  } =
+    await supabaseAdmin
+      .from(
+        "telegram_links"
+      )
+      .select(
+        "user_id,telegram_user_id,telegram_username,membership_id,linked_at,active_invite_link,active_invite_expires_at"
+      )
+      .eq(
+        "active_invite_link",
+        usedInviteLink
+      )
+      .maybeSingle<ActiveInviteLink>()
+
+  if (inviteOwnerError) {
+    await removeTelegramAccount(
+      telegramUserId
+    )
+
+    throw inviteOwnerError
+  }
+
+  /*
+   * La invitación ya fue
+   * reemplazada o no existe.
+   */
+  if (
+    !inviteOwner ||
+    !inviteOwner
+      .membership_id ||
+    !inviteOwner
+      .active_invite_link ||
+    inviteOwner
+      .active_invite_link !==
+      usedInviteLink
+  ) {
+    await removeTelegramAccount(
+      telegramUserId
+    )
+
+    await revokeInviteLink(
+      usedInviteLink
+    )
+
+    return
+  }
+
+  /*
+   * La invitación debe seguir
+   * dentro de los 10 minutos.
+   */
+  const activeInviteExpiration =
+    inviteOwner
+      .active_invite_expires_at
+      ? new Date(
+          inviteOwner
+            .active_invite_expires_at
+        )
+      : null
+
+  if (
+    !activeInviteExpiration ||
+    Number.isNaN(
+      activeInviteExpiration
+        .getTime()
+    ) ||
+    activeInviteExpiration
+      .getTime() <=
+      now.getTime()
+  ) {
+    await removeTelegramAccount(
+      telegramUserId
+    )
+
+    await revokeInviteLink(
+      usedInviteLink
+    )
+
+    await clearActiveInvite(
+      inviteOwner.user_id,
+      usedInviteLink,
+      nowIso
+    )
+
+    return
+  }
+
+  /*
+   * La membresía asociada al
+   * pase debe seguir activa.
+   */
+  const {
+    data: membership,
+    error: membershipError,
+  } =
+    await supabaseAdmin
+      .from(
+        "memberships"
+      )
+      .select(
+        "id,user_id,status,expires_at"
+      )
+      .eq(
+        "id",
+        inviteOwner
+          .membership_id
+      )
+      .eq(
+        "user_id",
+        inviteOwner
+          .user_id
+      )
+      .eq(
+        "status",
+        "active"
+      )
+      .gt(
+        "expires_at",
+        nowIso
+      )
+      .maybeSingle()
+
+  if (membershipError) {
+    await removeTelegramAccount(
+      telegramUserId
+    )
+
+    throw membershipError
+  }
+
+  if (!membership) {
+    await removeTelegramAccount(
+      telegramUserId
+    )
+
+    await revokeInviteLink(
+      usedInviteLink
+    )
+
+    await clearActiveInvite(
+      inviteOwner.user_id,
+      usedInviteLink,
+      nowIso
+    )
+
+    return
+  }
+
+  /*
+   * REGLA PRINCIPAL:
+   *
+   * Una vez que el VIP ya tiene
+   * Telegram vinculado, una
+   * invitación normal solamente
+   * puede ser utilizada por ese
+   * mismo Telegram.
+   *
+   * Cambiar Telegram será otra
+   * función independiente.
+   */
+  if (
+    inviteOwner
+      .telegram_user_id ==
+      null ||
+    Number(
+      inviteOwner
+        .telegram_user_id
+    ) !== telegramUserId
+  ) {
+    /*
+     * Si otra persona recibió el
+     * enlace directo del canal,
+     * entra un instante y el bot
+     * la retira inmediatamente.
+     *
+     * NO reemplaza al Telegram
+     * legítimamente vinculado.
+     */
+    await removeTelegramAccount(
+      telegramUserId
+    )
+
+    await revokeInviteLink(
+      usedInviteLink
+    )
+
+    await clearActiveInvite(
+      inviteOwner.user_id,
+      usedInviteLink,
+      nowIso
+    )
+
+    return
+  }
+
+  /*
+   * Protección adicional:
+   * el mismo Telegram tampoco
+   * puede pertenecer a otro VIP.
+   */
+  const {
+    data:
+      telegramUsedByAnotherUser,
+    error:
+      telegramUsedError,
+  } =
+    await supabaseAdmin
+      .from(
+        "telegram_links"
+      )
+      .select(
+        "user_id"
+      )
+      .eq(
+        "telegram_user_id",
+        telegramUserId
+      )
+      .neq(
+        "user_id",
+        inviteOwner.user_id
+      )
+      .maybeSingle()
+
+  if (telegramUsedError) {
+    await removeTelegramAccount(
+      telegramUserId
+    )
+
+    throw telegramUsedError
+  }
+
+  if (
+    telegramUsedByAnotherUser
+  ) {
+    await removeTelegramAccount(
+      telegramUserId
+    )
+
+    await revokeInviteLink(
+      usedInviteLink
+    )
+
+    await clearActiveInvite(
+      inviteOwner.user_id,
+      usedInviteLink,
+      nowIso
+    )
+
+    return
+  }
+
+  /*
+   * Todo coincide:
+   *
+   * VIP correcto
+   * membresía activa
+   * invitación vigente
+   * Telegram correcto
+   *
+   * Se mantiene dentro.
+   */
+  const {
+    error:
+      updateLinkError,
+  } =
+    await supabaseAdmin
+      .from(
+        "telegram_links"
+      )
+      .update({
+        telegram_username:
+          telegramUsername,
+
+        membership_id:
+          String(
+            membership.id
+          ),
+
+        linked_at:
+          nowIso,
+
+        active_invite_link:
+          null,
+
+        active_invite_expires_at:
+          null,
+
+        updated_at:
+          nowIso,
+      })
+      .eq(
+        "user_id",
+        inviteOwner.user_id
+      )
+      .eq(
+        "telegram_user_id",
+        telegramUserId
+      )
+      .eq(
+        "active_invite_link",
+        usedInviteLink
+      )
+
+  if (updateLinkError) {
+    await removeTelegramAccount(
+      telegramUserId
+    )
+
+    await revokeInviteLink(
+      usedInviteLink
+    )
+
+    throw updateLinkError
+  }
+
+  /*
+   * La invitación ya cumplió
+   * su función.
+   */
+  await revokeInviteLink(
+    usedInviteLink
+  )
+}
+
+async function handleLegacyJoinRequest(
+  joinRequest:
+    TelegramChatJoinRequest
+) {
+  const configuredChannelId =
+    requiredEnv(
+      "TELEGRAM_CHANNEL_ID"
+    )
+
+  if (
+    String(
+      joinRequest.chat.id
+    ) !==
+    configuredChannelId
+  ) {
+    return
+  }
+
+  /*
+   * Solo para invitaciones
+   * antiguas que todavía
+   * mostraban "Solicitar unirse".
+   */
+  await telegramApi<boolean>(
+    "declineChatJoinRequest",
+    {
+      chat_id:
+        joinRequest.chat.id,
+
+      user_id:
+        joinRequest.from.id,
+    }
+  )
+
+  if (
+    joinRequest
+      .invite_link
+      ?.invite_link
+  ) {
+    await revokeInviteLink(
+      joinRequest
+        .invite_link
+        .invite_link
     )
   }
 }
@@ -598,11 +916,6 @@ export async function POST(
     | null = null
 
   try {
-    /*
-     * Verificar que la petición
-     * realmente procede del webhook
-     * configurado en Telegram.
-     */
     const expectedSecret =
       requiredEnv(
         "TELEGRAM_WEBHOOK_SECRET"
@@ -631,16 +944,28 @@ export async function POST(
         TelegramUpdate
 
     /*
-     * SOLICITUD DE ENTRADA
-     * AL CANAL.
-     *
-     * Se procesa antes que los
-     * mensajes privados del bot.
+     * Entrada directa al canal.
+     */
+    if (
+      update.chat_member
+    ) {
+      await handleChatMemberUpdate(
+        update.chat_member
+      )
+
+      return json({
+        ok: true,
+      })
+    }
+
+    /*
+     * Compatibilidad temporal
+     * con links antiguos.
      */
     if (
       update.chat_join_request
     ) {
-      await handleChatJoinRequest(
+      await handleLegacyJoinRequest(
         update.chat_join_request
       )
 
@@ -685,9 +1010,6 @@ export async function POST(
       })
     }
 
-    /*
-     * Ocultar /start.
-     */
     await deleteIncomingMessage(
       chatId,
       message.message_id
@@ -700,8 +1022,8 @@ export async function POST(
 
     /*
      * Entrada directa al bot,
-     * sin token generado por
-     * la web VIP.
+     * sin pase generado por
+     * la página VIP.
      */
     if (!token) {
       await sendMessage(
@@ -777,12 +1099,6 @@ export async function POST(
       })
     }
 
-    /*
-     * Token anterior ya utilizado.
-     *
-     * Se ignora silenciosamente
-     * para evitar mensajes viejos.
-     */
     if (tokenRow.used_at) {
       return json({
         ok: true,
@@ -842,13 +1158,11 @@ export async function POST(
         )
         .eq(
           "id",
-          tokenRow
-            .membership_id
+          tokenRow.membership_id
         )
         .eq(
           "user_id",
-          tokenRow
-            .user_id
+          tokenRow.user_id
         )
         .eq(
           "status",
@@ -895,9 +1209,8 @@ export async function POST(
       null
 
     /*
-     * Una misma cuenta Telegram
-     * no puede vincularse con dos
-     * cuentas VIP diferentes.
+     * Un mismo Telegram no puede
+     * pertenecer a dos VIP distintos.
      */
     const {
       data:
@@ -950,12 +1263,13 @@ export async function POST(
     }
 
     /*
-     * Vinculación Telegram actual
-     * de esta cuenta VIP.
+     * Vinculación actual
+     * del VIP.
      */
     const {
       data: currentLink,
-      error: currentLinkError,
+      error:
+        currentLinkError,
     } =
       await supabaseAdmin
         .from(
@@ -975,11 +1289,62 @@ export async function POST(
     }
 
     /*
-     * Consumir el token una vez.
+     * REGLA NUEVA:
+     *
+     * Si el VIP YA tiene una
+     * cuenta Telegram vinculada,
+     * el acceso normal solamente
+     * funciona desde ESA MISMA
+     * cuenta Telegram.
+     *
+     * Para usar otra cuenta deberá
+     * utilizar "Cambiar Telegram".
+     */
+    if (
+      currentLink
+        ?.telegram_user_id !=
+        null &&
+      Number(
+        currentLink
+          .telegram_user_id
+      ) !== telegramUserId
+    ) {
+      await sendMessage(
+        chatId,
+        [
+          "Este VIP ya está vinculado a otra cuenta de Telegram.",
+          "",
+          "Para utilizar otra cuenta de Telegram, debes realizar el cambio desde tu cuenta VIP.",
+        ].join("\n"),
+        {
+          text:
+            "Ir a la página",
+
+          url:
+            WEBSITE_URL,
+        }
+      )
+
+      return json({
+        ok: true,
+      })
+    }
+
+    /*
+     * Consumir token una vez.
+     *
+     * Esta parte ocurre DESPUÉS
+     * de comprobar el Telegram.
+     *
+     * Así, si una persona distinta
+     * intenta usar el acceso, no
+     * destruye el pase del titular.
      */
     const {
-      data: consumedToken,
-      error: consumeError,
+      data:
+        consumedToken,
+      error:
+        consumeError,
     } =
       await supabaseAdmin
         .from(
@@ -1016,47 +1381,9 @@ export async function POST(
       })
     }
 
-    const previousTelegramId =
-      currentLink
-        ?.telegram_user_id !=
-      null
-        ? Number(
-            currentLink
-              .telegram_user_id
-          )
-        : null
-
-    const changingTelegram =
-      previousTelegramId !==
-        null &&
-      previousTelegramId !==
-        telegramUserId
-
     /*
-     * Al cambiar de cuenta
-     * Telegram, retirar la anterior.
-     */
-    if (
-      changingTelegram &&
-      previousTelegramId !==
-        null
-    ) {
-      await removeOldTelegramAccount(
-        previousTelegramId
-      )
-    }
-
-    /*
-     * CORRECCIÓN:
-     *
-     * Antes de crear una nueva
-     * invitación, dejamos de aceptar
-     * la invitación anterior.
-     *
-     * Primero se limpia en Supabase
-     * para que aunque Telegram no
-     * consiga revocarla, el webhook
-     * ya no pueda aprobarla.
+     * Solo una invitación activa
+     * por cada VIP.
      */
     if (
       currentLink &&
@@ -1105,13 +1432,6 @@ export async function POST(
       )
     }
 
-    /*
-     * Crear invitación con
-     * SOLICITUD DE INGRESO.
-     *
-     * Ya NO permite entrar
-     * directamente.
-     */
     const channelId =
       requiredEnv(
         "TELEGRAM_CHANNEL_ID"
@@ -1138,6 +1458,13 @@ export async function POST(
         temporaryExpiration
       )
 
+    /*
+     * Invitación directa:
+     *
+     * - sin "Solicitar unirse"
+     * - máximo 1 uso
+     * - máximo 10 minutos
+     */
     const invite =
       await telegramApi<TelegramInviteLink>(
         "createChatInviteLink",
@@ -1146,7 +1473,7 @@ export async function POST(
             channelId,
 
           name:
-            `vip-${telegramUserId}`.slice(
+            `vip-${tokenRow.user_id}`.slice(
               0,
               32
             ),
@@ -1154,14 +1481,8 @@ export async function POST(
           expire_date:
             inviteExpiresAt,
 
-          /*
-           * IMPORTANTE:
-           * el usuario solicita acceso.
-           * El webhook decide por ID
-           * si se aprueba o rechaza.
-           */
-          creates_join_request:
-            true,
+          member_limit:
+            1,
         }
       )
 
@@ -1172,11 +1493,21 @@ export async function POST(
       ).toISOString()
 
     /*
-     * Guardar vinculación.
+     * Guardar la vinculación.
+     *
+     * IMPORTANTE:
+     *
+     * last_changed_at y
+     * change_count NO cambian
+     * durante el acceso normal.
+     *
+     * Esos campos se utilizarán
+     * después para "Cambiar Telegram".
      */
     if (currentLink) {
       const {
-        error: updateError,
+        error:
+          updateError,
       } =
         await supabaseAdmin
           .from(
@@ -1198,23 +1529,13 @@ export async function POST(
               nowIso,
 
             last_changed_at:
-              changingTelegram
-                ? nowIso
-                : currentLink
-                    .last_changed_at,
+              currentLink
+                .last_changed_at,
 
             change_count:
-              changingTelegram
-                ? currentLink
-                    .change_count +
-                  1
-                : currentLink
-                    .change_count,
+              currentLink
+                .change_count,
 
-            /*
-             * Única invitación
-             * actualmente válida.
-             */
             active_invite_link:
               invite.invite_link,
 
@@ -1238,7 +1559,8 @@ export async function POST(
       }
     } else {
       const {
-        error: insertError,
+        error:
+          insertError,
       } =
         await supabaseAdmin
           .from(
@@ -1290,15 +1612,10 @@ export async function POST(
       }
     }
 
-    /*
-     * Todo correcto.
-     */
     await sendMessage(
       chatId,
       [
-        changingTelegram
-          ? "Cuenta de Telegram actualizada correctamente."
-          : "Cuenta vinculada correctamente.",
+        "Cuenta vinculada correctamente.",
         "",
         "Tu acceso privado a The Golden Circle está listo.",
         "",

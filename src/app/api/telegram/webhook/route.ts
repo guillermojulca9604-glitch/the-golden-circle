@@ -946,6 +946,78 @@ export async function POST(
       )
     }
 
+    /*
+     * Segunda barrera de seguridad.
+     *
+     * Antes de procesar cualquier
+     * actualización de Telegram,
+     * comprobamos si el servicio
+     * está en mantenimiento.
+     */
+    const {
+      data:
+        telegramServiceState,
+      error:
+        telegramServiceStateError,
+    } =
+      await supabaseAdmin
+        .from(
+          "telegram_service_state"
+        )
+        .select(
+          "maintenance"
+        )
+        .eq(
+          "id",
+          1
+        )
+        .maybeSingle()
+
+    /*
+     * Si por algún problema no
+     * podemos comprobar el estado,
+     * cerramos Telegram por seguridad.
+     *
+     * Respondemos 200 para evitar
+     * que Telegram vuelva a enviar
+     * la misma actualización.
+     */
+    if (
+      telegramServiceStateError ||
+      !telegramServiceState
+    ) {
+      console.error(
+        "No se pudo comprobar el estado de mantenimiento de Telegram:",
+        telegramServiceStateError
+      )
+
+      return json({
+        ok: true,
+        ignored: true,
+      })
+    }
+
+    /*
+     * Durante mantenimiento no se
+     * procesa absolutamente ninguna
+     * actualización del bot.
+     */
+    if (
+      telegramServiceState
+        .maintenance === true
+    ) {
+      return json({
+        ok: true,
+        maintenance: true,
+        ignored: true,
+      })
+    }
+
+    /*
+     * Telegram está activo:
+     * continuamos con el flujo
+     * normal que ya existía.
+     */
     const update =
       (await request.json()) as
         TelegramUpdate

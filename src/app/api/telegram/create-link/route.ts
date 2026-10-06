@@ -11,6 +11,9 @@ export const dynamic = "force-dynamic"
 const LINK_DURATION_MS =
   10 * 60 * 1000
 
+const DEFAULT_MAINTENANCE_MESSAGE =
+  "The Golden Circle se encuentra temporalmente en mantenimiento."
+
 function json(
   body: Record<string, unknown>,
   status = 200
@@ -45,6 +48,90 @@ export async function POST() {
             "Debes iniciar sesión.",
         },
         401
+      )
+    }
+
+    /*
+     * Antes de hacer cualquier
+     * operación de Telegram,
+     * comprobamos si el servicio
+     * está en mantenimiento.
+     */
+    const {
+      data: telegramServiceState,
+      error: telegramServiceStateError,
+    } =
+      await supabaseAdmin
+        .from(
+          "telegram_service_state"
+        )
+        .select(
+          "maintenance, message"
+        )
+        .eq(
+          "id",
+          1
+        )
+        .maybeSingle()
+
+    if (
+      telegramServiceStateError
+    ) {
+      console.error(
+        "Error consultando estado de mantenimiento de Telegram:",
+        telegramServiceStateError
+      )
+
+      /*
+       * Si no podemos comprobar
+       * el estado, bloqueamos el
+       * acceso por seguridad.
+       */
+      return json(
+        {
+          ok: false,
+          error:
+            "No se pudo comprobar el estado de Telegram.",
+        },
+        503
+      )
+    }
+
+    if (
+      !telegramServiceState
+    ) {
+      console.error(
+        "No existe telegram_service_state con id 1."
+      )
+
+      return json(
+        {
+          ok: false,
+          error:
+            "No se pudo comprobar el estado de Telegram.",
+        },
+        503
+      )
+    }
+
+    if (
+      telegramServiceState
+        .maintenance === true
+    ) {
+      const maintenanceMessage =
+        telegramServiceState
+          .message
+          ?.trim() ||
+        DEFAULT_MAINTENANCE_MESSAGE
+
+      return json(
+        {
+          ok: false,
+          maintenance: true,
+          error:
+            maintenanceMessage,
+        },
+        503
       )
     }
 

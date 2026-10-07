@@ -102,9 +102,7 @@ export default function TelegramMaintenanceCard({
       | "enable"
       | "disable"
   ) {
-    if (
-      processing
-    ) {
+    if (processing) {
       return
     }
 
@@ -149,9 +147,7 @@ export default function TelegramMaintenanceCard({
         (await response.json()) as
           MaintenanceResponse
 
-      if (
-        body.state
-      ) {
+      if (body.state) {
         const nextMessage =
           body.state.message ||
           DEFAULT_MESSAGE
@@ -171,15 +167,12 @@ export default function TelegramMaintenanceCard({
 
       if (!response.ok) {
         setFeedback({
-          type: "error",
+          type:
+            "error",
           text:
             body.error ||
             "No se pudo completar la operación.",
         })
-
-        setConfirming(
-          null
-        )
 
         return
       }
@@ -196,10 +189,6 @@ export default function TelegramMaintenanceCard({
           text:
             "El mantenimiento quedó activo, pero algunas tareas de Telegram necesitan revisión.",
         })
-
-        setConfirming(
-          null
-        )
 
         return
       }
@@ -218,10 +207,6 @@ export default function TelegramMaintenanceCard({
         text:
           "No se pudo completar la operación.",
       })
-
-      setConfirming(
-        null
-      )
     } finally {
       setProcessing(
         null
@@ -281,9 +266,7 @@ export default function TelegramMaintenanceCard({
         (await response.json()) as
           MaintenanceResponse
 
-      if (
-        body.state
-      ) {
+      if (body.state) {
         const nextMessage =
           body.state.message ||
           DEFAULT_MESSAGE
@@ -336,6 +319,19 @@ export default function TelegramMaintenanceCard({
   const characterCount =
     message.length
 
+  const cleanMessage =
+    message.trim()
+
+  const messageChanged =
+    cleanMessage !==
+    savedMessage.trim()
+
+  /*
+   * ESTADO REAL:
+   * Mientras existe una operación,
+   * ningún otro botón puede ejecutar
+   * otra petición.
+   */
   const enableDisabled =
     processing !==
       null ||
@@ -346,13 +342,6 @@ export default function TelegramMaintenanceCard({
       null ||
     !maintenance
 
-  const cleanMessage =
-    message.trim()
-
-  const messageChanged =
-    cleanMessage !==
-    savedMessage.trim()
-
   const updateMessageDisabled =
     processing !==
       null ||
@@ -360,16 +349,37 @@ export default function TelegramMaintenanceCard({
     !cleanMessage ||
     !messageChanged
 
+  /*
+   * ESTADO VISUAL:
+   * Solo reacciona el botón que
+   * realmente se está ejecutando.
+   */
+  const enableVisuallyDisabled =
+    maintenance ||
+    processing ===
+      "enable"
+
+  const disableVisuallyDisabled =
+    !maintenance ||
+    processing ===
+      "disable"
+
   const updateMessageVisuallyDisabled =
     !maintenance ||
     !cleanMessage ||
-    !messageChanged
+    !messageChanged ||
+    processing ===
+      "update-message"
+
+  const confirmProcessing =
+    confirming !==
+      null &&
+    processing ===
+      confirming
 
   const textareaDisabled =
-    processing !==
-      null ||
     confirming !==
-      null
+    null
 
   return (
     <section className="mt-6 rounded-2xl border border-gold/20 bg-black p-4 sm:p-5">
@@ -523,7 +533,11 @@ export default function TelegramMaintenanceCard({
                   confirming
                 )
               }
-              className="rounded-xl border border-gold/30 bg-gold/10 px-4 py-2.5 text-sm font-medium text-gold transition-none disabled:cursor-not-allowed"
+              className={
+                confirmProcessing
+                  ? "rounded-xl border border-gold/10 bg-black px-4 py-2.5 text-sm font-medium text-gold/30 transition-none cursor-not-allowed"
+                  : "rounded-xl border border-gold/30 bg-gold/10 px-4 py-2.5 text-sm font-medium text-gold transition-none cursor-pointer"
+              }
             >
               Confirmar
             </button>
@@ -536,6 +550,13 @@ export default function TelegramMaintenanceCard({
           <button
             type="button"
             onClick={() => {
+              if (
+                processing !==
+                null
+              ) {
+                return
+              }
+
               setFeedback(
                 null
               )
@@ -548,7 +569,7 @@ export default function TelegramMaintenanceCard({
               enableDisabled
             }
             className={
-              enableDisabled
+              enableVisuallyDisabled
                 ? "flex-1 cursor-not-allowed rounded-xl border border-gold/10 bg-black px-5 py-3 text-sm font-medium text-gold/30 transition-none"
                 : "flex-1 cursor-pointer rounded-xl border border-gold/50 bg-gold/10 px-5 py-3 text-sm font-medium text-gold shadow-[0_0_18px_rgba(212,175,55,0.08)] transition-none"
             }
@@ -559,6 +580,13 @@ export default function TelegramMaintenanceCard({
           <button
             type="button"
             onClick={() => {
+              if (
+                processing !==
+                null
+              ) {
+                return
+              }
+
               setFeedback(
                 null
               )
@@ -571,7 +599,7 @@ export default function TelegramMaintenanceCard({
               disableDisabled
             }
             className={
-              disableDisabled
+              disableVisuallyDisabled
                 ? "flex-1 cursor-not-allowed rounded-xl border border-gold/10 bg-black px-5 py-3 text-sm font-medium text-gold/30 transition-none"
                 : "flex-1 cursor-pointer rounded-xl border border-gold/50 bg-gold/10 px-5 py-3 text-sm font-medium text-gold shadow-[0_0_18px_rgba(212,175,55,0.08)] transition-none"
             }

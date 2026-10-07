@@ -108,10 +108,6 @@ export default function TelegramMaintenanceCard({
       return
     }
 
-    setConfirming(
-      null
-    )
-
     setProcessing(
       action
     )
@@ -181,6 +177,10 @@ export default function TelegramMaintenanceCard({
             "No se pudo completar la operación.",
         })
 
+        setConfirming(
+          null
+        )
+
         return
       }
 
@@ -197,10 +197,18 @@ export default function TelegramMaintenanceCard({
             "El mantenimiento quedó activo, pero algunas tareas de Telegram necesitan revisión.",
         })
 
+        setConfirming(
+          null
+        )
+
         return
       }
 
       setFeedback(
+        null
+      )
+
+      setConfirming(
         null
       )
     } catch {
@@ -210,6 +218,10 @@ export default function TelegramMaintenanceCard({
         text:
           "No se pudo completar la operación.",
       })
+
+      setConfirming(
+        null
+      )
     } finally {
       setProcessing(
         null
@@ -348,6 +360,11 @@ export default function TelegramMaintenanceCard({
     !cleanMessage ||
     !messageChanged
 
+  const updateMessageVisuallyDisabled =
+    !maintenance ||
+    !cleanMessage ||
+    !messageChanged
+
   const textareaDisabled =
     processing !==
       null ||
@@ -408,7 +425,7 @@ export default function TelegramMaintenanceCard({
           disabled={
             textareaDisabled
           }
-          className="mt-3 w-full resize-none rounded-xl border border-gold/20 bg-black px-4 py-3 text-sm leading-6 text-foreground outline-none transition focus:border-gold/50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-3 w-full resize-none rounded-xl border border-gold/20 bg-black px-4 py-3 text-sm leading-6 text-foreground outline-none focus:border-gold/50 disabled:cursor-not-allowed transition-none"
         />
 
         <div className="mt-2 flex justify-end">
@@ -428,15 +445,12 @@ export default function TelegramMaintenanceCard({
                 void updateMessage()
               }}
               className={
-                updateMessageDisabled
-                  ? "mt-3 w-full cursor-not-allowed rounded-xl border border-gold/10 bg-black px-5 py-3 text-sm font-medium text-gold/30"
-                  : "mt-3 w-full cursor-pointer rounded-xl border border-gold/50 bg-gold/10 px-5 py-3 text-sm font-medium text-gold shadow-[0_0_18px_rgba(212,175,55,0.08)]"
+                updateMessageVisuallyDisabled
+                  ? "mt-3 w-full cursor-not-allowed rounded-xl border border-gold/10 bg-black px-5 py-3 text-sm font-medium text-gold/30 transition-none"
+                  : "mt-3 w-full cursor-pointer rounded-xl border border-gold/50 bg-gold/10 px-5 py-3 text-sm font-medium text-gold shadow-[0_0_18px_rgba(212,175,55,0.08)] transition-none"
               }
             >
-              {processing ===
-              "update-message"
-                ? "Actualizando mensaje..."
-                : "Actualizar mensaje"}
+              Actualizar mensaje
             </button>
           )}
       </div>
@@ -478,6 +492,13 @@ export default function TelegramMaintenanceCard({
                 null
               }
               onClick={() => {
+                if (
+                  processing !==
+                  null
+                ) {
+                  return
+                }
+
                 setConfirming(
                   null
                 )
@@ -486,7 +507,7 @@ export default function TelegramMaintenanceCard({
                   null
                 )
               }}
-              className="rounded-xl border border-gold/20 bg-black px-4 py-2.5 text-sm text-foreground"
+              className="rounded-xl border border-gold/20 bg-black px-4 py-2.5 text-sm text-foreground transition-none disabled:cursor-not-allowed"
             >
               Cancelar
             </button>
@@ -502,7 +523,7 @@ export default function TelegramMaintenanceCard({
                   confirming
                 )
               }
-              className="rounded-xl border border-gold/30 bg-gold/10 px-4 py-2.5 text-sm font-medium text-gold"
+              className="rounded-xl border border-gold/30 bg-gold/10 px-4 py-2.5 text-sm font-medium text-gold transition-none disabled:cursor-not-allowed"
             >
               Confirmar
             </button>
@@ -528,14 +549,11 @@ export default function TelegramMaintenanceCard({
             }
             className={
               enableDisabled
-                ? "flex-1 cursor-not-allowed rounded-xl border border-gold/10 bg-black px-5 py-3 text-sm font-medium text-gold/30"
-                : "flex-1 cursor-pointer rounded-xl border border-gold/50 bg-gold/10 px-5 py-3 text-sm font-medium text-gold shadow-[0_0_18px_rgba(212,175,55,0.08)]"
+                ? "flex-1 cursor-not-allowed rounded-xl border border-gold/10 bg-black px-5 py-3 text-sm font-medium text-gold/30 transition-none"
+                : "flex-1 cursor-pointer rounded-xl border border-gold/50 bg-gold/10 px-5 py-3 text-sm font-medium text-gold shadow-[0_0_18px_rgba(212,175,55,0.08)] transition-none"
             }
           >
-            {processing ===
-            "enable"
-              ? "Ejecutando mantenimiento..."
-              : "Ejecutar mantenimiento"}
+            Ejecutar mantenimiento
           </button>
 
           <button
@@ -554,14 +572,11 @@ export default function TelegramMaintenanceCard({
             }
             className={
               disableDisabled
-                ? "flex-1 cursor-not-allowed rounded-xl border border-gold/10 bg-black px-5 py-3 text-sm font-medium text-gold/30"
-                : "flex-1 cursor-pointer rounded-xl border border-gold/50 bg-gold/10 px-5 py-3 text-sm font-medium text-gold shadow-[0_0_18px_rgba(212,175,55,0.08)]"
+                ? "flex-1 cursor-not-allowed rounded-xl border border-gold/10 bg-black px-5 py-3 text-sm font-medium text-gold/30 transition-none"
+                : "flex-1 cursor-pointer rounded-xl border border-gold/50 bg-gold/10 px-5 py-3 text-sm font-medium text-gold shadow-[0_0_18px_rgba(212,175,55,0.08)] transition-none"
             }
           >
-            {processing ===
-            "disable"
-              ? "Restaurando Telegram..."
-              : "Quitar mantenimiento"}
+            Quitar mantenimiento
           </button>
         </div>
       )}

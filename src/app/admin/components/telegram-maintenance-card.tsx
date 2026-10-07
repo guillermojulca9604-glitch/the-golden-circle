@@ -24,7 +24,6 @@ type MaintenanceResponse = {
 
 type Feedback = {
   type:
-    | "success"
     | "warning"
     | "error"
   text: string
@@ -41,6 +40,10 @@ const DEFAULT_MESSAGE =
 export default function TelegramMaintenanceCard({
   initialState,
 }: TelegramMaintenanceCardProps) {
+  const initialMessage =
+    initialState.message ||
+    DEFAULT_MESSAGE
+
   const [
     state,
     setState,
@@ -54,8 +57,15 @@ export default function TelegramMaintenanceCard({
     setMessage,
   ] =
     useState(
-      initialState.message ||
-        DEFAULT_MESSAGE
+      initialMessage
+    )
+
+  const [
+    savedMessage,
+    setSavedMessage,
+  ] =
+    useState(
+      initialMessage
     )
 
   const [
@@ -63,9 +73,10 @@ export default function TelegramMaintenanceCard({
     setProcessing,
   ] =
     useState<
-      "enable" |
-      "disable" |
-      null
+      | "enable"
+      | "disable"
+      | "update-message"
+      | null
     >(null)
 
   const [
@@ -145,13 +156,20 @@ export default function TelegramMaintenanceCard({
       if (
         body.state
       ) {
+        const nextMessage =
+          body.state.message ||
+          DEFAULT_MESSAGE
+
         setState(
           body.state
         )
 
         setMessage(
-          body.state.message ||
-            DEFAULT_MESSAGE
+          nextMessage
+        )
+
+        setSavedMessage(
+          nextMessage
         )
       }
 
@@ -168,44 +186,130 @@ export default function TelegramMaintenanceCard({
 
       if (
         action ===
-          "enable"
+          "enable" &&
+        body.cleanupComplete ===
+          false
       ) {
-        if (
-          body.cleanupComplete ===
-            false
-        ) {
-          setFeedback({
-            type:
-              "warning",
-            text:
-              "El mantenimiento quedó activo, pero algunas tareas de Telegram necesitan revisión.",
-          })
-
-          return
-        }
-
         setFeedback({
           type:
-            "success",
+            "warning",
           text:
-            "Mantenimiento de Telegram activado correctamente.",
+            "El mantenimiento quedó activo, pero algunas tareas de Telegram necesitan revisión.",
         })
 
         return
       }
 
-      setFeedback({
-        type:
-          "success",
-        text:
-          "Telegram volvió a estar activo. Los VIP pueden vincular nuevamente su cuenta.",
-      })
+      setFeedback(
+        null
+      )
     } catch {
       setFeedback({
         type:
           "error",
         text:
           "No se pudo completar la operación.",
+      })
+    } finally {
+      setProcessing(
+        null
+      )
+    }
+  }
+
+  async function updateMessage() {
+    if (
+      processing ||
+      !state.maintenance
+    ) {
+      return
+    }
+
+    const cleanMessage =
+      message.trim()
+
+    if (
+      !cleanMessage ||
+      cleanMessage ===
+        savedMessage.trim()
+    ) {
+      return
+    }
+
+    setProcessing(
+      "update-message"
+    )
+
+    setFeedback(
+      null
+    )
+
+    try {
+      const response =
+        await fetch(
+          "/api/admin/telegram-maintenance/message",
+          {
+            method:
+              "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                message:
+                  cleanMessage,
+              }),
+          }
+        )
+
+      const body =
+        (await response.json()) as
+          MaintenanceResponse
+
+      if (
+        body.state
+      ) {
+        const nextMessage =
+          body.state.message ||
+          DEFAULT_MESSAGE
+
+        setState(
+          body.state
+        )
+
+        setMessage(
+          nextMessage
+        )
+
+        setSavedMessage(
+          nextMessage
+        )
+      }
+
+      if (!response.ok) {
+        setFeedback({
+          type:
+            "error",
+          text:
+            body.error ||
+            "No se pudo actualizar el mensaje.",
+        })
+
+        return
+      }
+
+      setFeedback(
+        null
+      )
+    } catch {
+      setFeedback({
+        type:
+          "error",
+        text:
+          "No se pudo actualizar el mensaje.",
       })
     } finally {
       setProcessing(
@@ -229,6 +333,26 @@ export default function TelegramMaintenanceCard({
     processing !==
       null ||
     !maintenance
+
+  const cleanMessage =
+    message.trim()
+
+  const messageChanged =
+    cleanMessage !==
+    savedMessage.trim()
+
+  const updateMessageDisabled =
+    processing !==
+      null ||
+    !maintenance ||
+    !cleanMessage ||
+    !messageChanged
+
+  const textareaDisabled =
+    processing !==
+      null ||
+    confirming !==
+      null
 
   return (
     <section className="mt-6 rounded-2xl border border-gold/20 bg-black p-4 sm:p-5">
@@ -270,17 +394,19 @@ export default function TelegramMaintenanceCard({
           value={message}
           onChange={(
             event
-          ) =>
+          ) => {
             setMessage(
               event.target.value
             )
-          }
+
+            setFeedback(
+              null
+            )
+          }}
           maxLength={300}
           rows={2}
           disabled={
-            processing !==
-              null ||
-            maintenance
+            textareaDisabled
           }
           className="mt-3 w-full resize-none rounded-xl border border-gold/20 bg-black px-4 py-3 text-sm leading-6 text-foreground outline-none transition focus:border-gold/50 disabled:cursor-not-allowed disabled:opacity-60"
         />
@@ -290,6 +416,29 @@ export default function TelegramMaintenanceCard({
             {characterCount}/300
           </span>
         </div>
+
+        {maintenance &&
+          !confirming && (
+            <button
+              type="button"
+              disabled={
+                updateMessageDisabled
+              }
+              onClick={() => {
+                void updateMessage()
+              }}
+              className={
+                updateMessageDisabled
+                  ? "mt-3 w-full cursor-not-allowed rounded-xl border border-gold/10 bg-black px-5 py-3 text-sm font-medium text-gold/30"
+                  : "mt-3 w-full cursor-pointer rounded-xl border border-gold/50 bg-gold/10 px-5 py-3 text-sm font-medium text-gold shadow-[0_0_18px_rgba(212,175,55,0.08)]"
+              }
+            >
+              {processing ===
+              "update-message"
+                ? "Actualizando mensaje..."
+                : "Actualizar mensaje"}
+            </button>
+          )}
       </div>
 
       {feedback && (
@@ -298,10 +447,7 @@ export default function TelegramMaintenanceCard({
             feedback.type ===
               "error"
               ? "mt-4 text-sm text-red-300"
-              : feedback.type ===
-                  "warning"
-                ? "mt-4 text-sm text-amber-300"
-                : "mt-4 text-sm text-gold"
+              : "mt-4 text-sm text-amber-300"
           }
         >
           {feedback.text}
@@ -327,11 +473,19 @@ export default function TelegramMaintenanceCard({
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
-              onClick={() =>
+              disabled={
+                processing !==
+                null
+              }
+              onClick={() => {
                 setConfirming(
                   null
                 )
-              }
+
+                setFeedback(
+                  null
+                )
+              }}
               className="rounded-xl border border-gold/20 bg-black px-4 py-2.5 text-sm text-foreground"
             >
               Cancelar
@@ -339,6 +493,10 @@ export default function TelegramMaintenanceCard({
 
             <button
               type="button"
+              disabled={
+                processing !==
+                null
+              }
               onClick={() =>
                 void runAction(
                   confirming
@@ -352,59 +510,61 @@ export default function TelegramMaintenanceCard({
         </div>
       )}
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-        <button
-          type="button"
-          onClick={() => {
-            setFeedback(
-              null
-            )
+      {!confirming && (
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => {
+              setFeedback(
+                null
+              )
 
-            setConfirming(
-              "enable"
-            )
-          }}
-          disabled={
-            enableDisabled
-          }
-          className={
-            enableDisabled
-              ? "flex-1 cursor-not-allowed rounded-xl border border-gold/10 bg-black px-5 py-3 text-sm font-medium text-gold/30"
-              : "flex-1 cursor-pointer rounded-xl border border-gold/50 bg-gold/10 px-5 py-3 text-sm font-medium text-gold shadow-[0_0_18px_rgba(212,175,55,0.08)]"
-          }
-        >
-          {processing ===
-          "enable"
-            ? "Ejecutando mantenimiento..."
-            : "Ejecutar mantenimiento"}
-        </button>
+              setConfirming(
+                "enable"
+              )
+            }}
+            disabled={
+              enableDisabled
+            }
+            className={
+              enableDisabled
+                ? "flex-1 cursor-not-allowed rounded-xl border border-gold/10 bg-black px-5 py-3 text-sm font-medium text-gold/30"
+                : "flex-1 cursor-pointer rounded-xl border border-gold/50 bg-gold/10 px-5 py-3 text-sm font-medium text-gold shadow-[0_0_18px_rgba(212,175,55,0.08)]"
+            }
+          >
+            {processing ===
+            "enable"
+              ? "Ejecutando mantenimiento..."
+              : "Ejecutar mantenimiento"}
+          </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            setFeedback(
-              null
-            )
+          <button
+            type="button"
+            onClick={() => {
+              setFeedback(
+                null
+              )
 
-            setConfirming(
-              "disable"
-            )
-          }}
-          disabled={
-            disableDisabled
-          }
-          className={
-            disableDisabled
-              ? "flex-1 cursor-not-allowed rounded-xl border border-gold/10 bg-black px-5 py-3 text-sm font-medium text-gold/30"
-              : "flex-1 cursor-pointer rounded-xl border border-gold/50 bg-gold/10 px-5 py-3 text-sm font-medium text-gold shadow-[0_0_18px_rgba(212,175,55,0.08)]"
-          }
-        >
-          {processing ===
-          "disable"
-            ? "Restaurando Telegram..."
-            : "Quitar mantenimiento"}
-        </button>
-      </div>
+              setConfirming(
+                "disable"
+              )
+            }}
+            disabled={
+              disableDisabled
+            }
+            className={
+              disableDisabled
+                ? "flex-1 cursor-not-allowed rounded-xl border border-gold/10 bg-black px-5 py-3 text-sm font-medium text-gold/30"
+                : "flex-1 cursor-pointer rounded-xl border border-gold/50 bg-gold/10 px-5 py-3 text-sm font-medium text-gold shadow-[0_0_18px_rgba(212,175,55,0.08)]"
+            }
+          >
+            {processing ===
+            "disable"
+              ? "Restaurando Telegram..."
+              : "Quitar mantenimiento"}
+          </button>
+        </div>
+      )}
     </section>
   )
 }

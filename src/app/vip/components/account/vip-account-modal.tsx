@@ -12,6 +12,8 @@ import {
 
 import { createPortal } from "react-dom";
 
+import { createClient } from "@/lib/supabase/client";
+
 import styles from "./vip-account-modal.module.css";
 
 const MINIMUM_USERNAME_LENGTH = 4;
@@ -69,11 +71,15 @@ type AccountLimits = {
 
 type VipAccountModalProps = {
   open: boolean;
+
   accountName: string;
   accountEmail: string;
+
   membershipExpiresAt: string;
+
   initialLimits: AccountLimits;
   initialHasPassword: boolean;
+
   telegramLinked: boolean;
   telegramUsername: string | null;
 
@@ -90,17 +96,15 @@ type VipAccountModalProps = {
 
 type ChangeResponse = {
   success?: boolean;
-  username?: string;
-  nextChangeAt?: string | null;
-  hasPassword?: boolean;
-  created?: boolean;
-  error?: string;
-};
 
-type TelegramCreateLinkResponse = {
-  ok?: boolean;
-  url?: string;
-  expiresAt?: string;
+  username?: string;
+
+  nextChangeAt?: string | null;
+
+  hasPassword?: boolean;
+
+  created?: boolean;
+
   error?: string;
 };
 
@@ -251,7 +255,8 @@ function formatExpirationDate(
     return "No disponible";
   }
 
-  const date = new Date(value);
+  const date =
+    new Date(value);
 
   if (
     Number.isNaN(
@@ -278,7 +283,8 @@ function formatNextChangeDate(
     return "";
   }
 
-  const date = new Date(value);
+  const date =
+    new Date(value);
 
   if (
     Number.isNaN(
@@ -584,14 +590,15 @@ export function VipAccountModal({
   ] = useState("");
 
   const [
-    telegramOpening,
-    setTelegramOpening,
+    telegramMaintenance,
+    setTelegramMaintenance,
   ] = useState(false);
 
-  const [
-    telegramMessage,
-    setTelegramMessage,
-  ] = useState("");
+  const supabase =
+    useMemo(
+      () => createClient(),
+      []
+    );
 
   const [
     hasPassword,
@@ -698,6 +705,92 @@ export function VipAccountModal({
   ]);
 
   useEffect(() => {
+    let active = true;
+
+    const loadMaintenanceState =
+      async () => {
+        const {
+          data,
+          error,
+        } =
+          await supabase
+            .from(
+              "telegram_service_state"
+            )
+            .select(
+              "maintenance"
+            )
+            .eq(
+              "id",
+              1
+            )
+            .maybeSingle();
+
+        if (
+          !active ||
+          error
+        ) {
+          return;
+        }
+
+        setTelegramMaintenance(
+          data?.maintenance ===
+            true
+        );
+      };
+
+    void loadMaintenanceState();
+
+    const channel =
+      supabase
+        .channel(
+          "vip-account-telegram-service-state"
+        )
+        .on(
+          "postgres_changes",
+          {
+            event:
+              "UPDATE",
+
+            schema:
+              "public",
+
+            table:
+              "telegram_service_state",
+
+            filter:
+              "id=eq.1",
+          },
+          (
+            payload
+          ) => {
+            const nextState =
+              payload.new as {
+                maintenance?: boolean;
+              };
+
+            setTelegramMaintenance(
+              nextState
+                .maintenance ===
+                true
+            );
+          }
+        )
+        .subscribe();
+
+    return () => {
+      active = false;
+
+      void supabase
+        .removeChannel(
+          channel
+        );
+    };
+  }, [
+    supabase,
+  ]);
+
+  useEffect(() => {
     if (!open) {
       setEditNameOpen(
         false
@@ -752,7 +845,7 @@ export function VipAccountModal({
     ) => {
       if (
         event.key !==
-        "Escape"
+          "Escape"
       ) {
         return;
       }
@@ -965,7 +1058,7 @@ export function VipAccountModal({
 
       if (
         username ===
-        accountName
+          accountName
       ) {
         setEditNameOpen(
           false
@@ -1183,13 +1276,18 @@ export function VipAccountModal({
         MouseEvent<HTMLButtonElement>
     ) => {
       setShowNewPassword(
-        (currentValue) =>
+        (
+          currentValue
+        ) =>
           !currentValue
       );
 
-      newPasswordRef.current?.blur();
+      newPasswordRef
+        .current
+        ?.blur();
 
-      event.currentTarget.blur();
+      event.currentTarget
+        .blur();
     };
 
   const handleToggleConfirmPassword =
@@ -1198,13 +1296,18 @@ export function VipAccountModal({
         MouseEvent<HTMLButtonElement>
     ) => {
       setShowConfirmPassword(
-        (currentValue) =>
+        (
+          currentValue
+        ) =>
           !currentValue
       );
 
-      confirmPasswordRef.current?.blur();
+      confirmPasswordRef
+        .current
+        ?.blur();
 
-      event.currentTarget.blur();
+      event.currentTarget
+        .blur();
     };
 
   const handleSavePassword =
@@ -1380,62 +1483,6 @@ export function VipAccountModal({
       }
     };
 
-  const handleTelegramAction =
-    async () => {
-      if (
-        telegramOpening
-      ) {
-        return;
-      }
-
-      setTelegramOpening(
-        true
-      );
-
-      setTelegramMessage(
-        ""
-      );
-
-      try {
-        const response =
-          await fetch(
-            "/api/telegram/create-link",
-            {
-              method:
-                "POST",
-            }
-          );
-
-        const result =
-          (await response.json()) as
-            TelegramCreateLinkResponse;
-
-        if (
-          !response.ok ||
-          !result.ok ||
-          !result.url
-        ) {
-          setTelegramMessage(
-            result.error ||
-              "No se pudo preparar Telegram."
-          );
-
-          return;
-        }
-
-        window.location.href =
-          result.url;
-      } catch {
-        setTelegramMessage(
-          "No se pudo preparar Telegram."
-        );
-      } finally {
-        setTelegramOpening(
-          false
-        );
-      }
-    };
-
   const cleanTelegramUsername =
     telegramUsername
       ?.trim()
@@ -1445,14 +1492,21 @@ export function VipAccountModal({
       ) ||
     "";
 
+  const telegramTitle =
+    telegramMaintenance
+      ? "Telegram en mantenimiento"
+      : telegramLinked
+        ? "Cuenta vinculada 🔒"
+        : "Telegram no vinculado";
+
   const telegramDescription =
-    telegramMessage
-      ? telegramMessage
+    telegramMaintenance
+      ? "Temporalmente no disponible."
       : telegramLinked
         ? cleanTelegramUsername
-          ? `@${cleanTelegramUsername} · Cuenta vinculada.`
+          ? `@${cleanTelegramUsername}`
           : "Cuenta de Telegram vinculada."
-        : "Vincula tu cuenta para acceder al canal privado.";
+        : "Aún no has vinculado una cuenta.";
 
   const usernameBlockedText =
     usernameLimit.canChange
@@ -1680,16 +1734,19 @@ export function VipAccountModal({
               styles.accountActions
             }
           >
-            <button
-              type="button"
+            <div
               className={
                 styles.actionButton
               }
-              disabled={
-                telegramOpening
-              }
-              onClick={
-                handleTelegramAction
+              style={{
+                cursor:
+                  "default",
+
+                pointerEvents:
+                  "none",
+              }}
+              aria-label={
+                telegramTitle
               }
             >
               <span
@@ -1707,25 +1764,14 @@ export function VipAccountModal({
                 }
               >
                 <strong>
-                  {telegramLinked
-                    ? "Cambiar Telegram"
-                    : "Vincular Telegram"}
+                  {telegramTitle}
                 </strong>
 
                 <small>
                   {telegramDescription}
                 </small>
               </span>
-
-              <span
-                className={
-                  styles.chevronIcon
-                }
-                aria-hidden="true"
-              >
-                <ChevronIcon />
-              </span>
-            </button>
+            </div>
           </div>
         </section>
 
@@ -1854,10 +1900,12 @@ export function VipAccountModal({
           className={
             styles.secondaryLayer
           }
-          onMouseDown={(event) => {
+          onMouseDown={(
+            event
+          ) => {
             if (
               event.target ===
-              event.currentTarget
+                event.currentTarget
             ) {
               handleCloseEditName();
             }
@@ -1948,7 +1996,9 @@ export function VipAccountModal({
               onKeyDown={
                 handleUsernameKeyDown
               }
-              onChange={(event) => {
+              onChange={(
+                event
+              ) => {
                 handleUsernameChange(
                   event.target.value
                 );
@@ -2048,10 +2098,12 @@ export function VipAccountModal({
           className={
             styles.secondaryLayer
           }
-          onMouseDown={(event) => {
+          onMouseDown={(
+            event
+          ) => {
             if (
               event.target ===
-              event.currentTarget
+                event.currentTarget
             ) {
               handleCloseChangePassword();
             }
@@ -2165,7 +2217,9 @@ export function VipAccountModal({
                     disabled={
                       changingPassword
                     }
-                    onChange={(event) => {
+                    onChange={(
+                      event
+                    ) => {
                       setNewPassword(
                         event.target.value
                       );
@@ -2183,15 +2237,15 @@ export function VipAccountModal({
                     aria-label={
                       showNewPassword
                         ? (
-                          hasPassword
-                            ? "Ocultar nueva contraseña"
-                            : "Ocultar contraseña"
-                        )
+                            hasPassword
+                              ? "Ocultar nueva contraseña"
+                              : "Ocultar contraseña"
+                          )
                         : (
-                          hasPassword
-                            ? "Mostrar nueva contraseña"
-                            : "Mostrar contraseña"
-                        )
+                            hasPassword
+                              ? "Mostrar nueva contraseña"
+                              : "Mostrar contraseña"
+                          )
                     }
                     disabled={
                       changingPassword
@@ -2202,11 +2256,11 @@ export function VipAccountModal({
                   >
                     {showNewPassword
                       ? (
-                        <EyeIcon />
-                      )
+                          <EyeIcon />
+                        )
                       : (
-                        <EyeOffIcon />
-                      )}
+                          <EyeOffIcon />
+                        )}
                   </button>
                 </div>
 
@@ -2269,7 +2323,9 @@ export function VipAccountModal({
                     disabled={
                       changingPassword
                     }
-                    onChange={(event) => {
+                    onChange={(
+                      event
+                    ) => {
                       setConfirmPassword(
                         event.target.value
                       );
@@ -2298,11 +2354,11 @@ export function VipAccountModal({
                   >
                     {showConfirmPassword
                       ? (
-                        <EyeIcon />
-                      )
+                          <EyeIcon />
+                        )
                       : (
-                        <EyeOffIcon />
-                      )}
+                          <EyeOffIcon />
+                        )}
                   </button>
                 </div>
 

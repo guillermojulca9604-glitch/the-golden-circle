@@ -4,28 +4,10 @@ import {
   supabaseAdmin,
 } from "@/lib/supabase/admin"
 
+import TelegramMaintenanceCard from "./components/telegram-maintenance-card"
+
 export const dynamic =
   "force-dynamic"
-
-type PaymentProofRow = {
-  id: string
-  email: string
-  plan: string
-  created_at: string
-}
-
-type VideoRow = {
-  id: string
-  thumbnail_path: string | null
-  duration_seconds: number | null
-  published_at: string | null
-  created_at: string
-}
-
-type RecentVideo =
-  VideoRow & {
-    thumbnailUrl: string | null
-  }
 
 type SummaryCardProps = {
   href: string
@@ -36,106 +18,16 @@ type SummaryCardProps = {
     | "payments"
     | "memberships"
     | "expired"
-    | "videos"
 }
 
-const DATE_FORMATTER =
-  new Intl.DateTimeFormat(
-    "es-PE",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      timeZone:
-        "America/Lima",
-    }
-  )
-
-function formatDate(
-  value: string | null
-) {
-  if (!value) {
-    return "-"
-  }
-
-  const date =
-    new Date(value)
-
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-    return "-"
-  }
-
-  return DATE_FORMATTER
-    .format(date)
-}
-
-function formatPlan(
-  plan: string
-) {
-  return plan ===
-    "quarterly"
-    ? "Trimestral"
-    : "Mensual"
-}
-
-function formatDuration(
-  durationSeconds:
-    number | null
-) {
-  if (
-    durationSeconds === null ||
-    !Number.isFinite(
-      durationSeconds
-    ) ||
-    durationSeconds < 0
-  ) {
-    return "--:--"
-  }
-
-  const totalSeconds =
-    Math.floor(
-      durationSeconds
-    )
-
-  const hours =
-    Math.floor(
-      totalSeconds / 3600
-    )
-
-  const minutes =
-    Math.floor(
-      (
-        totalSeconds % 3600
-      ) / 60
-    )
-
-  const seconds =
-    totalSeconds % 60
-
-  const paddedMinutes =
-    String(minutes)
-      .padStart(2, "0")
-
-  const paddedSeconds =
-    String(seconds)
-      .padStart(2, "0")
-
-  if (hours > 0) {
-    return (
-      `${hours}:` +
-      `${paddedMinutes}:` +
-      paddedSeconds
-    )
-  }
-
-  return (
-    `${paddedMinutes}:` +
-    paddedSeconds
-  )
+type TelegramServiceState = {
+  id: number
+  maintenance: boolean
+  message: string
+  maintenance_started_at:
+    | string
+    | null
+  updated_at: string
 }
 
 function SummaryIcon({
@@ -179,7 +71,8 @@ function SummaryIcon({
   }
 
   if (
-    icon === "memberships"
+    icon ===
+      "memberships"
   ) {
     return (
       <svg
@@ -214,40 +107,6 @@ function SummaryIcon({
     )
   }
 
-  if (icon === "expired") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-        className="h-6 w-6"
-        fill="none"
-      >
-        <circle
-          cx="12"
-          cy="12"
-          r="9"
-          stroke="currentColor"
-          strokeWidth="1.7"
-        />
-
-        <path
-          d="M12 7v5l3 2"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-
-        <path
-          d="M5.6 18.4 18.4 5.6"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-        />
-      </svg>
-    )
-  }
-
   return (
     <svg
       viewBox="0 0 24 24"
@@ -255,26 +114,27 @@ function SummaryIcon({
       className="h-6 w-6"
       fill="none"
     >
-      <rect
-        x="3"
-        y="5"
-        width="14"
-        height="14"
-        rx="2.5"
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
         stroke="currentColor"
         strokeWidth="1.7"
       />
 
       <path
-        d="m17 10 4-2v8l-4-2v-4Z"
+        d="M12 7v5l3 2"
         stroke="currentColor"
         strokeWidth="1.7"
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
 
       <path
-        d="m9 9 4 3-4 3V9Z"
-        fill="currentColor"
+        d="M5.6 18.4 18.4 5.6"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
       />
     </svg>
   )
@@ -315,15 +175,14 @@ function SummaryCard({
 
 export default async function AdminPage() {
   const now =
-    new Date().toISOString()
+    new Date()
+      .toISOString()
 
   const [
     approvedPaymentsResult,
     activeMembershipsResult,
     expiredMembershipsResult,
-    publishedVideosResult,
-    recentPaymentsResult,
-    recentVideosResult,
+    telegramServiceStateResult,
   ] =
     await Promise.all([
       supabaseAdmin
@@ -347,7 +206,9 @@ export default async function AdminPage() {
         ),
 
       supabaseAdmin
-        .from("memberships")
+        .from(
+          "memberships"
+        )
         .select(
           "id",
           {
@@ -369,7 +230,9 @@ export default async function AdminPage() {
         ),
 
       supabaseAdmin
-        .from("memberships")
+        .from(
+          "memberships"
+        )
         .select(
           "id",
           {
@@ -387,199 +250,95 @@ export default async function AdminPage() {
         ),
 
       supabaseAdmin
-        .from("vip_videos")
-        .select(
-          "id",
-          {
-            count: "exact",
-            head: true,
-          }
-        )
-        .eq(
-          "status",
-          "approved"
-        )
-        .is(
-          "deleted_at",
-          null
-        ),
-
-      supabaseAdmin
         .from(
-          "payment_proofs"
+          "telegram_service_state"
         )
         .select(
           `
             id,
-            email,
-            plan,
-            created_at
+            maintenance,
+            message,
+            maintenance_started_at,
+            updated_at
           `
         )
         .eq(
-          "status",
-          "approved"
+          "id",
+          1
         )
-        .is(
-          "deleted_at",
-          null
-        )
-        .order(
-          "created_at",
-          {
-            ascending: false,
-          }
-        )
-        .limit(5),
-
-      supabaseAdmin
-        .from("vip_videos")
-        .select(
-          `
-            id,
-            thumbnail_path,
-            duration_seconds,
-            published_at,
-            created_at
-          `
-        )
-        .eq(
-          "status",
-          "approved"
-        )
-        .is(
-          "deleted_at",
-          null
-        )
-        .order(
-          "published_at",
-          {
-            ascending: false,
-            nullsFirst: false,
-          }
-        )
-        .limit(4),
+        .single(),
     ])
 
   const hasSummaryError =
     Boolean(
       approvedPaymentsResult.error ||
       activeMembershipsResult.error ||
-      expiredMembershipsResult.error ||
-      publishedVideosResult.error
+      expiredMembershipsResult.error
     )
 
   if (
-    approvedPaymentsResult.error
+    approvedPaymentsResult
+      .error
   ) {
     console.error(
       "No se pudo cargar el total de pagos aprobados:",
-      approvedPaymentsResult.error
+      approvedPaymentsResult
+        .error
     )
   }
 
   if (
-    activeMembershipsResult.error
+    activeMembershipsResult
+      .error
   ) {
     console.error(
       "No se pudo cargar el total de membresías activas:",
-      activeMembershipsResult.error
+      activeMembershipsResult
+        .error
     )
   }
 
   if (
-    expiredMembershipsResult.error
+    expiredMembershipsResult
+      .error
   ) {
     console.error(
       "No se pudo cargar el total de VIP vencidos:",
-      expiredMembershipsResult.error
+      expiredMembershipsResult
+        .error
     )
   }
 
   if (
-    publishedVideosResult.error
+    telegramServiceStateResult
+      .error
   ) {
     console.error(
-      "No se pudo cargar el total de videos publicados:",
-      publishedVideosResult.error
+      "No se pudo cargar el estado de Telegram:",
+      telegramServiceStateResult
+        .error
     )
   }
 
-  if (
-    recentPaymentsResult.error
-  ) {
-    console.error(
-      "No se pudieron cargar los pagos recientes:",
-      recentPaymentsResult.error
-    )
-  }
-
-  if (
-    recentVideosResult.error
-  ) {
-    console.error(
-      "No se pudieron cargar los videos recientes:",
-      recentVideosResult.error
-    )
-  }
-
-  const recentPayments =
+  const telegramInitialState =
     (
-      recentPaymentsResult
-        .data ?? []
-    ) as PaymentProofRow[]
+      telegramServiceStateResult
+        .data ?? {
+        id: 1,
 
-  const rawRecentVideos =
-    (
-      recentVideosResult
-        .data ?? []
-    ) as VideoRow[]
+        maintenance:
+          false,
 
-  const recentVideos:
-    RecentVideo[] =
-    await Promise.all(
-      rawRecentVideos.map(
-        async (video) => {
-          if (
-            !video.thumbnail_path
-          ) {
-            return {
-              ...video,
-              thumbnailUrl:
-                null,
-            }
-          }
+        message:
+          "The Golden Circle se encuentra temporalmente en mantenimiento.",
 
-          const {
-            data,
-            error,
-          } =
-            await supabaseAdmin
-              .storage
-              .from(
-                "vip-thumbnails"
-              )
-              .createSignedUrl(
-                video.thumbnail_path,
-                3600
-              )
+        maintenance_started_at:
+          null,
 
-          if (error) {
-            console.error(
-              "No se pudo crear la miniatura firmada:",
-              error
-            )
-          }
-
-          return {
-            ...video,
-            thumbnailUrl:
-              data?.signedUrl ??
-              null,
-          }
-        }
-      )
-    )
+        updated_at:
+          now,
+      }
+    ) as TelegramServiceState
 
   return (
     <div className="mx-auto w-full max-w-7xl">
@@ -599,17 +358,19 @@ export default async function AdminPage() {
         </div>
       )}
 
-      <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <SummaryCard
           href="/admin/approved"
           label="Pagos aprobados"
           description="Comprobantes confirmados."
           value={
-            approvedPaymentsResult.error
+            approvedPaymentsResult
+              .error
               ? "—"
               : String(
                   approvedPaymentsResult
-                    .count ?? 0
+                    .count ??
+                    0
                 )
           }
           icon="payments"
@@ -620,11 +381,13 @@ export default async function AdminPage() {
           label="Membresías activas"
           description="Usuarios con acceso VIP vigente."
           value={
-            activeMembershipsResult.error
+            activeMembershipsResult
+              .error
               ? "—"
               : String(
                   activeMembershipsResult
-                    .count ?? 0
+                    .count ??
+                    0
                 )
           }
           icon="memberships"
@@ -635,161 +398,24 @@ export default async function AdminPage() {
           label="VIP vencidos"
           description="Membresías que finalizaron."
           value={
-            expiredMembershipsResult.error
+            expiredMembershipsResult
+              .error
               ? "—"
               : String(
                   expiredMembershipsResult
-                    .count ?? 0
+                    .count ??
+                    0
                 )
           }
           icon="expired"
         />
-
-        <SummaryCard
-          href="/admin/videos?status=approved"
-          label="Videos publicados"
-          description="Videos aprobados para el VIP."
-          value={
-            publishedVideosResult.error
-              ? "—"
-              : String(
-                  publishedVideosResult
-                    .count ?? 0
-                )
-          }
-          icon="videos"
-        />
       </section>
 
-      <section className="mt-6 grid gap-5 xl:grid-cols-2">
-        <div className="rounded-2xl border border-gold/20 bg-black p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="font-serif text-2xl text-foreground">
-                Pagos recientes
-              </h2>
-
-              <p className="mt-1 text-sm text-muted-foreground">
-                Últimos comprobantes aprobados.
-              </p>
-            </div>
-
-            <Link
-              href="/admin/approved"
-              className="shrink-0 text-sm text-gold transition-colors hover:text-gold/80"
-            >
-              Ver todos
-            </Link>
-          </div>
-
-          <div className="mt-5 space-y-3">
-            {recentPayments.map(
-              (payment) => (
-                <div
-                  key={payment.id}
-                  className="rounded-xl border border-gold/10 bg-black p-4 sm:flex sm:items-center sm:justify-between sm:gap-3"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {payment.email}
-                    </p>
-
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {formatPlan(
-                        payment.plan
-                      )}
-                    </p>
-                  </div>
-
-                  <p className="mt-3 shrink-0 text-xs text-muted-foreground sm:mt-0">
-                    {formatDate(
-                      payment.created_at
-                    )}
-                  </p>
-                </div>
-              )
-            )}
-
-            {!recentPayments.length && (
-              <div className="rounded-xl border border-gold/10 bg-black px-4 py-6 text-center text-sm text-muted-foreground">
-                No hay pagos aprobados.
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-gold/20 bg-black p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="font-serif text-2xl text-foreground">
-                Videos recientes
-              </h2>
-
-              <p className="mt-1 text-sm text-muted-foreground">
-                Últimos videos aprobados.
-              </p>
-            </div>
-
-            <Link
-              href="/admin/videos?status=approved"
-              className="shrink-0 text-sm text-gold transition-colors hover:text-gold/80"
-            >
-              Ver todos
-            </Link>
-          </div>
-
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            {recentVideos.map(
-              (video) => (
-                <Link
-                  key={video.id}
-                  href="/admin/videos?status=approved"
-                  className="overflow-hidden rounded-xl border border-gold/10 bg-black transition-colors hover:border-gold/30"
-                >
-                  <div
-                    role="img"
-                    aria-label="Miniatura del video"
-                    className="relative aspect-video bg-black bg-cover bg-center"
-                    style={{
-                      backgroundImage:
-                        video.thumbnailUrl
-                          ? `url("${video.thumbnailUrl}")`
-                          : undefined,
-                    }}
-                  >
-                    {!video.thumbnailUrl && (
-                      <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                        Sin miniatura
-                      </div>
-                    )}
-
-                    <span className="absolute bottom-2 right-2 rounded-md bg-black/80 px-2 py-1 text-xs text-white">
-                      {formatDuration(
-                        video.duration_seconds
-                      )}
-                    </span>
-                  </div>
-
-                  <div className="px-3 py-3">
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(
-                        video.published_at ??
-                          video.created_at
-                      )}
-                    </p>
-                  </div>
-                </Link>
-              )
-            )}
-
-            {!recentVideos.length && (
-              <div className="col-span-full rounded-xl border border-gold/10 bg-black px-4 py-6 text-center text-sm text-muted-foreground">
-                No hay videos publicados.
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
+      <TelegramMaintenanceCard
+        initialState={
+          telegramInitialState
+        }
+      />
     </div>
   )
 }

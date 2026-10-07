@@ -15,6 +15,9 @@ const CHANGE_COOLDOWN_MS =
   60 *
   1000
 
+const DEFAULT_TELEGRAM_MAINTENANCE_MESSAGE =
+  "The Golden Circle se encuentra temporalmente en mantenimiento."
+
 type ChangeLimit = {
   canChange: boolean
   nextChangeAt: string | null
@@ -33,6 +36,11 @@ type AuthUser = {
   identities?: Array<{
     provider?: string
   }> | null
+}
+
+type TelegramServiceState = {
+  maintenance: boolean
+  message: string
 }
 
 function readProfileName(
@@ -206,22 +214,65 @@ export default async function VipPage() {
   const accountEmail =
     user.email?.trim() ?? ""
 
+  /*
+   * Todo esto se consulta desde el
+   * servidor antes de mostrar /vip.
+   *
+   * Así Telegram no necesita hacer
+   * una segunda consulta después
+   * de que la página aparezca.
+   */
+  const [
+    storedLimitsResult,
+    telegramLinkResult,
+    telegramServiceStateResult,
+  ] =
+    await Promise.all([
+      supabaseAdmin
+        .from(
+          "user_account_change_limits"
+        )
+        .select(
+          "username_changed_at, password_changed_at"
+        )
+        .eq(
+          "user_id",
+          user.id
+        )
+        .maybeSingle(),
+
+      supabaseAdmin
+        .from(
+          "telegram_links"
+        )
+        .select(
+          "telegram_user_id, telegram_username, linked_at"
+        )
+        .eq(
+          "user_id",
+          user.id
+        )
+        .maybeSingle(),
+
+      supabaseAdmin
+        .from(
+          "telegram_service_state"
+        )
+        .select(
+          "maintenance, message"
+        )
+        .eq(
+          "id",
+          1
+        )
+        .maybeSingle(),
+    ])
+
   const {
     data: storedLimits,
     error: limitsError,
   } =
-    await supabaseAdmin
-      .from(
-        "user_account_change_limits"
-      )
-      .select(
-        "username_changed_at, password_changed_at"
-      )
-      .eq(
-        "user_id",
-        user.id
-      )
-      .maybeSingle()
+    storedLimitsResult
 
   if (limitsError) {
     throw new Error(
@@ -233,16 +284,7 @@ export default async function VipPage() {
     data: telegramLink,
     error: telegramLinkError,
   } =
-    await supabaseAdmin
-      .from("telegram_links")
-      .select(
-        "telegram_user_id, telegram_username, linked_at"
-      )
-      .eq(
-        "user_id",
-        user.id
-      )
-      .maybeSingle()
+    telegramLinkResult
 
   if (telegramLinkError) {
     console.error(
@@ -250,6 +292,60 @@ export default async function VipPage() {
       telegramLinkError
     )
   }
+
+  const {
+    data:
+      telegramServiceStateData,
+    error:
+      telegramServiceStateError,
+  } =
+    telegramServiceStateResult
+
+  if (
+    telegramServiceStateError
+  ) {
+    console.error(
+      "No se pudo consultar el estado de mantenimiento de Telegram:",
+      telegramServiceStateError
+    )
+  }
+
+  /*
+   * Si por algún problema no se puede
+   * comprobar el estado de Telegram,
+   * cerramos únicamente Telegram por
+   * seguridad.
+   *
+   * El resto del VIP sigue funcionando.
+   */
+  const telegramServiceState:
+    TelegramServiceState =
+    telegramServiceStateData
+      ? {
+          maintenance:
+            telegramServiceStateData
+              .maintenance ===
+            true,
+
+          message:
+            typeof telegramServiceStateData
+              .message ===
+              "string" &&
+            telegramServiceStateData
+              .message
+              .trim()
+              ? telegramServiceStateData
+                  .message
+                  .trim()
+              : DEFAULT_TELEGRAM_MAINTENANCE_MESSAGE,
+        }
+      : {
+          maintenance:
+            true,
+
+          message:
+            DEFAULT_TELEGRAM_MAINTENANCE_MESSAGE,
+        }
 
   const telegramLinked =
     Boolean(
@@ -319,6 +415,14 @@ export default async function VipPage() {
         continueWatching={null}
         latestVideos={[]}
         popularVideos={[]}
+        initialTelegramMaintenance={
+          telegramServiceState
+            .maintenance
+        }
+        telegramMaintenanceMessage={
+          telegramServiceState
+            .message
+        }
       />
     </VipBackground>
   )

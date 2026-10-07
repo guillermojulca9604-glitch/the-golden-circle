@@ -1,9 +1,11 @@
 "use client"
 
 import Link from "next/link"
+
 import {
   usePathname,
 } from "next/navigation"
+
 import {
   type ComponentType,
   type MouseEvent,
@@ -70,41 +72,6 @@ function SummaryIcon(
         width="6"
         height="2"
         rx="1"
-        fill="currentColor"
-      />
-    </svg>
-  )
-}
-
-function VideosIcon(
-  props: IconProps
-) {
-  return (
-    <svg
-      {...props}
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      fill="none"
-    >
-      <rect
-        x="3"
-        y="5"
-        width="14"
-        height="14"
-        rx="2.5"
-        stroke="currentColor"
-        strokeWidth="1.7"
-      />
-
-      <path
-        d="m17 10 4-2v8l-4-2v-4Z"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinejoin="round"
-      />
-
-      <path
-        d="m9 9 4 3-4 3V9Z"
         fill="currentColor"
       />
     </svg>
@@ -296,11 +263,6 @@ const navigationItems:
       href: "/admin",
       label: "Resumen",
       Icon: SummaryIcon,
-    },
-    {
-      href: "/admin/videos",
-      label: "Videos",
-      Icon: VideosIcon,
     },
     {
       href: "/admin/approved",

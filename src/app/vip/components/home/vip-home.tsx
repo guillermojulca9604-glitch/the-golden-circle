@@ -2,13 +2,21 @@
 
 import {
   useEffect,
+  useMemo,
   useState,
 } from "react"
+
+import {
+  createClient,
+} from "@/lib/supabase/client"
 
 import styles from "./vip-home.module.css"
 
 const VIP_ACCOUNT_NAME_CHANGED_EVENT =
   "vip-account-name-changed"
+
+const DEFAULT_TELEGRAM_MAINTENANCE_MESSAGE =
+  "The Golden Circle se encuentra temporalmente en mantenimiento."
 
 export type VipHomeVideo = {
   id: string
@@ -22,6 +30,8 @@ type VipHomeProps = {
   continueWatching: VipHomeVideo | null
   latestVideos: VipHomeVideo[]
   popularVideos: VipHomeVideo[]
+  initialTelegramMaintenance: boolean
+  telegramMaintenanceMessage: string
   onSelectVideo?: (
     videoId: string
   ) => void
@@ -31,7 +41,14 @@ type TelegramCreateLinkResponse = {
   ok?: boolean
   url?: string
   expiresAt?: string
+  maintenance?: boolean
   error?: string
+}
+
+type TelegramServiceStateRealtime = {
+  id?: number
+  maintenance?: boolean
+  message?: string
 }
 
 function TelegramIcon() {
@@ -50,27 +67,134 @@ function TelegramIcon() {
 
 export function VipHome({
   accountName,
+  initialTelegramMaintenance,
+  telegramMaintenanceMessage,
 }: VipHomeProps) {
+  const supabase =
+    useMemo(
+      () => createClient(),
+      []
+    )
+
   const [
     currentAccountName,
     setCurrentAccountName,
-  ] = useState(accountName)
+  ] =
+    useState(accountName)
 
   const [
     telegramOpening,
     setTelegramOpening,
-  ] = useState(false)
+  ] =
+    useState(false)
 
   const [
     telegramMessage,
     setTelegramMessage,
-  ] = useState("")
+  ] =
+    useState("")
+
+  const [
+    telegramMaintenance,
+    setTelegramMaintenance,
+  ] =
+    useState(
+      initialTelegramMaintenance
+    )
+
+  const [
+    currentMaintenanceMessage,
+    setCurrentMaintenanceMessage,
+  ] =
+    useState(
+      telegramMaintenanceMessage ||
+        DEFAULT_TELEGRAM_MAINTENANCE_MESSAGE
+    )
 
   useEffect(() => {
     setCurrentAccountName(
       accountName
     )
   }, [accountName])
+
+  useEffect(() => {
+    setTelegramMaintenance(
+      initialTelegramMaintenance
+    )
+
+    setCurrentMaintenanceMessage(
+      telegramMaintenanceMessage ||
+        DEFAULT_TELEGRAM_MAINTENANCE_MESSAGE
+    )
+  }, [
+    initialTelegramMaintenance,
+    telegramMaintenanceMessage,
+  ])
+
+  useEffect(() => {
+    const channel =
+      supabase
+        .channel(
+          "vip-telegram-service-state"
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table:
+              "telegram_service_state",
+            filter:
+              "id=eq.1",
+          },
+          (payload) => {
+            const nextState =
+              payload.new as
+                TelegramServiceStateRealtime
+
+            const nextMaintenance =
+              nextState
+                .maintenance ===
+              true
+
+            const nextMessage =
+              typeof nextState
+                .message ===
+                "string" &&
+              nextState.message.trim()
+                ? nextState.message.trim()
+                : DEFAULT_TELEGRAM_MAINTENANCE_MESSAGE
+
+            setTelegramMaintenance(
+              nextMaintenance
+            )
+
+            setCurrentMaintenanceMessage(
+              nextMessage
+            )
+
+            if (
+              nextMaintenance
+            ) {
+              setTelegramMessage(
+                ""
+              )
+
+              setTelegramOpening(
+                false
+              )
+            }
+          }
+        )
+        .subscribe()
+
+    return () => {
+      void supabase
+        .removeChannel(
+          channel
+        )
+    }
+  }, [supabase])
 
   useEffect(() => {
     const handleAccountNameChange =
@@ -111,7 +235,10 @@ export function VipHome({
 
   const handleTelegramAction =
     async () => {
-      if (telegramOpening) {
+      if (
+        telegramOpening ||
+        telegramMaintenance
+      ) {
         return
       }
 
@@ -130,6 +257,34 @@ export function VipHome({
         const result =
           (await response.json()) as
             TelegramCreateLinkResponse
+
+        /*
+         * Si el mantenimiento fue
+         * activado mientras el usuario
+         * ya tenía /vip abierto,
+         * create-link lo bloquea.
+         *
+         * En ese caso actualizamos
+         * también la interfaz sin
+         * necesitar recargar.
+         */
+        if (
+          result.maintenance ===
+            true
+        ) {
+          setTelegramMaintenance(
+            true
+          )
+
+          setCurrentMaintenanceMessage(
+            result.error ||
+              DEFAULT_TELEGRAM_MAINTENANCE_MESSAGE
+          )
+
+          setTelegramMessage("")
+
+          return
+        }
 
         if (
           !response.ok ||
@@ -185,7 +340,11 @@ export function VipHome({
 
       <section
         className={styles.telegramSection}
-        aria-label="Acceso a Telegram"
+        aria-label={
+          telegramMaintenance
+            ? "Telegram en mantenimiento"
+            : "Acceso a Telegram"
+        }
       >
         <div
           className={styles.telegramVisual}
@@ -220,40 +379,66 @@ export function VipHome({
           <h2
             className={styles.telegramTitle}
           >
-            Únete a nuestra
-            <br />
-            comunidad{" "}
-            <span>
-              en Telegram
-            </span>
+            {telegramMaintenance
+              ? (
+                <>
+                  Telegram
+                  <br />
+                  <span>
+                    en mantenimiento
+                  </span>
+                </>
+              )
+              : (
+                <>
+                  Únete a nuestra
+                  <br />
+                  comunidad{" "}
+                  <span>
+                    en Telegram
+                  </span>
+                </>
+              )}
           </h2>
 
           <p
             className={styles.telegramDescription}
           >
-            {telegramMessage ||
-              "Todo el contenido exclusivo se comparte a través de nuestro canal privado."}
+            {telegramMaintenance
+              ? currentMaintenanceMessage
+              : telegramMessage ||
+                "Todo el contenido exclusivo se comparte a través de nuestro canal privado."}
           </p>
 
-          <button
-            type="button"
-            className={styles.telegramButton}
-            disabled={telegramOpening}
-            onClick={() => {
-              void handleTelegramAction()
-            }}
-          >
-            <span
-              className={styles.telegramButtonIcon}
-              aria-hidden="true"
+          {!telegramMaintenance && (
+            <button
+              type="button"
+              className={
+                styles.telegramButton
+              }
+              disabled={
+                telegramOpening
+              }
+              onClick={() => {
+                void handleTelegramAction()
+              }}
             >
-              <TelegramIcon />
-            </span>
+              <span
+                className={
+                  styles.telegramButtonIcon
+                }
+                aria-hidden="true"
+              >
+                <TelegramIcon />
+              </span>
 
-            <span>
-              Unirse a Telegram
-            </span>
-          </button>
+              <span>
+                {telegramOpening
+                  ? "Preparando..."
+                  : "Unirse a Telegram"}
+              </span>
+            </button>
+          )}
         </div>
       </section>
     </section>

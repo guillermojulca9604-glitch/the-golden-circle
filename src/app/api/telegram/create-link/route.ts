@@ -52,10 +52,14 @@ export async function POST() {
     }
 
     /*
+     * ==================================
+     * MANTENIMIENTO
+     * ==================================
+     *
      * Antes de hacer cualquier
      * operación de Telegram,
      * comprobamos si el servicio
-     * está en mantenimiento.
+     * está disponible.
      */
     const {
       data: telegramServiceState,
@@ -84,8 +88,8 @@ export async function POST() {
 
       /*
        * Si no podemos comprobar
-       * el estado, bloqueamos el
-       * acceso por seguridad.
+       * el estado, cerramos el acceso
+       * por seguridad.
        */
       return json(
         {
@@ -138,12 +142,19 @@ export async function POST() {
     const now =
       new Date()
 
+    /*
+     * ==================================
+     * MEMBRESÍA VIP ACTIVA
+     * ==================================
+     */
     const {
       data: membership,
       error: membershipError,
     } =
       await supabaseAdmin
-        .from("memberships")
+        .from(
+          "memberships"
+        )
         .select(
           "id, expires_at"
         )
@@ -195,11 +206,127 @@ export async function POST() {
       )
     }
 
+    const membershipId =
+      String(
+        membership.id
+      )
+
+    /*
+     * ==================================
+     * ESTADO DEL PASE DE TELEGRAM
+     * ==================================
+     *
+     * Hay dos situaciones:
+     *
+     * 1. active_invite_link EXISTE
+     *
+     *    El usuario ya habló con el bot,
+     *    pero todavía tiene una
+     *    invitación pendiente al canal.
+     *
+     *    Puede volver a generar acceso.
+     *    El webhook reemplazará la
+     *    invitación y mensaje anteriores.
+     *
+     * 2. active_invite_link ES NULL
+     *    y Telegram sigue vinculado al
+     *    mismo VIP.
+     *
+     *    Significa que el pase al canal
+     *    ya fue utilizado/consumido.
+     *
+     *    No se genera otro.
+     */
+    const {
+      data: telegramLink,
+      error: telegramLinkError,
+    } =
+      await supabaseAdmin
+        .from(
+          "telegram_links"
+        )
+        .select(
+          "telegram_user_id,membership_id,linked_at,active_invite_link"
+        )
+        .eq(
+          "user_id",
+          user.id
+        )
+        .maybeSingle()
+
+    if (
+      telegramLinkError
+    ) {
+      console.error(
+        "Error comprobando el acceso de Telegram:",
+        telegramLinkError
+      )
+
+      return json(
+        {
+          ok: false,
+          error:
+            "No se pudo comprobar tu acceso de Telegram.",
+        },
+        500
+      )
+    }
+
+    const sameVip =
+      telegramLink
+        ?.membership_id !=
+        null &&
+      String(
+        telegramLink
+          .membership_id
+      ) ===
+        membershipId
+
+    const accessConsumed =
+      sameVip &&
+      telegramLink
+        ?.telegram_user_id !=
+        null &&
+      telegramLink
+        .linked_at !=
+        null &&
+      !telegramLink
+        .active_invite_link
+
+    /*
+     * Este VIP ya utilizó su
+     * único pase al canal.
+     *
+     * No importa si:
+     *
+     * - sigue dentro;
+     * - salió voluntariamente;
+     * - compartió su invitación;
+     * - otra persona la utilizó.
+     *
+     * El pase no se devuelve.
+     */
+    if (accessConsumed) {
+      return json(
+        {
+          ok: false,
+          linked: true,
+          consumed: true,
+          error:
+            "Este VIP ya utilizó su único acceso a Telegram.",
+        },
+        409
+      )
+    }
+
     const botUsername =
       process.env
         .TELEGRAM_BOT_USERNAME
         ?.trim()
-        .replace(/^@/, "")
+        .replace(
+          /^@/,
+          ""
+        )
 
     if (!botUsername) {
       console.error(
@@ -221,6 +348,23 @@ export async function POST() {
         membership.expires_at
       ).getTime()
 
+    /*
+     * IMPORTANTE:
+     *
+     * Estos 10 minutos corresponden
+     * únicamente al enlace:
+     *
+     * WEB → BOT
+     *
+     * No corresponden al pase que
+     * entrega el bot para entrar
+     * al canal.
+     *
+     * El pase BOT → CANAL será
+     * controlado por el webhook y
+     * durará hasta el vencimiento
+     * real del VIP.
+     */
     const tokenExpiresAt =
       Math.min(
         now.getTime() +
@@ -246,9 +390,17 @@ export async function POST() {
     }
 
     /*
+     * ==================================
+     * REEMPLAZAR /START ANTERIOR
+     * ==================================
+     *
+     * Mientras el pase al CANAL no
+     * haya sido consumido, el usuario
+     * puede volver a generar el acceso
+     * al bot.
+     *
      * Eliminamos cualquier token
-     * anterior que todavía no haya
-     * sido utilizado.
+     * WEB → BOT anterior sin utilizar.
      */
     const {
       error: deleteError,
@@ -306,9 +458,7 @@ export async function POST() {
           user_id:
             user.id,
           membership_id:
-            String(
-              membership.id
-            ),
+            membershipId,
           expires_at:
             expiresAt,
           used_at:

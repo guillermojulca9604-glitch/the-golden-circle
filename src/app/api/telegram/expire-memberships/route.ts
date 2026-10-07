@@ -35,8 +35,18 @@ type MembershipRow = {
   expires_at: string
 }
 
+type TelegramServiceStateRow = {
+  maintenance: boolean
+}
+
 const TELEGRAM_API =
   "https://api.telegram.org"
+
+const TELEGRAM_LINK_PAGE_SIZE =
+  500
+
+const MEMBERSHIP_BATCH_SIZE =
+  200
 
 function requiredEnv(
   name: string
@@ -55,7 +65,10 @@ function requiredEnv(
 
 async function telegramApi<T>(
   method: string,
-  body: Record<string, unknown>
+  body: Record<
+    string,
+    unknown
+  >
 ): Promise<T> {
   const botToken =
     requiredEnv(
@@ -66,7 +79,8 @@ async function telegramApi<T>(
     await fetch(
       `${TELEGRAM_API}/bot${botToken}/${method}`,
       {
-        method: "POST",
+        method:
+          "POST",
 
         headers: {
           "Content-Type":
@@ -103,17 +117,15 @@ async function telegramApi<T>(
 }
 
 /*
- * Expulsar al usuario del canal.
- *
  * BAN:
- * lo saca del canal.
  *
- * UNBAN:
- * deja de estar bloqueado para que,
- * si compra otro VIP en el futuro,
- * pueda volver a ingresar.
+ * Expulsa al usuario y lo
+ * mantiene bloqueado.
+ *
+ * Durante mantenimiento usamos
+ * solamente esta operación.
  */
-async function removeTelegramAccount(
+async function banTelegramAccount(
   telegramUserId: number
 ) {
   const channelId =
@@ -130,6 +142,32 @@ async function removeTelegramAccount(
       user_id:
         telegramUserId,
     }
+  )
+}
+
+/*
+ * Funcionamiento normal al
+ * terminar un VIP:
+ *
+ * BAN:
+ * lo saca del canal.
+ *
+ * UNBAN:
+ * elimina el bloqueo después
+ * de expulsarlo para que pueda
+ * utilizar Telegram nuevamente
+ * con un futuro VIP.
+ */
+async function removeTelegramAccount(
+  telegramUserId: number
+) {
+  const channelId =
+    requiredEnv(
+      "TELEGRAM_CHANNEL_ID"
+    )
+
+  await banTelegramAccount(
+    telegramUserId
   )
 
   await telegramApi<boolean>(
@@ -184,6 +222,289 @@ async function revokeInviteLink(
   }
 }
 
+/*
+ * Consultamos el estado global
+ * de Telegram.
+ *
+ * Si no podemos conocer el estado,
+ * no continuamos con la limpieza.
+ *
+ * Así evitamos hacer un UNBAN
+ * accidental mientras el servicio
+ * podría estar en mantenimiento.
+ */
+async function getTelegramMaintenanceState() {
+  const {
+    data,
+    error,
+  } =
+    await supabaseAdmin
+      .from(
+        "telegram_service_state"
+      )
+      .select(
+        "maintenance"
+      )
+      .eq(
+        "id",
+        1
+      )
+      .maybeSingle<TelegramServiceStateRow>()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error(
+      "No existe el estado del servicio de Telegram."
+    )
+  }
+
+  return (
+    data.maintenance ===
+    true
+  )
+}
+
+/*
+ * Leer TODAS las vinculaciones
+ * Telegram por páginas.
+ *
+ * Antes existía .limit(100),
+ * por lo que un usuario ubicado
+ * después de esos primeros 100
+ * podía quedar sin procesar.
+ */
+async function getTelegramLinks() {
+  const links:
+    TelegramLinkRow[] = []
+
+  let from =
+    0
+
+  while (true) {
+    const to =
+      from +
+      TELEGRAM_LINK_PAGE_SIZE -
+      1
+
+    const {
+      data,
+      error,
+    } =
+      await supabaseAdmin
+        .from(
+          "telegram_links"
+        )
+        .select(
+          "user_id,telegram_user_id,membership_id,active_invite_link"
+        )
+        .not(
+          "telegram_user_id",
+          "is",
+          null
+        )
+        .not(
+          "membership_id",
+          "is",
+          null
+        )
+        .order(
+          "user_id",
+          {
+            ascending:
+              true,
+          }
+        )
+        .range(
+          from,
+          to
+        )
+        .returns<
+          TelegramLinkRow[]
+        >()
+
+    if (error) {
+      throw error
+    }
+
+    const page =
+      data ?? []
+
+    links.push(
+      ...page
+    )
+
+    if (
+      page.length <
+      TELEGRAM_LINK_PAGE_SIZE
+    ) {
+      break
+    }
+
+    from +=
+      TELEGRAM_LINK_PAGE_SIZE
+  }
+
+  return links
+}
+
+function splitIntoBatches<T>(
+  items: T[],
+  size: number
+) {
+  const batches:
+    T[][] = []
+
+  for (
+    let index = 0;
+    index <
+    items.length;
+    index += size
+  ) {
+    batches.push(
+      items.slice(
+        index,
+        index +
+          size
+      )
+    )
+  }
+
+  return batches
+}
+
+/*
+ * Precargamos las membresías
+ * vinculadas en grupos.
+ *
+ * Así evitamos hacer una consulta
+ * individual para cada usuario
+ * activo del sistema.
+ */
+async function getMembershipMap(
+  links:
+    TelegramLinkRow[]
+) {
+  const membershipIds =
+    Array.from(
+      new Set(
+        links
+          .map(
+            (
+              link
+            ) =>
+              link.membership_id
+          )
+          .filter(
+            (
+              value
+            ): value is string =>
+              Boolean(
+                value
+              )
+          )
+      )
+    )
+
+  const membershipMap =
+    new Map<
+      string,
+      MembershipRow
+    >()
+
+  const batches =
+    splitIntoBatches(
+      membershipIds,
+      MEMBERSHIP_BATCH_SIZE
+    )
+
+  for (
+    const batch
+    of batches
+  ) {
+    if (
+      batch.length ===
+      0
+    ) {
+      continue
+    }
+
+    const {
+      data,
+      error,
+    } =
+      await supabaseAdmin
+        .from(
+          "memberships"
+        )
+        .select(
+          "id,user_id,status,expires_at"
+        )
+        .in(
+          "id",
+          batch
+        )
+        .returns<
+          MembershipRow[]
+        >()
+
+    if (error) {
+      throw error
+    }
+
+    for (
+      const membership
+      of data ?? []
+    ) {
+      membershipMap.set(
+        membership.id,
+        membership
+      )
+    }
+  }
+
+  return membershipMap
+}
+
+function isMembershipActive(
+  membership:
+    | MembershipRow
+    | null
+    | undefined,
+  now: Date
+) {
+  if (!membership) {
+    return false
+  }
+
+  if (
+    membership.status !==
+    "active"
+  ) {
+    return false
+  }
+
+  const expiresAt =
+    new Date(
+      membership.expires_at
+    )
+
+  if (
+    Number.isNaN(
+      expiresAt.getTime()
+    )
+  ) {
+    return false
+  }
+
+  return (
+    expiresAt.getTime() >
+    now.getTime()
+  )
+}
+
 export async function POST(
   request: Request
 ) {
@@ -214,7 +535,8 @@ export async function POST(
           "Unauthorized",
       },
       {
-        status: 401,
+        status:
+          401,
       }
     )
   }
@@ -227,51 +549,56 @@ export async function POST(
 
   try {
     /*
-     * Solo buscamos cuentas que
-     * actualmente tienen Telegram
-     * vinculado a un VIP.
+     * Primero conocemos el estado
+     * global de Telegram.
+     *
+     * maintenance = false:
+     * comportamiento normal.
+     *
+     * maintenance = true:
+     * nunca hacemos UNBAN.
      */
-    const {
-      data: links,
-      error: linksError,
-    } =
-      await supabaseAdmin
-        .from(
-          "telegram_links"
-        )
-        .select(
-          "user_id,telegram_user_id,membership_id,active_invite_link"
-        )
-        .not(
-          "telegram_user_id",
-          "is",
-          null
-        )
-        .not(
-          "membership_id",
-          "is",
-          null
-        )
-        .limit(100)
-        .returns<
-          TelegramLinkRow[]
-        >()
+    const maintenance =
+      await getTelegramMaintenanceState()
 
-    if (linksError) {
-      throw linksError
-    }
+    /*
+     * Obtenemos todas las cuentas
+     * Telegram vinculadas a un VIP.
+     *
+     * Ya no existe el límite fijo
+     * de 100 registros.
+     */
+    const links =
+      await getTelegramLinks()
 
     if (
-      !links ||
-      links.length === 0
+      links.length ===
+      0
     ) {
       return NextResponse.json({
         ok: true,
-        checked: 0,
-        expired: 0,
-        errors: 0,
+        maintenance,
+        checked:
+          0,
+        expired:
+          0,
+        deferred:
+          0,
+        errors:
+          0,
       })
     }
+
+    /*
+     * Precargamos membresías para
+     * que los VIP todavía activos
+     * no necesiten una consulta
+     * individual cada minuto.
+     */
+    const membershipMap =
+      await getMembershipMap(
+        links
+      )
 
     let checked =
       0
@@ -279,17 +606,32 @@ export async function POST(
     let expired =
       0
 
+    /*
+     * Cantidad de vencimientos
+     * procesados durante
+     * mantenimiento.
+     *
+     * Permanecen con su Telegram ID
+     * guardado hasta que el Admin
+     * quite el mantenimiento.
+     */
+    let deferred =
+      0
+
     const failures:
       Array<{
-        user_id: string
-        error: string
+        user_id:
+          string
+        error:
+          string
       }> = []
 
     for (
       const link
       of links
     ) {
-      checked += 1
+      checked +=
+        1
 
       try {
         if (
@@ -316,20 +658,43 @@ export async function POST(
         }
 
         /*
-         * Revisamos LA membresía
-         * exacta que originó esta
-         * vinculación Telegram.
+         * Comprobación rápida usando
+         * las membresías precargadas.
+         */
+        const cachedMembership =
+          membershipMap.get(
+            link.membership_id
+          )
+
+        const cachedMembershipMatchesUser =
+          Boolean(
+            cachedMembership &&
+              cachedMembership.user_id ===
+                link.user_id
+          )
+
+        if (
+          cachedMembershipMatchesUser &&
+          isMembershipActive(
+            cachedMembership,
+            now
+          )
+        ) {
+          continue
+        }
+
+        /*
+         * Si parece vencida, inactiva
+         * o inexistente, hacemos una
+         * segunda comprobación exacta.
          *
-         * Esto es importante:
-         *
-         * VIP #1 → Telegram A
-         *
-         * cuando VIP #1 termina,
-         * esa vinculación también
-         * termina.
+         * Así evitamos expulsar a alguien
+         * si la membresía cambió mientras
+         * el cron estaba trabajando.
          */
         const {
-          data: membership,
+          data:
+            membership,
           error:
             membershipError,
         } =
@@ -358,54 +723,25 @@ export async function POST(
           throw membershipError
         }
 
-        /*
-         * Sigue siendo válido si:
-         *
-         * existe
-         * status = active
-         * expires_at > ahora
-         */
-        const membershipExpiresAt =
-          membership
-            ? new Date(
-                membership
-                  .expires_at
-              )
-            : null
-
-        const stillActive =
-          Boolean(
-            membership &&
-              membership.status ===
-                "active" &&
-              membershipExpiresAt &&
-              !Number.isNaN(
-                membershipExpiresAt
-                  .getTime()
-              ) &&
-              membershipExpiresAt
-                .getTime() >
-                now.getTime()
+        if (
+          isMembershipActive(
+            membership,
+            now
           )
-
-        if (stillActive) {
+        ) {
           continue
         }
 
         /*
-         * Antes de expulsar,
-         * comprobamos que la fila
-         * siga correspondiendo a
-         * ESTA misma membresía y
-         * ESTE mismo Telegram.
-         *
-         * Evita actuar sobre una
-         * vinculación que hubiera
-         * cambiado mientras se
-         * ejecutaba el proceso.
+         * Antes de tocar Telegram,
+         * comprobamos que la fila siga
+         * correspondiendo exactamente
+         * a la misma membresía y al
+         * mismo Telegram.
          */
         const {
-          data: currentLink,
+          data:
+            currentLink,
           error:
             currentLinkError,
         } =
@@ -436,7 +772,9 @@ export async function POST(
           throw currentLinkError
         }
 
-        if (!currentLink) {
+        if (
+          !currentLink
+        ) {
           /*
            * La vinculación cambió
            * mientras procesábamos.
@@ -447,23 +785,151 @@ export async function POST(
         }
 
         /*
-         * 1.
-         * Expulsarlo del canal.
+         * =================================
+         * MODO MANTENIMIENTO
+         * =================================
          *
-         * Este es el mismo efecto
-         * que viste al probar con B.
+         * El usuario ya debería estar
+         * fuera porque el mantenimiento
+         * expulsó a todos.
+         *
+         * Aun así hacemos BAN para
+         * garantizar que un VIP que vence
+         * durante mantenimiento quede
+         * fuera y bloqueado.
+         *
+         * IMPORTANTE:
+         *
+         * NO hacemos UNBAN.
+         *
+         * NO borramos telegram_user_id.
+         *
+         * Ese ID será utilizado cuando
+         * el administrador pulse
+         * "Quitar mantenimiento".
+         */
+        if (
+          maintenance
+        ) {
+          await banTelegramAccount(
+            telegramUserId
+          )
+
+          /*
+           * Si todavía existe una
+           * invitación, la revocamos.
+           */
+          if (
+            link.active_invite_link
+          ) {
+            await revokeInviteLink(
+              link
+                .active_invite_link
+            )
+          }
+
+          /*
+           * Dejamos telegram_user_id
+           * almacenado para que el proceso
+           * de reapertura pueda hacer
+           * UNBAN correctamente.
+           *
+           * Quitamos membership_id para
+           * marcar que este VIP ya terminó.
+           *
+           * Así el cron tampoco intenta
+           * banearlo nuevamente cada minuto.
+           */
+          const {
+            data:
+              deferredRow,
+            error:
+              deferredError,
+          } =
+            await supabaseAdmin
+              .from(
+                "telegram_links"
+              )
+              .update({
+                membership_id:
+                  null,
+
+                active_invite_link:
+                  null,
+
+                active_invite_expires_at:
+                  null,
+
+                active_invite_message_id:
+                  null,
+
+                updated_at:
+                  nowIso,
+              })
+              .eq(
+                "user_id",
+                link.user_id
+              )
+              .eq(
+                "membership_id",
+                link.membership_id
+              )
+              .eq(
+                "telegram_user_id",
+                telegramUserId
+              )
+              .select(
+                "user_id"
+              )
+              .maybeSingle()
+
+          if (
+            deferredError
+          ) {
+            throw deferredError
+          }
+
+          if (
+            !deferredRow
+          ) {
+            throw new Error(
+              "La vinculación cambió antes de poder marcar el vencimiento durante mantenimiento."
+            )
+          }
+
+          expired +=
+            1
+
+          deferred +=
+            1
+
+          continue
+        }
+
+        /*
+         * =================================
+         * FUNCIONAMIENTO NORMAL
+         * =================================
+         *
+         * BAN:
+         * expulsa al usuario.
+         *
+         * UNBAN:
+         * después de expulsarlo quitamos
+         * el bloqueo para que un futuro
+         * VIP pueda utilizar Telegram.
          */
         await removeTelegramAccount(
           telegramUserId
         )
 
         /*
-         * 2.
          * Si todavía existe el enlace
          * "Entrar a The Golden Circle",
          * queda inutilizado.
          *
-         * El mensaje se queda visible.
+         * El mensaje del bot puede
+         * permanecer visible.
          */
         if (
           link.active_invite_link
@@ -475,7 +941,6 @@ export async function POST(
         }
 
         /*
-         * 3.
          * Reinicio COMPLETO de la
          * vinculación Telegram.
          *
@@ -484,8 +949,10 @@ export async function POST(
          * de la página.
          */
         const {
-          data: resetRow,
-          error: resetError,
+          data:
+            resetRow,
+          error:
+            resetError,
         } =
           await supabaseAdmin
             .from(
@@ -523,9 +990,9 @@ export async function POST(
                 nowIso,
             })
             /*
-             * Nuevamente exigimos que
-             * siga siendo exactamente
-             * la misma vinculación.
+             * Exigimos que siga siendo
+             * exactamente la misma
+             * vinculación.
              */
             .eq(
               "user_id",
@@ -544,17 +1011,22 @@ export async function POST(
             )
             .maybeSingle()
 
-        if (resetError) {
+        if (
+          resetError
+        ) {
           throw resetError
         }
 
-        if (!resetRow) {
+        if (
+          !resetRow
+        ) {
           throw new Error(
             "La vinculación cambió antes de poder reiniciarse."
           )
         }
 
-        expired += 1
+        expired +=
+          1
       } catch (error) {
         console.error(
           "Error procesando VIP vencido:",
@@ -567,7 +1039,8 @@ export async function POST(
             link.user_id,
 
           error:
-            error instanceof Error
+            error instanceof
+            Error
               ? error.message
               : "Error desconocido",
         })
@@ -576,11 +1049,16 @@ export async function POST(
 
     return NextResponse.json({
       ok:
-        failures.length === 0,
+        failures.length ===
+        0,
+
+      maintenance,
 
       checked,
 
       expired,
+
+      deferred,
 
       errors:
         failures.length,
@@ -598,7 +1076,8 @@ export async function POST(
           "No se pudo procesar el vencimiento de Telegram.",
       },
       {
-        status: 500,
+        status:
+          500,
       }
     )
   }

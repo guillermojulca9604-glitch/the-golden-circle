@@ -182,10 +182,6 @@ export function VipHome({
 
         return linked
       } catch {
-        /*
-         * Si falla la consulta,
-         * conservamos el estado actual.
-         */
         return null
       }
     }, [])
@@ -251,27 +247,10 @@ export function VipHome({
     telegramMaintenanceMessage,
   ])
 
-  /*
-   * Al cargar /vip comprobamos si
-   * este VIP ya tiene Telegram
-   * vinculado.
-   */
   useEffect(() => {
     void refreshTelegramStatus()
   }, [refreshTelegramStatus])
 
-  /*
-   * Al volver desde Telegram puede
-   * existir una pequeña carrera:
-   *
-   * navegador vuelve a /vip
-   * ↓
-   * webhook todavía termina
-   *
-   * Por eso hacemos unos pocos
-   * reintentos y paramos en cuanto
-   * detectamos la vinculación.
-   */
   useEffect(() => {
     const refreshWhenVisible =
       () => {
@@ -391,14 +370,6 @@ export function VipHome({
               return
             }
 
-            /*
-             * Al finalizar mantenimiento,
-             * el sistema reinicia las
-             * vinculaciones Telegram.
-             *
-             * Consultamos nuevamente el
-             * estado real.
-             */
             void refreshTelegramStatus()
           }
         )
@@ -479,11 +450,6 @@ export function VipHome({
           (await response.json()) as
             TelegramCreateLinkResponse
 
-        /*
-         * Si mantenimiento fue
-         * activado mientras /vip
-         * ya estaba abierto.
-         */
         if (
           result.maintenance ===
             true
@@ -502,15 +468,6 @@ export function VipHome({
           return
         }
 
-        /*
-         * Seguridad adicional.
-         *
-         * Si la pantalla estaba
-         * desactualizada pero backend
-         * ya sabe que el VIP está
-         * vinculado, bloqueamos el
-         * botón inmediatamente.
-         */
         if (
           result.linked === true
         ) {
@@ -652,47 +609,61 @@ export function VipHome({
           </p>
 
           {!telegramMaintenance && (
-            <button
-              type="button"
-              className={
-                styles.telegramButton
-              }
-              disabled={
-                telegramOpening ||
-                telegramLinked
-              }
-              aria-disabled={
-                telegramLinked
-              }
-              style={
-                telegramLinked
-                  ? {
-                      cursor:
-                        "not-allowed",
+            telegramLinked
+              ? (
+                <div
+                  className={
+                    styles.telegramButton
+                  }
+                  role="status"
+                  aria-label="Cuenta de Telegram vinculada"
+                  style={{
+                    cursor:
+                      "default",
+                    pointerEvents:
+                      "none",
+                    transform:
+                      "scale(1)",
+                  }}
+                >
+                  <span
+                    className={
+                      styles.telegramButtonIcon
                     }
-                  : undefined
-              }
-              onClick={() => {
-                void handleTelegramAction()
-              }}
-            >
-              <span
-                className={
-                  styles.telegramButtonIcon
-                }
-                aria-hidden="true"
-              >
-                <TelegramIcon />
-              </span>
+                    aria-hidden="true"
+                  >
+                    <TelegramIcon />
+                  </span>
 
-              <span>
-                {telegramLinked
-                  ? "Cuenta vinculada 🔒"
-                  : telegramOpening
-                    ? "Preparando..."
-                    : "Vincular cuenta"}
-              </span>
-            </button>
+                  <span>
+                    Cuenta vinculada 🔒
+                  </span>
+                </div>
+              )
+              : (
+                <button
+                  type="button"
+                  className={
+                    styles.telegramButton
+                  }
+                  onClick={() => {
+                    void handleTelegramAction()
+                  }}
+                >
+                  <span
+                    className={
+                      styles.telegramButtonIcon
+                    }
+                    aria-hidden="true"
+                  >
+                    <TelegramIcon />
+                  </span>
+
+                  <span>
+                    Vincular cuenta
+                  </span>
+                </button>
+              )
           )}
         </div>
       </section>

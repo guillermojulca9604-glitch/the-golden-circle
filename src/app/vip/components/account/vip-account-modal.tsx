@@ -1496,7 +1496,7 @@ export function VipAccountModal({
     telegramMaintenance
       ? "Telegram en mantenimiento"
       : telegramLinked
-        ? "Cuenta vinculada 🔒"
+        ? "Cuenta vinculada"
         : "Telegram no vinculado";
 
   const telegramDescription =

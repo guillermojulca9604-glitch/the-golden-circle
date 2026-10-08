@@ -26,6 +26,11 @@ type TelegramLinkRow = {
   active_invite_link:
     | string
     | null
+
+  active_invite_message_id:
+    | number
+    | string
+    | null
 }
 
 type MembershipRow = {
@@ -188,8 +193,6 @@ async function removeTelegramAccount(
 /*
  * Inutilizar el enlace del botón
  * "Entrar a The Golden Circle".
- *
- * NO borra el mensaje del bot.
  */
 async function revokeInviteLink(
   inviteLink: string
@@ -217,6 +220,41 @@ async function revokeInviteLink(
      */
     console.error(
       "No se pudo revocar la invitación antigua:",
+      error
+    )
+  }
+}
+
+/*
+ * Elimina el mensaje privado
+ * enviado por el bot con el
+ * acceso a The Golden Circle.
+ *
+ * Es la misma limpieza visual
+ * utilizada durante mantenimiento.
+ *
+ * Si Telegram ya no permite
+ * eliminarlo, el vencimiento del
+ * VIP debe continuar igualmente.
+ */
+async function deleteInviteMessage(
+  chatId: number,
+  messageId: number
+) {
+  try {
+    await telegramApi<boolean>(
+      "deleteMessage",
+      {
+        chat_id:
+          chatId,
+
+        message_id:
+          messageId,
+      }
+    )
+  } catch (error) {
+    console.error(
+      "No se pudo eliminar el mensaje privado del bot:",
       error
     )
   }
@@ -298,7 +336,7 @@ async function getTelegramLinks() {
           "telegram_links"
         )
         .select(
-          "user_id,telegram_user_id,membership_id,active_invite_link"
+          "user_id,telegram_user_id,membership_id,active_invite_link,active_invite_message_id"
         )
         .not(
           "telegram_user_id",
@@ -927,9 +965,6 @@ export async function POST(
          * Si todavía existe el enlace
          * "Entrar a The Golden Circle",
          * queda inutilizado.
-         *
-         * El mensaje del bot puede
-         * permanecer visible.
          */
         if (
           link.active_invite_link
@@ -937,6 +972,40 @@ export async function POST(
           await revokeInviteLink(
             link
               .active_invite_link
+          )
+        }
+
+        /*
+         * Igual que durante mantenimiento,
+         * eliminamos también el mensaje
+         * privado del bot que contenía
+         * el acceso al canal.
+         *
+         * active_invite_message_id se
+         * conserva después de utilizar
+         * la invitación para permitir
+         * esta limpieza al vencer el VIP.
+         */
+        const inviteMessageId =
+          link
+            .active_invite_message_id !=
+          null
+            ? Number(
+                link
+                  .active_invite_message_id
+              )
+            : null
+
+        if (
+          inviteMessageId !==
+            null &&
+          Number.isFinite(
+            inviteMessageId
+          )
+        ) {
+          await deleteInviteMessage(
+            telegramUserId,
+            inviteMessageId
           )
         }
 

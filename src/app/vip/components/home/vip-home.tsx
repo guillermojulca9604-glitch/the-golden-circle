@@ -636,7 +636,7 @@ export function VipHome({
                   </span>
 
                   <span>
-                    Cuenta vinculada 🔒
+                    Cuenta vinculada
                   </span>
                 </div>
               )

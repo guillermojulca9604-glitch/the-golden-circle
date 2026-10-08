@@ -1,8 +1,10 @@
 "use client"
 
 import {
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react"
 
@@ -42,7 +44,14 @@ type TelegramCreateLinkResponse = {
   url?: string
   expiresAt?: string
   maintenance?: boolean
+  linked?: boolean
   error?: string
+}
+
+type TelegramStatusResponse = {
+  ok?: boolean
+  linked?: boolean
+  username?: string | null
 }
 
 type TelegramServiceStateRealtime = {
@@ -95,6 +104,12 @@ export function VipHome({
     useState("")
 
   const [
+    telegramLinked,
+    setTelegramLinked,
+  ] =
+    useState(false)
+
+  const [
     telegramMaintenance,
     setTelegramMaintenance,
   ] =
@@ -110,6 +125,111 @@ export function VipHome({
       telegramMaintenanceMessage ||
         DEFAULT_TELEGRAM_MAINTENANCE_MESSAGE
     )
+
+  const telegramRefreshTimersRef =
+    useRef<number[]>([])
+
+  const clearTelegramRefreshTimers =
+    useCallback(() => {
+      for (
+        const timerId of
+        telegramRefreshTimersRef.current
+      ) {
+        window.clearTimeout(
+          timerId
+        )
+      }
+
+      telegramRefreshTimersRef.current =
+        []
+    }, [])
+
+  const refreshTelegramStatus =
+    useCallback(async () => {
+      try {
+        const response =
+          await fetch(
+            "/api/telegram/status",
+            {
+              method: "GET",
+              cache: "no-store",
+            }
+          )
+
+        const result =
+          (await response.json()) as
+            TelegramStatusResponse
+
+        if (
+          !response.ok ||
+          !result.ok
+        ) {
+          return null
+        }
+
+        const linked =
+          result.linked === true
+
+        setTelegramLinked(
+          linked
+        )
+
+        if (linked) {
+          setTelegramMessage(
+            ""
+          )
+        }
+
+        return linked
+      } catch {
+        /*
+         * Si falla la consulta,
+         * conservamos el estado actual.
+         */
+        return null
+      }
+    }, [])
+
+  const refreshTelegramStatusWithRetry =
+    useCallback(() => {
+      clearTelegramRefreshTimers()
+
+      const retryDelays = [
+        0,
+        800,
+        1800,
+        3500,
+        6500,
+      ]
+
+      for (
+        const delay of retryDelays
+      ) {
+        const timerId =
+          window.setTimeout(
+            async () => {
+              const linked =
+                await refreshTelegramStatus()
+
+              if (
+                linked === true
+              ) {
+                clearTelegramRefreshTimers()
+              }
+            },
+            delay
+          )
+
+        telegramRefreshTimersRef
+          .current
+          .push(
+            timerId
+          )
+      }
+    }, [
+      clearTelegramRefreshTimers,
+      refreshTelegramStatus,
+    ])
 
   useEffect(() => {
     setCurrentAccountName(
@@ -129,6 +249,88 @@ export function VipHome({
   }, [
     initialTelegramMaintenance,
     telegramMaintenanceMessage,
+  ])
+
+  /*
+   * Al cargar /vip comprobamos si
+   * este VIP ya tiene Telegram
+   * vinculado.
+   */
+  useEffect(() => {
+    void refreshTelegramStatus()
+  }, [refreshTelegramStatus])
+
+  /*
+   * Al volver desde Telegram puede
+   * existir una pequeña carrera:
+   *
+   * navegador vuelve a /vip
+   * ↓
+   * webhook todavía termina
+   *
+   * Por eso hacemos unos pocos
+   * reintentos y paramos en cuanto
+   * detectamos la vinculación.
+   */
+  useEffect(() => {
+    const refreshWhenVisible =
+      () => {
+        if (
+          document.visibilityState !==
+          "visible"
+        ) {
+          return
+        }
+
+        refreshTelegramStatusWithRetry()
+      }
+
+    const handlePageShow =
+      () => {
+        refreshTelegramStatusWithRetry()
+      }
+
+    window.addEventListener(
+      "focus",
+      refreshWhenVisible
+    )
+
+    window.addEventListener(
+      "pageshow",
+      handlePageShow
+    )
+
+    document.addEventListener(
+      "visibilitychange",
+      refreshWhenVisible
+    )
+
+    return () => {
+      window.removeEventListener(
+        "focus",
+        refreshWhenVisible
+      )
+
+      window.removeEventListener(
+        "pageshow",
+        handlePageShow
+      )
+
+      document.removeEventListener(
+        "visibilitychange",
+        refreshWhenVisible
+      )
+    }
+  }, [
+    refreshTelegramStatusWithRetry,
+  ])
+
+  useEffect(() => {
+    return () => {
+      clearTelegramRefreshTimers()
+    }
+  }, [
+    clearTelegramRefreshTimers,
   ])
 
   useEffect(() => {
@@ -176,6 +378,8 @@ export function VipHome({
             if (
               nextMaintenance
             ) {
+              clearTelegramRefreshTimers()
+
               setTelegramMessage(
                 ""
               )
@@ -183,7 +387,19 @@ export function VipHome({
               setTelegramOpening(
                 false
               )
+
+              return
             }
+
+            /*
+             * Al finalizar mantenimiento,
+             * el sistema reinicia las
+             * vinculaciones Telegram.
+             *
+             * Consultamos nuevamente el
+             * estado real.
+             */
+            void refreshTelegramStatus()
           }
         )
         .subscribe()
@@ -194,7 +410,11 @@ export function VipHome({
           channel
         )
     }
-  }, [supabase])
+  }, [
+    supabase,
+    clearTelegramRefreshTimers,
+    refreshTelegramStatus,
+  ])
 
   useEffect(() => {
     const handleAccountNameChange =
@@ -237,7 +457,8 @@ export function VipHome({
     async () => {
       if (
         telegramOpening ||
-        telegramMaintenance
+        telegramMaintenance ||
+        telegramLinked
       ) {
         return
       }
@@ -259,14 +480,9 @@ export function VipHome({
             TelegramCreateLinkResponse
 
         /*
-         * Si el mantenimiento fue
-         * activado mientras el usuario
-         * ya tenía /vip abierto,
-         * create-link lo bloquea.
-         *
-         * En ese caso actualizamos
-         * también la interfaz sin
-         * necesitar recargar.
+         * Si mantenimiento fue
+         * activado mientras /vip
+         * ya estaba abierto.
          */
         if (
           result.maintenance ===
@@ -282,6 +498,29 @@ export function VipHome({
           )
 
           setTelegramMessage("")
+
+          return
+        }
+
+        /*
+         * Seguridad adicional.
+         *
+         * Si la pantalla estaba
+         * desactualizada pero backend
+         * ya sabe que el VIP está
+         * vinculado, bloqueamos el
+         * botón inmediatamente.
+         */
+        if (
+          result.linked === true
+        ) {
+          setTelegramLinked(
+            true
+          )
+
+          setTelegramMessage(
+            ""
+          )
 
           return
         }
@@ -343,7 +582,9 @@ export function VipHome({
         aria-label={
           telegramMaintenance
             ? "Telegram en mantenimiento"
-            : "Acceso a Telegram"
+            : telegramLinked
+              ? "Cuenta de Telegram vinculada"
+              : "Acceso a Telegram"
         }
       >
         <div
@@ -417,7 +658,19 @@ export function VipHome({
                 styles.telegramButton
               }
               disabled={
-                telegramOpening
+                telegramOpening ||
+                telegramLinked
+              }
+              aria-disabled={
+                telegramLinked
+              }
+              style={
+                telegramLinked
+                  ? {
+                      cursor:
+                        "not-allowed",
+                    }
+                  : undefined
               }
               onClick={() => {
                 void handleTelegramAction()
@@ -433,9 +686,11 @@ export function VipHome({
               </span>
 
               <span>
-                {telegramOpening
-                  ? "Preparando..."
-                  : "Unirse a Telegram"}
+                {telegramLinked
+                  ? "Cuenta vinculada 🔒"
+                  : telegramOpening
+                    ? "Preparando..."
+                    : "Vincular cuenta"}
               </span>
             </button>
           )}

@@ -253,10 +253,28 @@ export function VipAccountMenu({
   const accountMenuRef =
     useRef<HTMLDivElement>(null)
 
+  const telegramRefreshTimersRef =
+    useRef<number[]>([])
+
   const accountInitial =
     getAccountInitial(
       currentAccountName
     )
+
+  const clearTelegramRefreshTimers =
+    useCallback(() => {
+      for (
+        const timerId of
+        telegramRefreshTimersRef.current
+      ) {
+        window.clearTimeout(
+          timerId
+        )
+      }
+
+      telegramRefreshTimersRef.current =
+        []
+    }, [])
 
   const refreshTelegramStatus =
     useCallback(async () => {
@@ -278,11 +296,14 @@ export function VipAccountMenu({
           !response.ok ||
           !result.ok
         ) {
-          return
+          return null
         }
 
-        setTelegramLinked(
+        const linked =
           result.linked === true
+
+        setTelegramLinked(
+          linked
         )
 
         setTelegramUsername(
@@ -292,14 +313,55 @@ export function VipAccountMenu({
             ? result.username.trim()
             : null
         )
+
+        return linked
       } catch {
         /*
          * Actualización silenciosa.
          * Si falla, conservamos el
          * estado cargado al entrar a VIP.
          */
+        return null
       }
     }, [])
+
+  const refreshTelegramStatusWithRetry =
+    useCallback(() => {
+      clearTelegramRefreshTimers()
+
+      const retryDelays = [
+        0,
+        800,
+        1800,
+        3500,
+        6500,
+      ]
+
+      for (
+        const delay of retryDelays
+      ) {
+        const timerId =
+          window.setTimeout(
+            async () => {
+              const linked =
+                await refreshTelegramStatus()
+
+              if (linked === true) {
+                clearTelegramRefreshTimers()
+              }
+            },
+            delay
+          )
+
+        telegramRefreshTimersRef.current
+          .push(
+            timerId
+          )
+      }
+    }, [
+      clearTelegramRefreshTimers,
+      refreshTelegramStatus,
+    ])
 
   useEffect(() => {
     setCurrentAccountName(
@@ -334,11 +396,21 @@ export function VipAccountMenu({
         document.visibilityState ===
         "visible"
       ) {
+        if (accountModalOpen) {
+          refreshTelegramStatusWithRetry()
+          return
+        }
+
         void refreshTelegramStatus()
       }
     }
 
     const handlePageShow = () => {
+      if (accountModalOpen) {
+        refreshTelegramStatusWithRetry()
+        return
+      }
+
       void refreshTelegramStatus()
     }
 
@@ -373,7 +445,17 @@ export function VipAccountMenu({
         refreshWhenVisible
       )
     }
-  }, [refreshTelegramStatus])
+  }, [
+    accountModalOpen,
+    refreshTelegramStatus,
+    refreshTelegramStatusWithRetry,
+  ])
+
+  useEffect(() => {
+    return () => {
+      clearTelegramRefreshTimers()
+    }
+  }, [clearTelegramRefreshTimers])
 
   useEffect(() => {
     let usernameTimer:
@@ -567,6 +649,8 @@ export function VipAccountMenu({
   }, [open])
 
   const handleOpenAccount = () => {
+    refreshTelegramStatusWithRetry()
+
     setAccountLimits(
       (currentLimits) =>
         unlockExpiredLimits(

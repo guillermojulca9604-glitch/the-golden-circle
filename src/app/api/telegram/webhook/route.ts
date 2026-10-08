@@ -318,7 +318,7 @@ async function deleteInviteMessage(
     )
   } catch (error) {
     console.error(
-      "No se pudo eliminar el mensaje de invitación anterior:",
+      "No se pudo eliminar el mensaje de invitación:",
       error
     )
   }
@@ -372,6 +372,9 @@ async function removeTelegramAccount(
       "TELEGRAM_CHANNEL_ID"
     )
 
+  /*
+   * Fuerza la salida.
+   */
   await telegramApi(
     "banChatMember",
     {
@@ -383,6 +386,11 @@ async function removeTelegramAccount(
     }
   )
 
+  /*
+   * Quita el bloqueo.
+   *
+   * NO lo vuelve a ingresar.
+   */
   await telegramApi(
     "unbanChatMember",
     {
@@ -474,6 +482,77 @@ async function clearActiveInvite(
   }
 }
 
+/*
+ * Si el proceso de START BOT falla
+ * por culpa del sistema después de
+ * haber intentado vincular la cuenta,
+ * liberamos la vinculación.
+ *
+ * Así el usuario puede intentarlo
+ * nuevamente desde su VIP.
+ *
+ * Esto NO se usa cuando el propio
+ * usuario pierde/compartió su pase.
+ */
+async function rollbackFailedBinding(
+  userId: string,
+  membershipId: string,
+  telegramUserId: number
+) {
+  const {
+    error,
+  } =
+    await supabaseAdmin
+      .from(
+        "telegram_links"
+      )
+      .update({
+        telegram_user_id:
+          null,
+
+        telegram_username:
+          null,
+
+        membership_id:
+          null,
+
+        linked_at:
+          null,
+
+        active_invite_link:
+          null,
+
+        active_invite_expires_at:
+          null,
+
+        active_invite_message_id:
+          null,
+
+        updated_at:
+          new Date()
+            .toISOString(),
+      })
+      .eq(
+        "user_id",
+        userId
+      )
+      .eq(
+        "membership_id",
+        membershipId
+      )
+      .eq(
+        "telegram_user_id",
+        telegramUserId
+      )
+
+  if (error) {
+    console.error(
+      "No se pudo revertir la vinculación fallida:",
+      error
+    )
+  }
+}
+
 async function handleChatMemberUpdate(
   memberUpdate:
     TelegramChatMemberUpdated
@@ -532,15 +611,14 @@ async function handleChatMemberUpdate(
    * SALIDA VOLUNTARIA
    * ==================================
    *
-   * Si el propio usuario abandona
-   * voluntariamente el canal:
+   * Ya había consumido su pase.
    *
-   * - el pase NO se devuelve;
-   * - la vinculación VIP se conserva;
-   * - no podrá generar otro acceso;
-   * - hacemos BAN + UNBAN para aplicar
-   *   el mismo cierre que usamos cuando
-   *   vence su VIP.
+   * Sale por decisión propia:
+   *
+   * BAN → UNBAN
+   *
+   * No limpiamos su vinculación.
+   * No recupera acceso.
    */
   const voluntaryExit =
     wasMember &&
@@ -560,7 +638,7 @@ async function handleChatMemberUpdate(
           "telegram_links"
         )
         .select(
-          "user_id,membership_id,linked_at,active_invite_link"
+          "user_id,membership_id,linked_at"
         )
         .eq(
           "telegram_user_id",
@@ -568,16 +646,10 @@ async function handleChatMemberUpdate(
         )
         .maybeSingle<{
           user_id: string
-
           membership_id:
             | string
             | null
-
           linked_at:
-            | string
-            | null
-
-          active_invite_link:
             | string
             | null
         }>()
@@ -595,40 +667,63 @@ async function handleChatMemberUpdate(
     }
 
     /*
-     * MISMO CIERRE que en vencimiento:
+     * Solo aplicamos este cierre
+     * mientras el VIP relacionado
+     * siga activo.
      *
-     * BAN → UNBAN.
-     *
-     * No limpiamos la vinculación.
-     * Así el VIP sigue figurando
-     * como ya utilizado.
+     * Si ya venció, dejamos que
+     * expire-memberships realice
+     * su limpieza normal.
      */
+    const {
+      data: activeMembership,
+      error: activeMembershipError,
+    } =
+      await supabaseAdmin
+        .from(
+          "memberships"
+        )
+        .select(
+          "id"
+        )
+        .eq(
+          "id",
+          linkedVip.membership_id
+        )
+        .eq(
+          "user_id",
+          linkedVip.user_id
+        )
+        .eq(
+          "status",
+          "active"
+        )
+        .gt(
+          "expires_at",
+          nowIso
+        )
+        .maybeSingle()
+
+    if (
+      activeMembershipError
+    ) {
+      throw activeMembershipError
+    }
+
+    if (!activeMembership) {
+      return
+    }
+
     await removeTelegramAccount(
       telegramUserId
     )
-
-    if (
-      linkedVip.active_invite_link
-    ) {
-      await revokeInviteLink(
-        linkedVip
-          .active_invite_link
-      )
-
-      await clearActiveInvite(
-        linkedVip.user_id,
-        linkedVip
-          .active_invite_link,
-        nowIso
-      )
-    }
 
     return
   }
 
   /*
-   * Desde aquí únicamente procesamos
-   * una nueva entrada al canal.
+   * Desde aquí:
+   * únicamente nuevas entradas.
    */
   if (
     wasMember ||
@@ -648,8 +743,7 @@ async function handleChatMemberUpdate(
     null
 
   /*
-   * Entrada sin uno de
-   * nuestros pases.
+   * Entrada sin nuestro pase.
    */
   if (!usedInviteLink) {
     await removeTelegramAccount(
@@ -660,8 +754,8 @@ async function handleChatMemberUpdate(
   }
 
   /*
-   * Buscar a qué VIP pertenece
-   * exactamente la invitación.
+   * Buscar propietario exacto
+   * de la invitación.
    */
   const {
     data: inviteOwner,
@@ -689,6 +783,10 @@ async function handleChatMemberUpdate(
     throw inviteOwnerError
   }
 
+  /*
+   * Invitación inexistente,
+   * reemplazada o ya consumida.
+   */
   if (
     !inviteOwner ||
     !inviteOwner
@@ -711,10 +809,12 @@ async function handleChatMemberUpdate(
   }
 
   /*
-   * La invitación ahora dura hasta
-   * la fecha final del VIP.
+   * Comprobar fecha del pase.
+   *
+   * Debe coincidir con la
+   * vigencia del VIP.
    */
-  const activeInviteExpiration =
+  const inviteExpiration =
     inviteOwner
       .active_invite_expires_at
       ? new Date(
@@ -724,12 +824,12 @@ async function handleChatMemberUpdate(
       : null
 
   if (
-    !activeInviteExpiration ||
+    !inviteExpiration ||
     Number.isNaN(
-      activeInviteExpiration
+      inviteExpiration
         .getTime()
     ) ||
-    activeInviteExpiration
+    inviteExpiration
       .getTime() <=
       now.getTime()
   ) {
@@ -750,6 +850,9 @@ async function handleChatMemberUpdate(
     return
   }
 
+  /*
+   * Verificar membresía real.
+   */
   const {
     data: membership,
     error: membershipError,
@@ -808,9 +911,24 @@ async function handleChatMemberUpdate(
   }
 
   /*
-   * La cuenta Telegram que se
-   * vinculó al bot es la única
-   * que puede consumir el pase.
+   * ==================================
+   * B UTILIZA EL PASE DE A
+   * ==================================
+   *
+   * El Telegram que intenta entrar
+   * NO es el Telegram vinculado.
+   *
+   * Consecuencia:
+   *
+   * B:
+   * → expulsado.
+   *
+   * A:
+   * → pierde esa invitación.
+   * → NO recibe otra.
+   *
+   * La web de A ya estaba bloqueada
+   * desde START BOT.
    */
   if (
     inviteOwner
@@ -821,14 +939,6 @@ async function handleChatMemberUpdate(
         .telegram_user_id
     ) !== telegramUserId
   ) {
-    /*
-     * Si alguien recibió el enlace
-     * compartido y lo usa primero:
-     *
-     * - se le expulsa;
-     * - se revoca la invitación;
-     * - el propietario pierde ese pase.
-     */
     await removeTelegramAccount(
       telegramUserId
     )
@@ -847,9 +957,9 @@ async function handleChatMemberUpdate(
   }
 
   /*
-   * Un mismo Telegram tampoco puede
-   * estar simultáneamente vinculado
-   * a otra cuenta VIP.
+   * El Telegram tampoco puede
+   * pertenecer simultáneamente
+   * a otro usuario web.
    */
   const {
     data:
@@ -903,10 +1013,14 @@ async function handleChatMemberUpdate(
   }
 
   /*
-   * Entrada correcta.
+   * ==================================
+   * A ENTRA CORRECTAMENTE
+   * ==================================
    *
-   * Desde aquí la invitación queda
-   * consumida definitivamente.
+   * La cuenta vinculada usó
+   * correctamente su invitación.
+   *
+   * Se consume definitivamente.
    */
   const {
     error:
@@ -926,6 +1040,7 @@ async function handleChatMemberUpdate(
           ),
 
         linked_at:
+          inviteOwner.linked_at ??
           nowIso,
 
         active_invite_link:
@@ -962,6 +1077,10 @@ async function handleChatMemberUpdate(
     throw updateLinkError
   }
 
+  /*
+   * Pase utilizado.
+   * No queda circulando.
+   */
   await revokeInviteLink(
     usedInviteLink
   )
@@ -1017,6 +1136,11 @@ export async function POST(
     | null = null
 
   try {
+    /*
+     * ==================================
+     * WEBHOOK SECRET
+     * ==================================
+     */
     const expectedSecret =
       requiredEnv(
         "TELEGRAM_WEBHOOK_SECRET"
@@ -1045,7 +1169,8 @@ export async function POST(
      * MANTENIMIENTO
      * ==================================
      *
-     * ESTA BARRERA SE CONSERVA.
+     * Conservamos la barrera
+     * que ya funciona.
      */
     const {
       data:
@@ -1075,6 +1200,10 @@ export async function POST(
         telegramServiceStateError
       )
 
+      /*
+       * Respondemos 200 para evitar
+       * que Telegram reintente.
+       */
       return json({
         ok: true,
         ignored: true,
@@ -1097,7 +1226,7 @@ export async function POST(
         TelegramUpdate
 
     /*
-     * Entradas y salidas del canal.
+     * Entrada/salida del canal.
      */
     if (
       update.chat_member
@@ -1111,6 +1240,9 @@ export async function POST(
       })
     }
 
+    /*
+     * Compatibilidad antigua.
+     */
     if (
       update.chat_join_request
     ) {
@@ -1126,6 +1258,9 @@ export async function POST(
     const message =
       update.message
 
+    /*
+     * Solo privados y personas.
+     */
     if (
       !message ||
       !message.from ||
@@ -1165,13 +1300,17 @@ export async function POST(
         text
       )
 
+    /*
+     * Bot abierto directamente,
+     * sin la web VIP.
+     */
     if (!token) {
       await sendMessage(
         chatId,
         [
           "Acceso exclusivo para miembros de The Golden Circle.",
           "",
-          "Ingresa a tu cuenta VIP para obtener acceso.",
+          "Ingresa a tu cuenta VIP para vincular Telegram.",
         ].join("\n"),
         {
           text:
@@ -1193,6 +1332,11 @@ export async function POST(
     const nowIso =
       now.toISOString()
 
+    /*
+     * ==================================
+     * TOKEN WEB → START BOT
+     * ==================================
+     */
     const {
       data: tokenRow,
       error: tokenError,
@@ -1237,8 +1381,8 @@ export async function POST(
     }
 
     /*
-     * Un token WEB → BOT ya utilizado
-     * no puede ejecutarse de nuevo.
+     * START BOT solamente puede
+     * utilizarse una vez.
      */
     if (tokenRow.used_at) {
       return json({
@@ -1246,16 +1390,18 @@ export async function POST(
       })
     }
 
-    const expiresAt =
+    const tokenExpiresAt =
       new Date(
         tokenRow.expires_at
       )
 
     if (
       Number.isNaN(
-        expiresAt.getTime()
+        tokenExpiresAt
+          .getTime()
       ) ||
-      expiresAt.getTime() <=
+      tokenExpiresAt
+        .getTime() <=
         now.getTime()
     ) {
       await sendMessage(
@@ -1263,7 +1409,7 @@ export async function POST(
         [
           "Este enlace ha vencido.",
           "",
-          "Vuelve a tu cuenta VIP y pulsa nuevamente “Unirse a Telegram”.",
+          "Vuelve a tu cuenta VIP y genera uno nuevo.",
         ].join("\n"),
         {
           text:
@@ -1279,6 +1425,9 @@ export async function POST(
       })
     }
 
+    /*
+     * Comprobar VIP exacto.
+     */
     const {
       data: membership,
       error: membershipError,
@@ -1318,7 +1467,7 @@ export async function POST(
         [
           "Tu membresía VIP ya no está activa.",
           "",
-          "No se puede generar acceso al canal.",
+          "No se puede vincular Telegram.",
         ].join("\n"),
         {
           text:
@@ -1343,9 +1492,8 @@ export async function POST(
       null
 
     /*
-     * Un Telegram no puede encontrarse
-     * vinculado simultáneamente a otra
-     * cuenta VIP.
+     * Telegram no puede estar
+     * vinculado a otra cuenta web.
      */
     const {
       data:
@@ -1397,6 +1545,10 @@ export async function POST(
       })
     }
 
+    /*
+     * Vinculación actual
+     * del usuario web.
+     */
     const {
       data: currentLink,
       error:
@@ -1419,28 +1571,46 @@ export async function POST(
       throw currentLinkError
     }
 
+    const sameVipAlreadyLinked =
+      Boolean(
+        currentLink &&
+        currentLink
+          .membership_id !=
+          null &&
+        String(
+          currentLink
+            .membership_id
+        ) ===
+          String(
+            tokenRow.membership_id
+          ) &&
+        (
+          currentLink
+            .telegram_user_id !=
+            null ||
+          currentLink
+            .linked_at !=
+            null
+        )
+      )
+
     /*
-     * ESTE mismo VIP ya utilizó su
-     * vinculación con otra cuenta.
+     * Seguridad adicional:
+     *
+     * aunque alguien consiguiera
+     * un segundo token por carrera,
+     * después del primer START BOT
+     * no generamos otra invitación.
      */
     if (
-      currentLink
-        ?.membership_id ===
-        tokenRow.membership_id &&
-      currentLink
-        .telegram_user_id !=
-        null &&
-      Number(
-        currentLink
-          .telegram_user_id
-      ) !== telegramUserId
+      sameVipAlreadyLinked
     ) {
       await sendMessage(
         chatId,
         [
-          "Este VIP ya está vinculado a otra cuenta de Telegram.",
+          "Este VIP ya tiene una cuenta de Telegram vinculada.",
           "",
-          "Este VIP ya utilizó su única vinculación de Telegram.",
+          "No se puede generar otro acceso durante esta membresía.",
         ].join("\n"),
         {
           text:
@@ -1457,8 +1627,7 @@ export async function POST(
     }
 
     /*
-     * Aquí el pase WEB → BOT se
-     * consume definitivamente.
+     * Consumir START BOT.
      */
     const {
       data:
@@ -1502,8 +1671,10 @@ export async function POST(
     }
 
     /*
-     * Si por algún motivo existía una
-     * invitación anterior, se anula.
+     * Si quedó una invitación vieja
+     * perteneciente a una membresía
+     * anterior, la eliminamos antes
+     * de vincular el VIP nuevo.
      */
     if (
       currentLink &&
@@ -1537,7 +1708,7 @@ export async function POST(
               currentLink
                 .telegram_user_id
             )
-          : chatId
+          : null
 
       const {
         error:
@@ -1581,7 +1752,13 @@ export async function POST(
         previousMessageId !==
           null &&
         previousChatId !==
-          null
+          null &&
+        Number.isFinite(
+          previousMessageId
+        ) &&
+        Number.isFinite(
+          previousChatId
+        )
           ? deleteInviteMessage(
               previousChatId,
               previousMessageId
@@ -1590,18 +1767,21 @@ export async function POST(
       ])
     }
 
+    /*
+     * ==================================
+     * BOT → CANAL
+     * ==================================
+     *
+     * NO 10 minutos.
+     *
+     * Vence exactamente cuando
+     * termina el VIP.
+     */
     const channelId =
       requiredEnv(
         "TELEGRAM_CHANNEL_ID"
       )
 
-    /*
-     * FECHA REAL DEL VIP.
-     *
-     * Ya NO existe el límite
-     * de 10 minutos para entrar
-     * al canal.
-     */
     const vipExpiration =
       Math.floor(
         new Date(
@@ -1610,14 +1790,21 @@ export async function POST(
           1000
       )
 
-    const inviteExpiresAt =
-      vipExpiration
+    if (
+      !Number.isFinite(
+        vipExpiration
+      ) ||
+      vipExpiration <=
+        Math.floor(
+          Date.now() /
+            1000
+        )
+    ) {
+      throw new Error(
+        "La membresía venció antes de crear la invitación."
+      )
+    }
 
-    /*
-     * Una sola persona.
-     * Disponible hasta el vencimiento
-     * del VIP.
-     */
     const invite =
       await telegramApi<TelegramInviteLink>(
         "createChatInviteLink",
@@ -1632,8 +1819,14 @@ export async function POST(
             ),
 
           expire_date:
-            inviteExpiresAt,
+            vipExpiration,
 
+          /*
+           * Una sola persona.
+           *
+           * Si la usa B antes que A,
+           * el pase se pierde.
+           */
           member_limit:
             1,
         }
@@ -1641,16 +1834,14 @@ export async function POST(
 
     const activeInviteExpiresAt =
       new Date(
-        inviteExpiresAt *
+        vipExpiration *
           1000
       ).toISOString()
 
     /*
-     * Desde aquí el VIP ya queda
-     * vinculado a este Telegram.
-     *
-     * Aunque todavía no haya entrado
-     * al canal, no se generará otro.
+     * ==================================
+     * START BOT = VINCULACIÓN
+     * ==================================
      */
     if (currentLink) {
       const {
@@ -1766,25 +1957,55 @@ export async function POST(
       }
     }
 
-    const inviteMessage =
-      await sendMessage(
-        chatId,
-        [
-          "Cuenta vinculada correctamente.",
-          "",
-          "Tu acceso privado a The Golden Circle está listo.",
-          "",
-          "El enlace es personal, puede usarse una sola vez y estará disponible hasta que finalice tu membresía VIP.",
-        ].join("\n"),
-        {
-          text:
-            "Entrar a The Golden Circle",
+    /*
+     * Entregar el único pase
+     * BOT → CANAL.
+     */
+    let inviteMessage:
+      TelegramSentMessage
 
-          url:
-            invite.invite_link,
-        }
+    try {
+      inviteMessage =
+        await sendMessage(
+          chatId,
+          [
+            "Cuenta vinculada correctamente.",
+            "",
+            "Tu acceso privado a The Golden Circle está listo.",
+            "",
+            "El enlace es personal, puede usarse una sola vez y estará disponible hasta que finalice tu membresía VIP.",
+          ].join("\n"),
+          {
+            text:
+              "Entrar a The Golden Circle",
+
+            url:
+              invite.invite_link,
+          }
+        )
+    } catch (error) {
+      /*
+       * Falla del sistema:
+       * no castigamos al usuario.
+       */
+      await revokeInviteLink(
+        invite.invite_link
       )
 
+      await rollbackFailedBinding(
+        tokenRow.user_id,
+        String(
+          membership.id
+        ),
+        telegramUserId
+      )
+
+      throw error
+    }
+
+    /*
+     * Guardar message_id.
+     */
     const {
       error:
         messageIdError,
@@ -1806,11 +2027,26 @@ export async function POST(
           tokenRow.user_id
         )
         .eq(
+          "membership_id",
+          String(
+            membership.id
+          )
+        )
+        .eq(
+          "telegram_user_id",
+          telegramUserId
+        )
+        .eq(
           "active_invite_link",
           invite.invite_link
         )
 
     if (messageIdError) {
+      /*
+       * También es un fallo interno.
+       * Permitimos que vuelva a
+       * comenzar el proceso.
+       */
       await Promise.all([
         revokeInviteLink(
           invite.invite_link
@@ -1822,10 +2058,12 @@ export async function POST(
         ),
       ])
 
-      await clearActiveInvite(
+      await rollbackFailedBinding(
         tokenRow.user_id,
-        invite.invite_link,
-        nowIso
+        String(
+          membership.id
+        ),
+        telegramUserId
       )
 
       throw messageIdError
@@ -1847,7 +2085,7 @@ export async function POST(
           [
             "No pudimos completar la vinculación.",
             "",
-            "Vuelve a tu cuenta VIP y genera un nuevo enlace.",
+            "Vuelve a tu cuenta VIP e inténtalo nuevamente.",
           ].join("\n"),
           {
             text:
@@ -1860,6 +2098,11 @@ export async function POST(
       } catch {}
     }
 
+    /*
+     * Siempre 200 a Telegram
+     * para evitar reintentos
+     * descontrolados.
+     */
     return json({
       ok: true,
     })

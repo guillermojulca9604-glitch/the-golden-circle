@@ -55,11 +55,6 @@ export async function POST() {
      * ==================================
      * MANTENIMIENTO
      * ==================================
-     *
-     * Antes de hacer cualquier
-     * operación de Telegram,
-     * comprobamos si el servicio
-     * está disponible.
      */
     const {
       data: telegramServiceState,
@@ -86,11 +81,6 @@ export async function POST() {
         telegramServiceStateError
       )
 
-      /*
-       * Si no podemos comprobar
-       * el estado, cerramos el acceso
-       * por seguridad.
-       */
       return json(
         {
           ok: false,
@@ -144,7 +134,7 @@ export async function POST() {
 
     /*
      * ==================================
-     * MEMBRESÍA VIP ACTIVA
+     * VIP ACTIVO
      * ==================================
      */
     const {
@@ -213,29 +203,21 @@ export async function POST() {
 
     /*
      * ==================================
-     * ESTADO DEL PASE DE TELEGRAM
+     * UNA SOLA VINCULACIÓN POR VIP
      * ==================================
      *
-     * Hay dos situaciones:
+     * START BOT = vinculación definitiva.
      *
-     * 1. active_invite_link EXISTE
+     * Desde el momento en que este VIP
+     * tiene un Telegram asociado, la web
+     * no vuelve a generar otro /start.
      *
-     *    El usuario ya habló con el bot,
-     *    pero todavía tiene una
-     *    invitación pendiente al canal.
+     * Da igual si:
      *
-     *    Puede volver a generar acceso.
-     *    El webhook reemplazará la
-     *    invitación y mensaje anteriores.
-     *
-     * 2. active_invite_link ES NULL
-     *    y Telegram sigue vinculado al
-     *    mismo VIP.
-     *
-     *    Significa que el pase al canal
-     *    ya fue utilizado/consumido.
-     *
-     *    No se genera otro.
+     * - todavía no entró al canal;
+     * - ya entró;
+     * - compartió el enlace;
+     * - salió voluntariamente.
      */
     const {
       data: telegramLink,
@@ -246,7 +228,7 @@ export async function POST() {
           "telegram_links"
         )
         .select(
-          "telegram_user_id,membership_id,linked_at,active_invite_link"
+          "telegram_user_id,membership_id,linked_at"
         )
         .eq(
           "user_id",
@@ -258,7 +240,7 @@ export async function POST() {
       telegramLinkError
     ) {
       console.error(
-        "Error comprobando el acceso de Telegram:",
+        "Error comprobando vinculación de Telegram:",
         telegramLinkError
       )
 
@@ -266,7 +248,7 @@ export async function POST() {
         {
           ok: false,
           error:
-            "No se pudo comprobar tu acceso de Telegram.",
+            "No se pudo comprobar tu cuenta de Telegram.",
         },
         500
       )
@@ -282,38 +264,26 @@ export async function POST() {
       ) ===
         membershipId
 
-    const accessConsumed =
-      sameVip &&
-      telegramLink
-        ?.telegram_user_id !=
-        null &&
-      telegramLink
-        .linked_at !=
-        null &&
-      !telegramLink
-        .active_invite_link
+    const alreadyLinked =
+      Boolean(
+        sameVip &&
+        (
+          telegramLink
+            ?.telegram_user_id !=
+            null ||
+          telegramLink
+            ?.linked_at !=
+            null
+        )
+      )
 
-    /*
-     * Este VIP ya utilizó su
-     * único pase al canal.
-     *
-     * No importa si:
-     *
-     * - sigue dentro;
-     * - salió voluntariamente;
-     * - compartió su invitación;
-     * - otra persona la utilizó.
-     *
-     * El pase no se devuelve.
-     */
-    if (accessConsumed) {
+    if (alreadyLinked) {
       return json(
         {
           ok: false,
           linked: true,
-          consumed: true,
           error:
-            "Este VIP ya utilizó su único acceso a Telegram.",
+            "Tu cuenta de Telegram ya está vinculada a este VIP.",
         },
         409
       )
@@ -349,21 +319,17 @@ export async function POST() {
       ).getTime()
 
     /*
-     * IMPORTANTE:
+     * ==================================
+     * WEB → START BOT
+     * ==================================
      *
-     * Estos 10 minutos corresponden
-     * únicamente al enlace:
+     * ESTE es el único enlace
+     * que dura 10 minutos.
      *
-     * WEB → BOT
-     *
-     * No corresponden al pase que
-     * entrega el bot para entrar
-     * al canal.
-     *
-     * El pase BOT → CANAL será
-     * controlado por el webhook y
-     * durará hasta el vencimiento
-     * real del VIP.
+     * Si no llega a pulsar START BOT
+     * durante ese tiempo, todavía
+     * no existe vinculación y puede
+     * volver a generar otro.
      */
     const tokenExpiresAt =
       Math.min(
@@ -390,17 +356,9 @@ export async function POST() {
     }
 
     /*
-     * ==================================
-     * REEMPLAZAR /START ANTERIOR
-     * ==================================
-     *
-     * Mientras el pase al CANAL no
-     * haya sido consumido, el usuario
-     * puede volver a generar el acceso
-     * al bot.
-     *
-     * Eliminamos cualquier token
-     * WEB → BOT anterior sin utilizar.
+     * Mientras todavía NO haya usado
+     * START BOT, reemplazamos cualquier
+     * token WEB → BOT anterior.
      */
     const {
       error: deleteError,
@@ -413,6 +371,10 @@ export async function POST() {
         .eq(
           "user_id",
           user.id
+        )
+        .eq(
+          "membership_id",
+          membershipId
         )
         .is(
           "used_at",

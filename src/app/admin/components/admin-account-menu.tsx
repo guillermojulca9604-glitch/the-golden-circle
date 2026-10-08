@@ -2,6 +2,7 @@
 
 import {
   type FormEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -10,6 +11,7 @@ import {
 import {
   logoutToHome,
 } from "@/lib/auth/logout-to-home"
+
 import {
   createClient,
 } from "@/lib/supabase/client"
@@ -339,6 +341,39 @@ export function AdminAccountMenu({
   const accountInitial =
     getInitial(accountName)
 
+  const resetPasswordForm =
+    useCallback(() => {
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+
+      setShowCurrentPassword(
+        false
+      )
+
+      setShowNewPassword(false)
+
+      setShowConfirmPassword(
+        false
+      )
+
+      setFormError("")
+      setFormSuccess("")
+    }, [])
+
+  const closePasswordModal =
+    useCallback(() => {
+      if (saving) {
+        return
+      }
+
+      setPasswordModalOpen(false)
+      resetPasswordForm()
+    }, [
+      saving,
+      resetPasswordForm,
+    ])
+
   useEffect(() => {
     if (!menuOpen) {
       return
@@ -417,8 +452,7 @@ export function AdminAccountMenu({
     ) => {
       if (
         event.key ===
-          "Escape" &&
-        !saving
+        "Escape"
       ) {
         closePasswordModal()
       }
@@ -444,44 +478,14 @@ export function AdminAccountMenu({
     }
   }, [
     passwordModalOpen,
-    saving,
+    closePasswordModal,
   ])
-
-  const resetPasswordForm =
-    () => {
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmPassword("")
-
-      setShowCurrentPassword(
-        false
-      )
-
-      setShowNewPassword(false)
-
-      setShowConfirmPassword(
-        false
-      )
-
-      setFormError("")
-      setFormSuccess("")
-    }
 
   const openPasswordModal =
     () => {
       setMenuOpen(false)
       resetPasswordForm()
       setPasswordModalOpen(true)
-    }
-
-  const closePasswordModal =
-    () => {
-      if (saving) {
-        return
-      }
-
-      setPasswordModalOpen(false)
-      resetPasswordForm()
     }
 
   const handlePasswordChange =

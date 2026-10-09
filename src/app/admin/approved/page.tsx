@@ -9,8 +9,6 @@ type Payment = {
   email: string
   plan: string
   created_at: string
-  amount_paid: number | null
-  currency_id: string | null
 }
 
 type MonthGroup = {
@@ -45,8 +43,9 @@ const GROUP_FORMATTER = new Intl.DateTimeFormat("es-PE", {
 const MONEY_FORMATTER = new Intl.NumberFormat("es-PE", {
   style: "currency",
   currency: "PEN",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+  useGrouping: true,
 })
 
 function formatPlan(plan: string) {
@@ -63,19 +62,19 @@ function formatDate(value: string) {
   return DATE_FORMATTER.format(date)
 }
 
-function formatAmount(
-  amount: number | null,
-  currency: string | null
-) {
-  if (
-    amount === null ||
-    !Number.isFinite(Number(amount)) ||
-    currency !== "PEN"
-  ) {
-    return "Pendiente"
-  }
+function getPlanAmount(plan: string): number | null {
+  if (plan === "monthly") return 30
+  if (plan === "quarterly") return 80
 
-  return MONEY_FORMATTER.format(Number(amount))
+  return null
+}
+
+function formatAmount(plan: string) {
+  const amount = getPlanAmount(plan)
+
+  if (amount === null) return "—"
+
+  return MONEY_FORMATTER.format(amount)
 }
 
 function getDateGroup(value: string) {
@@ -148,9 +147,7 @@ export default async function ApprovedPage() {
       id,
       email,
       plan,
-      created_at,
-      amount_paid,
-      currency_id
+      created_at
     `)
     .eq("status", "approved")
     .is("admin_trashed_at", null)
@@ -267,10 +264,7 @@ export default async function ApprovedPage() {
                             </td>
 
                             <td className="whitespace-nowrap px-5 py-4 text-sm font-medium text-gold">
-                              {formatAmount(
-                                payment.amount_paid,
-                                payment.currency_id
-                              )}
+                              {formatAmount(payment.plan)}
                             </td>
 
                             <td className="px-5 py-4 text-right">

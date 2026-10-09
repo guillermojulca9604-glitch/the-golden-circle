@@ -24,18 +24,25 @@ type TelegramServiceState = {
   updated_at: string
 }
 
-type PaymentAmountRow = {
+type PaymentPlanRow = {
   id: string
-  amount_paid: number | null
-  currency_id: string | null
+  plan: string
 }
 
 const MONEY_FORMATTER = new Intl.NumberFormat("es-PE", {
   style: "currency",
   currency: "PEN",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+  useGrouping: true,
 })
+
+function getPlanAmountInCents(plan: string): number | null {
+  if (plan === "monthly") return 3000
+  if (plan === "quarterly") return 8000
+
+  return null
+}
 
 function SummaryIcon({
   icon,
@@ -185,12 +192,12 @@ async function getPaymentStatistics() {
   let offset = 0
   let totalCount = 0
   let totalCents = 0
-  let missingAmounts = 0
+  let unknownPlans = 0
 
   while (true) {
     const { data, error } = await supabaseAdmin
       .from("payment_attempts")
-      .select("id, amount_paid, currency_id")
+      .select("id, plan")
       .eq("status", "approved")
       .order("created_at", { ascending: true })
       .order("id", { ascending: true })
@@ -205,27 +212,22 @@ async function getPaymentStatistics() {
       return {
         count: null,
         total: null,
-        missingAmounts: 0,
       }
     }
 
-    const payments = (data ?? []) as PaymentAmountRow[]
+    const payments = (data ?? []) as PaymentPlanRow[]
 
     totalCount += payments.length
 
     for (const payment of payments) {
-      if (
-        payment.amount_paid === null ||
-        payment.currency_id !== "PEN" ||
-        !Number.isFinite(Number(payment.amount_paid))
-      ) {
-        missingAmounts++
+      const amount = getPlanAmountInCents(payment.plan)
+
+      if (amount === null) {
+        unknownPlans++
         continue
       }
 
-      totalCents += Math.round(
-        Number(payment.amount_paid) * 100
-      )
+      totalCents += amount
     }
 
     if (payments.length < pageSize) {
@@ -237,8 +239,10 @@ async function getPaymentStatistics() {
 
   return {
     count: totalCount,
-    total: totalCents / 100,
-    missingAmounts,
+    total:
+      unknownPlans === 0
+        ? totalCents / 100
+        : null,
   }
 }
 
@@ -304,13 +308,10 @@ export default async function AdminPage() {
     }
   ) as TelegramServiceState
 
-  const amountIsComplete =
-    paymentStatistics.total !== null &&
-    paymentStatistics.missingAmounts === 0
-
-  const formattedAmount = amountIsComplete
-    ? MONEY_FORMATTER.format(paymentStatistics.total!)
-    : "—"
+  const formattedAmount =
+    paymentStatistics.total === null
+      ? "—"
+      : MONEY_FORMATTER.format(paymentStatistics.total)
 
   return (
     <div className="mx-auto w-full max-w-7xl">

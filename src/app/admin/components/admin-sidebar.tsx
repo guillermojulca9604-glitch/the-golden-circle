@@ -1,11 +1,8 @@
+
 "use client"
 
 import Link from "next/link"
-
-import {
-  usePathname,
-} from "next/navigation"
-
+import { usePathname } from "next/navigation"
 import {
   type ComponentType,
   type MouseEvent,
@@ -16,19 +13,15 @@ import {
 
 import styles from "./admin-sidebar.module.css"
 
-type IconProps =
-  SVGProps<SVGSVGElement>
+type IconProps = SVGProps<SVGSVGElement>
 
 type NavigationItem = {
   href: string
   label: string
-  Icon:
-    ComponentType<IconProps>
+  Icon: ComponentType<IconProps>
 }
 
-function SummaryIcon(
-  props: IconProps
-) {
+function SummaryIcon(props: IconProps) {
   return (
     <svg
       {...props}
@@ -45,7 +38,6 @@ function SummaryIcon(
         stroke="currentColor"
         strokeWidth="1.7"
       />
-
       <rect
         x="14"
         y="4"
@@ -55,7 +47,6 @@ function SummaryIcon(
         stroke="currentColor"
         strokeWidth="1.7"
       />
-
       <rect
         x="4"
         y="14"
@@ -65,7 +56,6 @@ function SummaryIcon(
         stroke="currentColor"
         strokeWidth="1.7"
       />
-
       <rect
         x="14"
         y="18"
@@ -78,9 +68,7 @@ function SummaryIcon(
   )
 }
 
-function PaymentsIcon(
-  props: IconProps
-) {
+function PaymentsIcon(props: IconProps) {
   return (
     <svg
       {...props}
@@ -97,13 +85,11 @@ function PaymentsIcon(
         stroke="currentColor"
         strokeWidth="1.7"
       />
-
       <path
         d="M3 9h18"
         stroke="currentColor"
         strokeWidth="1.7"
       />
-
       <path
         d="M7 15h4"
         stroke="currentColor"
@@ -114,9 +100,7 @@ function PaymentsIcon(
   )
 }
 
-function MembershipsIcon(
-  props: IconProps
-) {
+function MembershipsIcon(props: IconProps) {
   return (
     <svg
       {...props}
@@ -131,14 +115,12 @@ function MembershipsIcon(
         stroke="currentColor"
         strokeWidth="1.7"
       />
-
       <path
         d="M3 20v-1.5A3.5 3.5 0 0 1 6.5 15h5a3.5 3.5 0 0 1 3.5 3.5V20"
         stroke="currentColor"
         strokeWidth="1.7"
         strokeLinecap="round"
       />
-
       <path
         d="m16 11 1.8 1.8L22 8.5"
         stroke="currentColor"
@@ -150,45 +132,7 @@ function MembershipsIcon(
   )
 }
 
-function ExpiredIcon(
-  props: IconProps
-) {
-  return (
-    <svg
-      {...props}
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      fill="none"
-    >
-      <circle
-        cx="12"
-        cy="12"
-        r="9"
-        stroke="currentColor"
-        strokeWidth="1.7"
-      />
-
-      <path
-        d="M12 7v5l3 2"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-
-      <path
-        d="M5.6 18.4 18.4 5.6"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-function DeletedIcon(
-  props: IconProps
-) {
+function DeletedIcon(props: IconProps) {
   return (
     <svg
       {...props}
@@ -202,22 +146,18 @@ function DeletedIcon(
         strokeWidth="1.7"
         strokeLinecap="round"
       />
-
       <path
         d="M9 7V4h6v3"
         stroke="currentColor"
         strokeWidth="1.7"
         strokeLinecap="round"
-        strokeLinejoin="round"
       />
-
       <path
         d="m6 7 1 13h10l1-13"
         stroke="currentColor"
         strokeWidth="1.7"
         strokeLinejoin="round"
       />
-
       <path
         d="M10 11v5M14 11v5"
         stroke="currentColor"
@@ -228,9 +168,7 @@ function DeletedIcon(
   )
 }
 
-function SidebarPanelIcon(
-  props: IconProps
-) {
+function SidebarPanelIcon(props: IconProps) {
   return (
     <svg
       {...props}
@@ -247,7 +185,6 @@ function SidebarPanelIcon(
         stroke="currentColor"
         strokeWidth="1.35"
       />
-
       <path
         d="M10 5v14"
         stroke="currentColor"
@@ -257,97 +194,73 @@ function SidebarPanelIcon(
   )
 }
 
-const navigationItems:
-  NavigationItem[] = [
-    {
-      href: "/admin",
-      label: "Resumen",
-      Icon: SummaryIcon,
-    },
-    {
-      href: "/admin/approved",
-      label: "Pagos aprobados",
-      Icon: PaymentsIcon,
-    },
-    {
-      href: "/admin/activated",
-      label: "Membresías activas",
-      Icon: MembershipsIcon,
-    },
-    {
-      href: "/admin/disabled",
-      label: "VIP vencidos",
-      Icon: ExpiredIcon,
-    },
-    {
-      href: "/admin/trash",
-      label: "Papelera",
-      Icon: DeletedIcon,
-    },
-  ]
+const navigationItems: NavigationItem[] = [
+  {
+    href: "/admin",
+    label: "Resumen",
+    Icon: SummaryIcon,
+  },
+  {
+    href: "/admin/approved",
+    label: "Pagos aprobados",
+    Icon: PaymentsIcon,
+  },
+  {
+    href: "/admin/activated",
+    label: "Membresías activas",
+    Icon: MembershipsIcon,
+  },
+  {
+    href: "/admin/trash",
+    label: "Papelera",
+    Icon: DeletedIcon,
+  },
+]
 
 function routeIsActive(
   pathname: string,
   href: string
 ) {
   if (href === "/admin") {
-    return pathname ===
-      "/admin"
+    return pathname === "/admin"
   }
 
   return (
     pathname === href ||
-    pathname.startsWith(
-      `${href}/`
-    )
+    pathname.startsWith(`${href}/`)
   )
 }
 
 export function AdminSidebar() {
-  const pathname =
-    usePathname()
+  const pathname = usePathname()
 
-  const [
-    collapsed,
-    setCollapsed,
-  ] =
-    useState(false)
+  const [collapsed, setCollapsed] = useState(false)
 
   useEffect(() => {
-    const mobileQuery =
-      window.matchMedia(
-        "(max-width: 767px)"
-      )
+    const mobileQuery = window.matchMedia(
+      "(max-width: 767px)"
+    )
 
-    if (
-      mobileQuery.matches
-    ) {
+    if (mobileQuery.matches) {
       setCollapsed(true)
     }
   }, [])
 
   useEffect(() => {
-    document.documentElement
-      .style
-      .setProperty(
-        "--admin-sidebar-width",
-        collapsed
-          ? "60px"
-          : "220px"
-      )
+    document.documentElement.style.setProperty(
+      "--admin-sidebar-width",
+      collapsed ? "60px" : "220px"
+    )
 
     return () => {
-      document.documentElement
-        .style
-        .removeProperty(
-          "--admin-sidebar-width"
-        )
+      document.documentElement.style.removeProperty(
+        "--admin-sidebar-width"
+      )
     }
   }, [collapsed])
 
   const handleBrandClick = (
-    event:
-      MouseEvent<HTMLButtonElement>
+    event: MouseEvent<HTMLButtonElement>
   ) => {
     if (!collapsed) {
       event.preventDefault()
@@ -357,37 +270,25 @@ export function AdminSidebar() {
     setCollapsed(false)
   }
 
-  const handleNavigation =
-    () => {
-      const isMobile =
-        window.matchMedia(
-          "(max-width: 767px)"
-        ).matches
+  const handleNavigation = () => {
+    const isMobile = window.matchMedia(
+      "(max-width: 767px)"
+    ).matches
 
-      if (isMobile) {
-        setCollapsed(true)
-      }
+    if (isMobile) {
+      setCollapsed(true)
     }
+  }
 
   return (
     <aside
       aria-label="Navegación administrativa"
       className={`${styles.sidebar} ${
-        collapsed
-          ? styles.sidebarCollapsed
-          : ""
+        collapsed ? styles.sidebarCollapsed : ""
       }`}
     >
-      <header
-        className={
-          styles.sidebarHeader
-        }
-      >
-        <div
-          className={
-            styles.brand
-          }
-        >
+      <header className={styles.sidebarHeader}>
+        <div className={styles.brand}>
           <button
             type="button"
             aria-label={
@@ -400,44 +301,28 @@ export function AdminSidebar() {
                 ? "Expandir barra lateral"
                 : undefined
             }
-            tabIndex={
-              collapsed ? 0 : -1
-            }
-            onClick={
-              handleBrandClick
-            }
-            className={
-              styles.brandButton
-            }
+            tabIndex={collapsed ? 0 : -1}
+            onClick={handleBrandClick}
+            className={styles.brandButton}
           >
             <span
               aria-hidden="true"
-              className={
-                styles.brandRing
-              }
+              className={styles.brandRing}
             />
 
             <span
               aria-hidden="true"
-              className={
-                styles.brandExpandIcon
-              }
+              className={styles.brandExpandIcon}
             >
               <SidebarPanelIcon
-                className={
-                  styles.brandPanelIcon
-                }
+                className={styles.brandPanelIcon}
               />
             </span>
           </button>
 
           <p
-            aria-hidden={
-              collapsed
-            }
-            className={
-              styles.brandName
-            }
+            aria-hidden={collapsed}
+            className={styles.brandName}
           >
             <span>THE</span>
             <span>GOLDEN</span>
@@ -448,67 +333,44 @@ export function AdminSidebar() {
         <button
           type="button"
           aria-label="Retraer barra lateral"
-          tabIndex={
-            collapsed ? -1 : 0
-          }
-          disabled={
-            collapsed
-          }
+          tabIndex={collapsed ? -1 : 0}
+          disabled={collapsed}
           onClick={() => {
             setCollapsed(true)
           }}
-          className={
-            styles.collapseButton
-          }
+          className={styles.collapseButton}
         >
           <SidebarPanelIcon
-            className={
-              styles.panelIcon
-            }
+            className={styles.panelIcon}
           />
         </button>
       </header>
 
       <nav
         aria-label="Secciones administrativas"
-        className={
-          styles.navigation
-        }
+        className={styles.navigation}
       >
         {navigationItems.map(
-          ({
-            href,
-            label,
-            Icon,
-          }) => {
-            const isActive =
-              routeIsActive(
-                pathname,
-                href
-              )
+          ({ href, label, Icon }) => {
+            const isActive = routeIsActive(
+              pathname,
+              href
+            )
 
             return (
               <Link
                 key={href}
                 href={href}
                 aria-current={
-                  isActive
-                    ? "page"
-                    : undefined
+                  isActive ? "page" : undefined
                 }
                 aria-label={
-                  collapsed
-                    ? label
-                    : undefined
+                  collapsed ? label : undefined
                 }
                 title={
-                  collapsed
-                    ? label
-                    : undefined
+                  collapsed ? label : undefined
                 }
-                onClick={
-                  handleNavigation
-                }
+                onClick={handleNavigation}
                 className={`${styles.navigationItem} ${
                   isActive
                     ? styles.navigationItemActive
@@ -516,20 +378,14 @@ export function AdminSidebar() {
                 }`}
               >
                 <Icon
-                  className={
-                    styles.navigationIcon
-                  }
+                  className={styles.navigationIcon}
                 />
 
                 <span
-                  className={
-                    styles.navigationText
-                  }
+                  className={styles.navigationText}
                 >
                   <span
-                    className={
-                      styles.navigationLabel
-                    }
+                    className={styles.navigationLabel}
                   >
                     {label}
                   </span>

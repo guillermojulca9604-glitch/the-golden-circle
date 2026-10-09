@@ -1,30 +1,22 @@
-import {
-  moveProofsToTrash,
-  moveProofToTrash,
-} from "../proofs/actions"
-import {
-  ProofImagePreview,
-} from "../proofs/proof-image-preview"
 
-import {
-  supabaseAdmin,
-} from "@/lib/supabase/admin"
+import { supabaseAdmin } from "@/lib/supabase/admin"
+import { movePaymentToTrash } from "./actions"
 
-export const dynamic =
-  "force-dynamic"
+export const dynamic = "force-dynamic"
 
-type ApprovedProof = {
+type Payment = {
   id: string
   email: string
   plan: string
-  proof_url: string
   created_at: string
+  amount_paid: number | null
+  currency_id: string | null
 }
 
 type MonthGroup = {
   key: string
   label: string
-  proofs: ApprovedProof[]
+  payments: Payment[]
 }
 
 type YearGroup = {
@@ -32,243 +24,137 @@ type YearGroup = {
   months: MonthGroup[]
 }
 
-const DATE_FORMATTER =
-  new Intl.DateTimeFormat(
-    "es-PE",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      timeZone:
-        "America/Lima",
-    }
-  )
+const DATE_FORMATTER = new Intl.DateTimeFormat("es-PE", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: "America/Lima",
+})
 
-const MONTH_FORMATTER =
-  new Intl.DateTimeFormat(
-    "es-PE",
-    {
-      month: "long",
-      timeZone:
-        "America/Lima",
-    }
-  )
+const MONTH_FORMATTER = new Intl.DateTimeFormat("es-PE", {
+  month: "long",
+  timeZone: "America/Lima",
+})
 
-const GROUP_FORMATTER =
-  new Intl.DateTimeFormat(
-    "es-PE",
-    {
-      year: "numeric",
-      month: "2-digit",
-      timeZone:
-        "America/Lima",
-    }
-  )
+const GROUP_FORMATTER = new Intl.DateTimeFormat("es-PE", {
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "America/Lima",
+})
 
-function formatPlan(
-  plan: string
-) {
-  return plan ===
-    "quarterly"
-    ? "Trimestral"
-    : "Mensual"
+const MONEY_FORMATTER = new Intl.NumberFormat("es-PE", {
+  style: "currency",
+  currency: "PEN",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
+function formatPlan(plan: string) {
+  if (plan === "monthly") return "Mensual"
+  if (plan === "quarterly") return "Trimestral"
+  return plan
 }
 
-function formatDate(
-  value: string
-) {
-  const date =
-    new Date(value)
+function formatDate(value: string) {
+  const date = new Date(value)
 
+  if (Number.isNaN(date.getTime())) return "-"
+
+  return DATE_FORMATTER.format(date)
+}
+
+function formatAmount(
+  amount: number | null,
+  currency: string | null
+) {
   if (
-    Number.isNaN(
-      date.getTime()
-    )
+    amount === null ||
+    !Number.isFinite(Number(amount)) ||
+    currency !== "PEN"
   ) {
-    return "-"
+    return "Pendiente"
   }
 
-  return DATE_FORMATTER
-    .format(date)
+  return MONEY_FORMATTER.format(Number(amount))
 }
 
-function capitalizeFirst(
-  value: string
-) {
-  if (!value) {
-    return value
-  }
+function getDateGroup(value: string) {
+  const date = new Date(value)
 
-  return (
-    value
-      .charAt(0)
-      .toUpperCase() +
-    value.slice(1)
-  )
-}
-
-function getDateGroup(
-  value: string
-) {
-  const date =
-    new Date(value)
-
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
+  if (Number.isNaN(date.getTime())) {
     return {
       year: "Sin fecha",
-      monthKey:
-        "sin-fecha",
-      monthLabel:
-        "Sin fecha",
+      key: "sin-fecha",
+      label: "Sin fecha",
     }
   }
 
-  const parts =
-    GROUP_FORMATTER
-      .formatToParts(date)
+  const parts = GROUP_FORMATTER.formatToParts(date)
 
   const year =
-    parts.find(
-      (part) =>
-        part.type === "year"
-    )?.value ?? "Sin fecha"
+    parts.find((part) => part.type === "year")?.value ??
+    "Sin fecha"
 
   const month =
-    parts.find(
-      (part) =>
-        part.type === "month"
-    )?.value ?? "00"
+    parts.find((part) => part.type === "month")?.value ??
+    "00"
 
-  const monthLabel =
-    capitalizeFirst(
-      MONTH_FORMATTER
-        .format(date)
-    )
+  const monthName = MONTH_FORMATTER.format(date)
 
   return {
     year,
-    monthKey:
-      `${year}-${month}`,
-    monthLabel,
+    key: `${year}-${month}`,
+    label:
+      monthName.charAt(0).toUpperCase() +
+      monthName.slice(1),
   }
 }
 
-function groupProofs(
-  proofs: ApprovedProof[]
-) {
-  const years =
-    new Map<
-      string,
-      Map<
-        string,
-        MonthGroup
-      >
-    >()
+function groupPayments(payments: Payment[]): YearGroup[] {
+  const years = new Map<string, Map<string, MonthGroup>>()
 
-  for (
-    const proof of proofs
-  ) {
-    const {
-      year,
-      monthKey,
-      monthLabel,
-    } =
-      getDateGroup(
-        proof.created_at
-      )
+  for (const payment of payments) {
+    const group = getDateGroup(payment.created_at)
 
-    let months =
-      years.get(year)
-
-    if (!months) {
-      months =
-        new Map<
-          string,
-          MonthGroup
-        >()
-
-      years.set(
-        year,
-        months
-      )
+    if (!years.has(group.year)) {
+      years.set(group.year, new Map())
     }
 
-    let monthGroup =
-      months.get(
-        monthKey
-      )
+    const months = years.get(group.year)!
 
-    if (!monthGroup) {
-      monthGroup = {
-        key: monthKey,
-        label:
-          monthLabel,
-        proofs: [],
-      }
-
-      months.set(
-        monthKey,
-        monthGroup
-      )
+    if (!months.has(group.key)) {
+      months.set(group.key, {
+        key: group.key,
+        label: group.label,
+        payments: [],
+      })
     }
 
-    monthGroup
-      .proofs
-      .push(proof)
+    months.get(group.key)!.payments.push(payment)
   }
 
-  return Array.from(
-    years.entries()
-  ).map(
-    ([
+  return Array.from(years.entries()).map(
+    ([year, months]) => ({
       year,
-      months,
-    ]): YearGroup => ({
-      year,
-      months:
-        Array.from(
-          months.values()
-        ),
+      months: Array.from(months.values()),
     })
   )
 }
 
 export default async function ApprovedPage() {
-  const {
-    data,
-    error,
-  } =
-    await supabaseAdmin
-      .from(
-        "payment_proofs"
-      )
-      .select(
-        `
-          id,
-          email,
-          plan,
-          proof_url,
-          created_at
-        `
-      )
-      .eq(
-        "status",
-        "approved"
-      )
-      .is(
-        "deleted_at",
-        null
-      )
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        }
-      )
+  const { data, error } = await supabaseAdmin
+    .from("payment_attempts")
+    .select(`
+      id,
+      email,
+      plan,
+      created_at,
+      amount_paid,
+      currency_id
+    `)
+    .eq("status", "approved")
+    .is("admin_trashed_at", null)
+    .order("created_at", { ascending: false })
 
   if (error) {
     console.error(
@@ -277,13 +163,8 @@ export default async function ApprovedPage() {
     )
   }
 
-  const proofs =
-    (
-      data ?? []
-    ) as ApprovedProof[]
-
-  const groupedProofs =
-    groupProofs(proofs)
+  const payments = (data ?? []) as Payment[]
+  const groupedPayments = groupPayments(payments)
 
   return (
     <div className="mx-auto w-full max-w-7xl">
@@ -293,7 +174,7 @@ export default async function ApprovedPage() {
         </h1>
 
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Historial de pagos confirmados
+          Historial de pagos registrados por Mercado Pago
         </p>
       </section>
 
@@ -304,239 +185,126 @@ export default async function ApprovedPage() {
       )}
 
       <div className="mt-7 space-y-10">
-        {groupedProofs.map(
-          (yearGroup) => (
-            <section
-              key={
-                yearGroup.year
-              }
-            >
-              <div className="flex items-center gap-4">
-                <h2 className="font-serif text-2xl text-gold">
-                  {
-                    yearGroup.year
-                  }
-                </h2>
+        {groupedPayments.map((yearGroup) => (
+          <section key={yearGroup.year}>
+            <div className="flex items-center gap-4">
+              <h2 className="font-serif text-2xl text-gold">
+                {yearGroup.year}
+              </h2>
 
-                <div
-                  aria-hidden="true"
-                  className="h-px flex-1 bg-gradient-to-r from-gold/25 to-transparent"
-                />
-              </div>
+              <div
+                aria-hidden="true"
+                className="h-px flex-1 bg-gradient-to-r from-gold/25 to-transparent"
+              />
+            </div>
 
-              <div className="mt-5 space-y-5">
-                {yearGroup
-                  .months
-                  .map(
-                    (
-                      monthGroup
-                    ) => (
-                      <article
-                        key={
-                          monthGroup.key
-                        }
-                        className="overflow-hidden rounded-2xl border border-gold/20 bg-black"
-                      >
-                        <header className="flex flex-col gap-4 border-b border-gold/15 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                          <div>
-                            <h3 className="text-base font-medium text-foreground">
-                              {
-                                monthGroup.label
-                              }
-                            </h3>
+            <div className="mt-5 space-y-5">
+              {yearGroup.months.map((monthGroup) => (
+                <article
+                  key={monthGroup.key}
+                  className="overflow-hidden rounded-2xl border border-gold/20 bg-black"
+                >
+                  <header className="border-b border-gold/15 px-4 py-4 sm:px-5">
+                    <h3 className="text-base font-medium text-foreground">
+                      {monthGroup.label}
+                    </h3>
 
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {
-                                monthGroup
-                                  .proofs
-                                  .length
-                              }{" "}
-                              {monthGroup
-                                .proofs
-                                .length ===
-                              1
-                                ? "pago aprobado"
-                                : "pagos aprobados"}
-                            </p>
-                          </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {monthGroup.payments.length}{" "}
+                      {monthGroup.payments.length === 1
+                        ? "pago aprobado"
+                        : "pagos aprobados"}
+                    </p>
+                  </header>
 
-                          <details className="group relative">
-                            <summary className="flex min-h-10 cursor-pointer list-none items-center justify-center rounded-xl border border-red-500/25 bg-red-500/[0.035] px-4 text-xs text-red-300 transition-colors hover:border-red-500/40 hover:bg-red-500/[0.07] focus-visible:border-red-500/50 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
-                              Mover mes a Papelera
-                            </summary>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[760px] border-collapse text-left">
+                      <thead>
+                        <tr className="border-b border-gold/10 text-[11px] uppercase tracking-widest text-gold/60">
+                          <th className="px-5 py-4 font-medium">
+                            Correo
+                          </th>
 
-                            <div className="mt-2 rounded-xl border border-red-500/20 bg-[#0b0706] p-3 sm:absolute sm:right-0 sm:top-full sm:z-20 sm:w-[290px] sm:shadow-[0_20px_60px_rgba(0,0,0,0.7)]">
-                              <p className="text-xs leading-5 text-red-200/80">
-                                Los pagos de este mes dejarán de aparecer aquí, pero podrán restaurarse desde la Papelera.
-                              </p>
+                          <th className="px-5 py-4 font-medium">
+                            Plan
+                          </th>
 
-                              <form
-                                action={
-                                  moveProofsToTrash
-                                }
-                                className="mt-3"
+                          <th className="px-5 py-4 font-medium">
+                            Fecha
+                          </th>
+
+                          <th className="px-5 py-4 font-medium">
+                            Monto
+                          </th>
+
+                          <th className="px-5 py-4 text-right font-medium">
+                            Acción
+                          </th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {monthGroup.payments.map((payment) => (
+                          <tr
+                            key={payment.id}
+                            className="border-b border-gold/10 last:border-b-0"
+                          >
+                            <td className="max-w-[270px] px-5 py-4">
+                              <p
+                                title={payment.email}
+                                className="truncate text-sm text-foreground"
                               >
-                                {monthGroup
-                                  .proofs
-                                  .map(
-                                    (
-                                      proof
-                                    ) => (
-                                      <input
-                                        key={
-                                          proof.id
-                                        }
-                                        type="hidden"
-                                        name="proofId"
-                                        value={
-                                          proof.id
-                                        }
-                                      />
-                                    )
-                                  )}
+                                {payment.email}
+                              </p>
+                            </td>
+
+                            <td className="px-5 py-4 text-sm text-muted-foreground">
+                              {formatPlan(payment.plan)}
+                            </td>
+
+                            <td className="px-5 py-4 text-sm text-muted-foreground">
+                              {formatDate(payment.created_at)}
+                            </td>
+
+                            <td className="whitespace-nowrap px-5 py-4 text-sm font-medium text-gold">
+                              {formatAmount(
+                                payment.amount_paid,
+                                payment.currency_id
+                              )}
+                            </td>
+
+                            <td className="px-5 py-4 text-right">
+                              <form action={movePaymentToTrash}>
+                                <input
+                                  type="hidden"
+                                  name="paymentId"
+                                  value={payment.id}
+                                />
 
                                 <button
                                   type="submit"
-                                  className="min-h-10 w-full rounded-lg border border-red-500/35 bg-red-500/[0.09] px-4 text-xs font-medium text-red-300 transition-colors hover:border-red-500/55 hover:bg-red-500/[0.15] focus-visible:border-red-500/70 focus-visible:outline-none"
+                                  className="inline-flex min-h-10 cursor-pointer items-center justify-center rounded-xl border border-red-500/25 px-3 text-xs text-red-300 transition-colors hover:border-red-500/50 hover:bg-red-500/[0.05]"
                                 >
-                                  Confirmar envío del mes
+                                  Mover a Papelera
                                 </button>
                               </form>
-                            </div>
-                          </details>
-                        </header>
-
-                        <div className="hidden grid-cols-12 gap-4 border-b border-gold/10 px-5 py-3 text-[11px] uppercase tracking-widest text-gold/60 md:grid">
-                          <div className="col-span-4">
-                            Correo
-                          </div>
-
-                          <div className="col-span-2">
-                            Plan
-                          </div>
-
-                          <div className="col-span-2">
-                            Fecha
-                          </div>
-
-                          <div className="col-span-2">
-                            Comprobante
-                          </div>
-
-                          <div className="col-span-2 text-right">
-                            Acción
-                          </div>
-                        </div>
-
-                        <div>
-                          {monthGroup
-                            .proofs
-                            .map(
-                              (
-                                proof
-                              ) => (
-                                <div
-                                  key={
-                                    proof.id
-                                  }
-                                  className="grid gap-4 border-b border-gold/10 px-4 py-5 last:border-b-0 md:grid-cols-12 md:items-center md:px-5"
-                                >
-                                  <div className="min-w-0 md:col-span-4">
-                                    <p className="mb-1 text-[10px] uppercase tracking-widest text-gold/55 md:hidden">
-                                      Correo
-                                    </p>
-
-                                    <p
-                                      title={
-                                        proof.email
-                                      }
-                                      className="truncate text-sm text-foreground"
-                                    >
-                                      {
-                                        proof.email
-                                      }
-                                    </p>
-                                  </div>
-
-                                  <div className="grid grid-cols-2 gap-4 md:contents">
-                                    <div className="md:col-span-2">
-                                      <p className="mb-1 text-[10px] uppercase tracking-widest text-gold/55 md:hidden">
-                                        Plan
-                                      </p>
-
-                                      <p className="text-sm text-muted-foreground">
-                                        {formatPlan(
-                                          proof.plan
-                                        )}
-                                      </p>
-                                    </div>
-
-                                    <div className="md:col-span-2">
-                                      <p className="mb-1 text-[10px] uppercase tracking-widest text-gold/55 md:hidden">
-                                        Fecha
-                                      </p>
-
-                                      <p className="text-sm text-muted-foreground">
-                                        {formatDate(
-                                          proof.created_at
-                                        )}
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  <div className="md:col-span-2">
-                                    <p className="mb-2 text-[10px] uppercase tracking-widest text-gold/55 md:hidden">
-                                      Comprobante
-                                    </p>
-
-                                    <ProofImagePreview
-                                      url={
-                                        proof.proof_url
-                                      }
-                                    />
-                                  </div>
-
-                                  <div className="md:col-span-2 md:flex md:justify-end">
-                                    <form
-                                      action={
-                                        moveProofToTrash
-                                      }
-                                      className="w-full md:w-auto"
-                                    >
-                                      <input
-                                        type="hidden"
-                                        name="proofId"
-                                        value={
-                                          proof.id
-                                        }
-                                      />
-
-                                      <button
-                                        type="submit"
-                                        className="min-h-10 w-full rounded-xl border border-red-500/25 bg-red-500/[0.035] px-4 text-xs text-red-300 transition-colors hover:border-red-500/45 hover:bg-red-500/[0.08] focus-visible:border-red-500/60 focus-visible:outline-none md:w-auto"
-                                      >
-                                        Mover a Papelera
-                                      </button>
-                                    </form>
-                                  </div>
-                                </div>
-                              )
-                            )}
-                        </div>
-                      </article>
-                    )
-                  )}
-              </div>
-            </section>
-          )
-        )}
-
-        {!proofs.length &&
-          !error && (
-            <div className="rounded-2xl border border-gold/15 bg-black px-5 py-8 text-center text-sm text-muted-foreground">
-              No hay pagos aprobados.
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              ))}
             </div>
-          )}
+          </section>
+        ))}
+
+        {!error && payments.length === 0 && (
+          <div className="rounded-2xl border border-gold/20 bg-black px-5 py-10 text-center text-sm text-muted-foreground">
+            No hay pagos aprobados visibles.
+          </div>
+        )}
       </div>
     </div>
   )

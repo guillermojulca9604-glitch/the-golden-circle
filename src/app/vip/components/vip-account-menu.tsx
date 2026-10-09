@@ -1,3 +1,4 @@
+
 "use client"
 
 import {
@@ -8,12 +9,8 @@ import {
 } from "react"
 
 import { createClient } from "@/lib/supabase/client"
-
 import { VipAccountModal } from "./account/vip-account-modal"
 import styles from "./vip-account-menu.module.css"
-
-const VIP_ACCOUNT_NAME_CHANGED_EVENT =
-  "vip-account-name-changed"
 
 type IconProps = {
   className?: string
@@ -45,82 +42,7 @@ type VipAccountMenuProps = {
   initialTelegramUsername: string | null
 }
 
-function unlockExpiredLimits(
-  limits: AccountLimits
-): AccountLimits {
-  const currentTime = Date.now()
-
-  let usernameLimit =
-    limits.username
-
-  let passwordLimit =
-    limits.password
-
-  let limitsChanged = false
-
-  if (
-    !usernameLimit.canChange &&
-    usernameLimit.nextChangeAt
-  ) {
-    const usernameUnlockTime =
-      new Date(
-        usernameLimit.nextChangeAt
-      ).getTime()
-
-    if (
-      !Number.isNaN(
-        usernameUnlockTime
-      ) &&
-      usernameUnlockTime <=
-        currentTime
-    ) {
-      usernameLimit = {
-        canChange: true,
-        nextChangeAt: null,
-      }
-
-      limitsChanged = true
-    }
-  }
-
-  if (
-    !passwordLimit.canChange &&
-    passwordLimit.nextChangeAt
-  ) {
-    const passwordUnlockTime =
-      new Date(
-        passwordLimit.nextChangeAt
-      ).getTime()
-
-    if (
-      !Number.isNaN(
-        passwordUnlockTime
-      ) &&
-      passwordUnlockTime <=
-        currentTime
-    ) {
-      passwordLimit = {
-        canChange: true,
-        nextChangeAt: null,
-      }
-
-      limitsChanged = true
-    }
-  }
-
-  if (!limitsChanged) {
-    return limits
-  }
-
-  return {
-    username: usernameLimit,
-    password: passwordLimit,
-  }
-}
-
-function UserIcon({
-  className,
-}: IconProps) {
+function UserIcon({ className }: IconProps) {
   return (
     <svg
       className={className}
@@ -135,7 +57,6 @@ function UserIcon({
         stroke="currentColor"
         strokeWidth="1.4"
       />
-
       <path
         d="M5.6 19c.55-3.25 2.65-5.15 6.4-5.15s5.85 1.9 6.4 5.15"
         stroke="currentColor"
@@ -146,9 +67,7 @@ function UserIcon({
   )
 }
 
-function LogoutIcon({
-  className,
-}: IconProps) {
+function LogoutIcon({ className }: IconProps) {
   return (
     <svg
       className={className}
@@ -162,7 +81,6 @@ function LogoutIcon({
         strokeWidth="1.4"
         strokeLinecap="round"
       />
-
       <path
         d="M13.9 8.2 17.7 12l-3.8 3.8"
         stroke="currentColor"
@@ -170,7 +88,6 @@ function LogoutIcon({
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-
       <path
         d="M9.2 12h8.2"
         stroke="currentColor"
@@ -181,221 +98,86 @@ function LogoutIcon({
   )
 }
 
-function getAccountInitial(
-  accountName: string
-) {
-  const firstCharacter =
-    accountName.trim().charAt(0)
-
-  if (!firstCharacter) {
-    return "U"
-  }
-
-  return firstCharacter.toUpperCase()
-}
-
 export function VipAccountMenu({
-  accountName,
   accountEmail,
   membershipExpiresAt,
-  initialLimits,
-  initialHasPassword,
   initialTelegramLinked,
   initialTelegramUsername,
 }: VipAccountMenuProps) {
-  const [
-    currentAccountName,
-    setCurrentAccountName,
-  ] = useState(accountName)
+  const [telegramLinked, setTelegramLinked] = useState(initialTelegramLinked)
+  const [telegramUsername, setTelegramUsername] =
+    useState<string | null>(initialTelegramUsername)
 
-  const [
-    accountLimits,
-    setAccountLimits,
-  ] = useState<AccountLimits>(
-    () =>
-      unlockExpiredLimits(
-        initialLimits
+  const [open, setOpen] = useState(false)
+  const [accountModalOpen, setAccountModalOpen] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
+  const [logoutError, setLogoutError] = useState("")
+  const [supabase] = useState(() => createClient())
+
+  const accountMenuRef = useRef<HTMLDivElement>(null)
+  const telegramRefreshTimersRef = useRef<number[]>([])
+
+  const clearTelegramRefreshTimers = useCallback(() => {
+    for (const timerId of telegramRefreshTimersRef.current) {
+      window.clearTimeout(timerId)
+    }
+
+    telegramRefreshTimersRef.current = []
+  }, [])
+
+  const refreshTelegramStatus = useCallback(async () => {
+    try {
+      const response = await fetch("/api/telegram/status", {
+        method: "GET",
+        cache: "no-store",
+      })
+
+      const result = (await response.json()) as TelegramStatusResponse
+      if (!response.ok || !result.ok) return null
+
+      const linked = result.linked === true
+      setTelegramLinked(linked)
+      setTelegramUsername(
+        typeof result.username === "string" && result.username.trim()
+          ? result.username.trim()
+          : null
       )
-  )
 
-  const [
-    telegramLinked,
-    setTelegramLinked,
-  ] = useState(
-    initialTelegramLinked
-  )
+      return linked
+    } catch {
+      /*
+       * Actualización silenciosa.
+       * Si falla, conservamos el estado cargado al entrar a VIP.
+       */
+      return null
+    }
+  }, [])
 
-  const [
-    telegramUsername,
-    setTelegramUsername,
-  ] = useState<string | null>(
-    initialTelegramUsername
-  )
+  const refreshTelegramStatusWithRetry = useCallback(() => {
+    clearTelegramRefreshTimers()
 
-  const [open, setOpen] =
-    useState(false)
+    const retryDelays = [0, 800, 1800, 3500, 6500]
 
-  const [
-    accountModalOpen,
-    setAccountModalOpen,
-  ] = useState(false)
-
-  const [loggingOut, setLoggingOut] =
-    useState(false)
-
-  const [logoutError, setLogoutError] =
-    useState("")
-
-  const [supabase] = useState(
-    () => createClient()
-  )
-
-  const accountMenuRef =
-    useRef<HTMLDivElement>(null)
-
-  const telegramRefreshTimersRef =
-    useRef<number[]>([])
-
-  const accountInitial =
-    getAccountInitial(
-      currentAccountName
-    )
-
-  const clearTelegramRefreshTimers =
-    useCallback(() => {
-      for (
-        const timerId of
-        telegramRefreshTimersRef.current
-      ) {
-        window.clearTimeout(
-          timerId
-        )
-      }
-
-      telegramRefreshTimersRef.current =
-        []
-    }, [])
-
-  const refreshTelegramStatus =
-    useCallback(async () => {
-      try {
-        const response =
-          await fetch(
-            "/api/telegram/status",
-            {
-              method: "GET",
-              cache: "no-store",
-            }
-          )
-
-        const result =
-          (await response.json()) as
-            TelegramStatusResponse
-
-        if (
-          !response.ok ||
-          !result.ok
-        ) {
-          return null
+    for (const delay of retryDelays) {
+      const timerId = window.setTimeout(async () => {
+        const linked = await refreshTelegramStatus()
+        if (linked === true) {
+          clearTelegramRefreshTimers()
         }
+      }, delay)
 
-        const linked =
-          result.linked === true
-
-        setTelegramLinked(
-          linked
-        )
-
-        setTelegramUsername(
-          typeof result.username ===
-            "string" &&
-          result.username.trim()
-            ? result.username.trim()
-            : null
-        )
-
-        return linked
-      } catch {
-        /*
-         * Actualización silenciosa.
-         * Si falla, conservamos el
-         * estado cargado al entrar a VIP.
-         */
-        return null
-      }
-    }, [])
-
-  const refreshTelegramStatusWithRetry =
-    useCallback(() => {
-      clearTelegramRefreshTimers()
-
-      const retryDelays = [
-        0,
-        800,
-        1800,
-        3500,
-        6500,
-      ]
-
-      for (
-        const delay of retryDelays
-      ) {
-        const timerId =
-          window.setTimeout(
-            async () => {
-              const linked =
-                await refreshTelegramStatus()
-
-              if (linked === true) {
-                clearTelegramRefreshTimers()
-              }
-            },
-            delay
-          )
-
-        telegramRefreshTimersRef.current
-          .push(
-            timerId
-          )
-      }
-    }, [
-      clearTelegramRefreshTimers,
-      refreshTelegramStatus,
-    ])
+      telegramRefreshTimersRef.current.push(timerId)
+    }
+  }, [clearTelegramRefreshTimers, refreshTelegramStatus])
 
   useEffect(() => {
-    setCurrentAccountName(
-      accountName
-    )
-  }, [accountName])
-
-  useEffect(() => {
-    setAccountLimits(
-      unlockExpiredLimits(
-        initialLimits
-      )
-    )
-  }, [initialLimits])
-
-  useEffect(() => {
-    setTelegramLinked(
-      initialTelegramLinked
-    )
-
-    setTelegramUsername(
-      initialTelegramUsername
-    )
-  }, [
-    initialTelegramLinked,
-    initialTelegramUsername,
-  ])
+    setTelegramLinked(initialTelegramLinked)
+    setTelegramUsername(initialTelegramUsername)
+  }, [initialTelegramLinked, initialTelegramUsername])
 
   useEffect(() => {
     const refreshWhenVisible = () => {
-      if (
-        document.visibilityState ===
-        "visible"
-      ) {
+      if (document.visibilityState === "visible") {
         if (accountModalOpen) {
           refreshTelegramStatusWithRetry()
           return
@@ -414,36 +196,14 @@ export function VipAccountMenu({
       void refreshTelegramStatus()
     }
 
-    window.addEventListener(
-      "focus",
-      refreshWhenVisible
-    )
-
-    window.addEventListener(
-      "pageshow",
-      handlePageShow
-    )
-
-    document.addEventListener(
-      "visibilitychange",
-      refreshWhenVisible
-    )
+    window.addEventListener("focus", refreshWhenVisible)
+    window.addEventListener("pageshow", handlePageShow)
+    document.addEventListener("visibilitychange", refreshWhenVisible)
 
     return () => {
-      window.removeEventListener(
-        "focus",
-        refreshWhenVisible
-      )
-
-      window.removeEventListener(
-        "pageshow",
-        handlePageShow
-      )
-
-      document.removeEventListener(
-        "visibilitychange",
-        refreshWhenVisible
-      )
+      window.removeEventListener("focus", refreshWhenVisible)
+      window.removeEventListener("pageshow", handlePageShow)
+      document.removeEventListener("visibilitychange", refreshWhenVisible)
     }
   }, [
     accountModalOpen,
@@ -458,206 +218,30 @@ export function VipAccountMenu({
   }, [clearTelegramRefreshTimers])
 
   useEffect(() => {
-    let usernameTimer:
-      | number
-      | undefined
+    if (!open) return
 
-    let passwordTimer:
-      | number
-      | undefined
-
-    const updateExpiredLimits =
-      () => {
-        setAccountLimits(
-          (currentLimits) =>
-            unlockExpiredLimits(
-              currentLimits
-            )
-        )
-      }
-
-    if (
-      !accountLimits.username
-        .canChange &&
-      accountLimits.username
-        .nextChangeAt
-    ) {
-      const usernameUnlockTime =
-        new Date(
-          accountLimits.username
-            .nextChangeAt
-        ).getTime()
-
-      if (
-        !Number.isNaN(
-          usernameUnlockTime
-        )
-      ) {
-        const usernameDelay =
-          Math.max(
-            0,
-            usernameUnlockTime -
-              Date.now()
-          ) + 100
-
-        usernameTimer =
-          window.setTimeout(
-            updateExpiredLimits,
-            usernameDelay
-          )
-      }
-    }
-
-    if (
-      !accountLimits.password
-        .canChange &&
-      accountLimits.password
-        .nextChangeAt
-    ) {
-      const passwordUnlockTime =
-        new Date(
-          accountLimits.password
-            .nextChangeAt
-        ).getTime()
-
-      if (
-        !Number.isNaN(
-          passwordUnlockTime
-        )
-      ) {
-        const passwordDelay =
-          Math.max(
-            0,
-            passwordUnlockTime -
-              Date.now()
-          ) + 100
-
-        passwordTimer =
-          window.setTimeout(
-            updateExpiredLimits,
-            passwordDelay
-          )
-      }
-    }
-
-    const handleVisibilityChange =
-      () => {
-        if (
-          document.visibilityState ===
-          "visible"
-        ) {
-          updateExpiredLimits()
-        }
-      }
-
-    window.addEventListener(
-      "focus",
-      updateExpiredLimits
-    )
-
-    document.addEventListener(
-      "visibilitychange",
-      handleVisibilityChange
-    )
-
-    return () => {
-      if (
-        usernameTimer !==
-        undefined
-      ) {
-        window.clearTimeout(
-          usernameTimer
-        )
-      }
-
-      if (
-        passwordTimer !==
-        undefined
-      ) {
-        window.clearTimeout(
-          passwordTimer
-        )
-      }
-
-      window.removeEventListener(
-        "focus",
-        updateExpiredLimits
-      )
-
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibilityChange
-      )
-    }
-  }, [
-    accountLimits.username.canChange,
-    accountLimits.username.nextChangeAt,
-    accountLimits.password.canChange,
-    accountLimits.password.nextChangeAt,
-  ])
-
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-
-    const handlePointerDown = (
-      event: PointerEvent
-    ) => {
-      const accountMenu =
-        accountMenuRef.current
-
-      if (
-        accountMenu &&
-        !accountMenu.contains(
-          event.target as Node
-        )
-      ) {
+    const handlePointerDown = (event: PointerEvent) => {
+      const accountMenu = accountMenuRef.current
+      if (accountMenu && !accountMenu.contains(event.target as Node)) {
         setOpen(false)
       }
     }
 
-    const handleKeyDown = (
-      event: KeyboardEvent
-    ) => {
-      if (event.key === "Escape") {
-        setOpen(false)
-      }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false)
     }
 
-    document.addEventListener(
-      "pointerdown",
-      handlePointerDown
-    )
-
-    document.addEventListener(
-      "keydown",
-      handleKeyDown
-    )
+    document.addEventListener("pointerdown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
 
     return () => {
-      document.removeEventListener(
-        "pointerdown",
-        handlePointerDown
-      )
-
-      document.removeEventListener(
-        "keydown",
-        handleKeyDown
-      )
+      document.removeEventListener("pointerdown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
     }
   }, [open])
 
   const handleOpenAccount = () => {
     refreshTelegramStatusWithRetry()
-
-    setAccountLimits(
-      (currentLimits) =>
-        unlockExpiredLimits(
-          currentLimits
-        )
-    )
-
     setOpen(false)
     setAccountModalOpen(true)
   }
@@ -666,51 +250,17 @@ export function VipAccountMenu({
     setAccountModalOpen(false)
   }
 
-  const handleLimitsChange = (
-    limits: AccountLimits
-  ) => {
-    setAccountLimits(
-      unlockExpiredLimits(
-        limits
-      )
-    )
-  }
-
-  const handleAccountNameChange = (
-    nextAccountName: string
-  ) => {
-    setCurrentAccountName(
-      nextAccountName
-    )
-
-    window.dispatchEvent(
-      new CustomEvent<string>(
-        VIP_ACCOUNT_NAME_CHANGED_EVENT,
-        {
-          detail: nextAccountName,
-        }
-      )
-    )
-  }
-
   const handleLogout = async () => {
-    if (loggingOut) {
-      return
-    }
+    if (loggingOut) return
 
     setLoggingOut(true)
     setLogoutError("")
 
-    const { error } =
-      await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut()
 
     if (error) {
       setLoggingOut(false)
-
-      setLogoutError(
-        "No se pudo cerrar la sesión. Inténtalo nuevamente."
-      )
-
+      setLogoutError("No se pudo cerrar la sesión. Inténtalo nuevamente.")
       return
     }
 
@@ -719,135 +269,59 @@ export function VipAccountMenu({
 
   return (
     <>
-      <div
-        ref={accountMenuRef}
-        className={styles.accountMenu}
-      >
+      <div ref={accountMenuRef} className={styles.accountMenu}>
         <button
           type="button"
           className={`${styles.accountTrigger} ${
-            open
-              ? styles.accountTriggerOpen
-              : ""
+            open ? styles.accountTriggerOpen : ""
           }`}
-          aria-label={
-            open
-              ? "Cerrar menú de cuenta"
-              : "Abrir menú de cuenta"
-          }
+          aria-label={open ? "Cerrar menú de cuenta" : "Abrir menú de cuenta"}
           aria-expanded={open}
           aria-controls="vip-account-panel"
           disabled={loggingOut}
-          onClick={() => {
-            setOpen(
-              (currentValue) =>
-                !currentValue
-            )
-          }}
+          onClick={() => setOpen((currentValue) => !currentValue)}
         >
-          <span
-            className={
-              styles.triggerLetter
-            }
-            aria-hidden="true"
-          >
-            {accountInitial}
+          <span className={styles.triggerLetter} aria-hidden="true">
+            M
           </span>
         </button>
 
         <div
           id="vip-account-panel"
           className={`${styles.accountPanel} ${
-            open
-              ? styles.accountPanelOpen
-              : ""
+            open ? styles.accountPanelOpen : ""
           }`}
           aria-hidden={!open}
         >
-          <div
-            className={
-              styles.accountHeader
-            }
-          >
-            <div
-              className={
-                styles.accountAvatar
-              }
-              aria-hidden="true"
-            >
-              {accountInitial}
+          <div className={styles.accountHeader}>
+            <div className={styles.accountAvatar} aria-hidden="true">
+              M
             </div>
 
-            <div
-              className={
-                styles.accountIdentity
-              }
-            >
-              <p
-                className={
-                  styles.accountName
-                }
-                title={
-                  currentAccountName
-                }
-              >
-                {currentAccountName}
+            <div className={styles.accountIdentity}>
+              <p className={styles.accountName} title="Miembro VIP">
+                Miembro VIP
               </p>
-
-              <p
-                className={
-                  styles.accountEmail
-                }
-                title={accountEmail}
-              >
+              <p className={styles.accountEmail} title={accountEmail}>
                 {accountEmail}
               </p>
-
-              <span
-                className={
-                  styles.vipStatus
-                }
-              >
-                <span
-                  className={
-                    styles.vipStatusPoint
-                  }
-                  aria-hidden="true"
-                />
-
+              <span className={styles.vipStatus}>
+                <span className={styles.vipStatusPoint} aria-hidden="true" />
                 VIP Activo
               </span>
             </div>
           </div>
 
-          <div
-            className={
-              styles.accountDivider
-            }
-            aria-hidden="true"
-          />
+          <div className={styles.accountDivider} aria-hidden="true" />
 
-          <div
-            className={
-              styles.accountActions
-            }
-          >
+          <div className={styles.accountActions}>
             <button
               type="button"
-              className={
-                styles.accountAction
-              }
+              className={styles.accountAction}
               tabIndex={open ? 0 : -1}
-              onClick={
-                handleOpenAccount
-              }
+              onClick={handleOpenAccount}
             >
-              <UserIcon
-                className={
-                  styles.actionIcon
-                }
-              />
-
+              <UserIcon className={styles.actionIcon} />
               <span>Mi cuenta</span>
             </button>
 
@@ -856,28 +330,14 @@ export function VipAccountMenu({
               className={`${styles.accountAction} ${styles.logoutAction}`}
               tabIndex={open ? 0 : -1}
               disabled={loggingOut}
-              onClick={() => {
-                void handleLogout()
-              }}
+              onClick={() => { void handleLogout() }}
             >
-              <LogoutIcon
-                className={
-                  styles.actionIcon
-                }
-              />
-
-              <span>
-                Cerrar sesión
-              </span>
+              <LogoutIcon className={styles.actionIcon} />
+              <span>Cerrar sesión</span>
             </button>
 
             {logoutError && (
-              <p
-                className={
-                  styles.logoutError
-                }
-                role="alert"
-              >
+              <p className={styles.logoutError} role="alert">
                 {logoutError}
               </p>
             )}
@@ -887,34 +347,11 @@ export function VipAccountMenu({
 
       <VipAccountModal
         open={accountModalOpen}
-        accountName={
-          currentAccountName
-        }
         accountEmail={accountEmail}
-        membershipExpiresAt={
-          membershipExpiresAt
-        }
-        initialLimits={
-          accountLimits
-        }
-        initialHasPassword={
-          initialHasPassword
-        }
-        telegramLinked={
-          telegramLinked
-        }
-        telegramUsername={
-          telegramUsername
-        }
-        onLimitsChange={
-          handleLimitsChange
-        }
-        onAccountNameChange={
-          handleAccountNameChange
-        }
-        onClose={
-          handleCloseAccount
-        }
+        membershipExpiresAt={membershipExpiresAt}
+        telegramLinked={telegramLinked}
+        telegramUsername={telegramUsername}
+        onClose={handleCloseAccount}
       />
     </>
   )

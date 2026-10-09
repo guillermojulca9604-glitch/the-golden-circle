@@ -1,3 +1,4 @@
+
 "use client"
 
 import {
@@ -13,9 +14,6 @@ import {
 } from "@/lib/supabase/client"
 
 import styles from "./vip-home.module.css"
-
-const VIP_ACCOUNT_NAME_CHANGED_EVENT =
-  "vip-account-name-changed"
 
 const DEFAULT_TELEGRAM_MAINTENANCE_MESSAGE =
   "The Golden Circle se encuentra temporalmente en mantenimiento."
@@ -75,7 +73,6 @@ function TelegramIcon() {
 }
 
 export function VipHome({
-  accountName,
   initialTelegramMaintenance,
   telegramMaintenanceMessage,
 }: VipHomeProps) {
@@ -84,12 +81,6 @@ export function VipHome({
       () => createClient(),
       []
     )
-
-  const [
-    currentAccountName,
-    setCurrentAccountName,
-  ] =
-    useState(accountName)
 
   const [
     telegramOpening,
@@ -226,12 +217,6 @@ export function VipHome({
       clearTelegramRefreshTimers,
       refreshTelegramStatus,
     ])
-
-  useEffect(() => {
-    setCurrentAccountName(
-      accountName
-    )
-  }, [accountName])
 
   useEffect(() => {
     setTelegramMaintenance(
@@ -387,43 +372,6 @@ export function VipHome({
     refreshTelegramStatus,
   ])
 
-  useEffect(() => {
-    const handleAccountNameChange =
-      (
-        event: Event
-      ) => {
-        const nameChangeEvent =
-          event as CustomEvent<string>
-
-        const nextAccountName =
-          nameChangeEvent.detail
-
-        if (
-          typeof nextAccountName !==
-            "string" ||
-          !nextAccountName.trim()
-        ) {
-          return
-        }
-
-        setCurrentAccountName(
-          nextAccountName
-        )
-      }
-
-    window.addEventListener(
-      VIP_ACCOUNT_NAME_CHANGED_EVENT,
-      handleAccountNameChange
-    )
-
-    return () => {
-      window.removeEventListener(
-        VIP_ACCOUNT_NAME_CHANGED_EVENT,
-        handleAccountNameChange
-      )
-    }
-  }, [])
-
   const handleTelegramAction =
     async () => {
       if (
@@ -524,7 +472,7 @@ export function VipHome({
           id="vip-home-title"
           className={styles.homeTitle}
         >
-          {currentAccountName}
+          Miembro VIP
         </h1>
 
         <p

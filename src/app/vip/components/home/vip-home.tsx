@@ -30,6 +30,7 @@ type VipHomeProps = {
   continueWatching: VipHomeVideo | null
   latestVideos: VipHomeVideo[]
   popularVideos: VipHomeVideo[]
+  initialTelegramLinked: boolean
   initialTelegramMaintenance: boolean
   telegramMaintenanceMessage: string
   onSelectVideo?: (
@@ -73,6 +74,7 @@ function TelegramIcon() {
 }
 
 export function VipHome({
+  initialTelegramLinked,
   initialTelegramMaintenance,
   telegramMaintenanceMessage,
 }: VipHomeProps) {
@@ -98,7 +100,7 @@ export function VipHome({
     telegramLinked,
     setTelegramLinked,
   ] =
-    useState(false)
+    useState(initialTelegramLinked)
 
   const [
     telegramMaintenance,
@@ -572,6 +574,7 @@ export function VipHome({
                       "none",
                     transform:
                       "scale(1)",
+                    opacity: 0.55,
                   }}
                 >
                   <span

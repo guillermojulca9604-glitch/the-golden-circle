@@ -1,15 +1,28 @@
+
 "use client"
 
 import {
   type ReactNode,
+  useCallback,
   useEffect,
   useRef,
+  useState,
 } from "react"
+
+import { usePathname, useRouter } from "next/navigation"
 
 import { VipAccountMenu } from "./vip-account-menu"
 import { VipSidebar } from "./vip-sidebar"
+import { VipCommunity } from "./community/vip-community"
 
 import styles from "../vip.module.css"
+
+type VipSection = "inicio" | "comunidad"
+
+type TelegramStatusResponse = {
+  ok?: boolean
+  linked?: boolean
+}
 
 type ChangeLimit = {
   canChange: boolean
@@ -29,6 +42,8 @@ type VipBackgroundProps = {
   initialHasPassword: boolean
   initialTelegramLinked: boolean
   initialTelegramUsername: string | null
+  initialTelegramMaintenance: boolean
+  telegramMaintenanceMessage: string
   children: ReactNode
 }
 
@@ -63,10 +78,81 @@ export function VipBackground({
   initialHasPassword,
   initialTelegramLinked,
   initialTelegramUsername,
+  initialTelegramMaintenance,
+  telegramMaintenanceMessage,
   children,
 }: VipBackgroundProps) {
   const visualSceneRef =
     useRef<HTMLDivElement>(null)
+
+  const pathname = usePathname()
+  const router = useRouter()
+
+  const activeSection: VipSection =
+    pathname === "/vip/comunidad"
+      ? "comunidad"
+      : "inicio"
+
+  // Utilizar la vinculación obtenida por la página VIP.
+  const [telegramLinked, setTelegramLinked] =
+    useState(initialTelegramLinked)
+
+  // Actualizar la vinculación sin mostrar una carga.
+  const refreshTelegramStatus = useCallback(async () => {
+    try {
+      const response = await fetch("/api/telegram/status", {
+        method: "GET",
+        cache: "no-store",
+      })
+
+      if (!response.ok) {
+        return
+      }
+
+      const result =
+        (await response.json()) as TelegramStatusResponse
+
+      if (result.ok === true) {
+        setTelegramLinked(result.linked === true)
+      }
+    } catch {
+      // Un error temporal no cambia el estado anterior.
+    }
+  }, [])
+
+  useEffect(() => {
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshTelegramStatus()
+      }
+    }
+
+    window.addEventListener("focus", refreshIfVisible)
+    document.addEventListener(
+      "visibilitychange",
+      refreshIfVisible
+    )
+
+    return () => {
+      window.removeEventListener("focus", refreshIfVisible)
+      document.removeEventListener(
+        "visibilitychange",
+        refreshIfVisible
+      )
+    }
+  }, [refreshTelegramStatus])
+
+  // Navegación real de Next.js, sin utilizar #.
+  const handleSectionChange = (section: VipSection) => {
+    const destination =
+      section === "comunidad"
+        ? "/vip/comunidad"
+        : "/vip"
+
+    if (pathname !== destination) {
+      router.push(destination)
+    }
+  }
 
   useEffect(() => {
     const initialPixelRatio =
@@ -248,9 +334,24 @@ export function VipBackground({
       </div>
 
       <div className={styles.vipContent}>
-        <VipSidebar />
+        <VipSidebar
+          activeSection={activeSection}
+          onSectionChange={handleSectionChange}
+        />
 
-        {children}
+        {activeSection === "inicio" ? (
+          children
+        ) : (
+          <VipCommunity
+            telegramLinked={telegramLinked}
+            initialTelegramMaintenance={
+              initialTelegramMaintenance
+            }
+            telegramMaintenanceMessage={
+              telegramMaintenanceMessage
+            }
+          />
+        )}
 
         <VipAccountMenu
           accountName={accountName}

@@ -1,3 +1,4 @@
+
 "use client"
 
 import Image from "next/image"
@@ -154,7 +155,6 @@ function PauseIcon() {
         rx="0.9"
         fill="currentColor"
       />
-
       <rect
         x="13.2"
         y="5.25"
@@ -355,6 +355,15 @@ function CatalogCard({
       return
     }
 
+    /*
+     * Si el navegador dejó el video
+     * en error, recuperamos su carga
+     * sin actualizar toda la página.
+     */
+    if (video.error) {
+      video.load()
+    }
+
     wantsToPlayRef.current = true
     setIsStarting(true)
 
@@ -401,15 +410,14 @@ function CatalogCard({
     }
 
     /*
-     * También funciona mientras
-     * el video está iniciando.
+     * Si el video sigue iniciando,
+     * el botón permite cancelarlo.
+     *
+     * Si el navegador lo pausó
+     * inesperadamente, un nuevo clic
+     * vuelve a iniciar la reproducción.
      */
-    if (
-      wantsToPlayRef.current ||
-      isStarting ||
-      isPlaying ||
-      !video.paused
-    ) {
+    if (isStarting || !video.paused) {
       pauseBothVideos()
       return
     }
@@ -454,10 +462,35 @@ function CatalogCard({
   }
 
   const handleVideoPause = () => {
+    /*
+     * Ignoramos un evento de pausa
+     * atrasado si el video ya está
+     * reproduciéndose de nuevo.
+     */
+    if (!videoRef.current?.paused) {
+      return
+    }
+
+    wantsToPlayRef.current = false
+    frameRequestPendingRef.current = false
+
     setIsStarting(false)
     setIsPlaying(false)
 
     bgVideoRef.current?.pause()
+  }
+
+  const handleVideoError = () => {
+    /*
+     * Ante un error, liberamos
+     * el reproductor y mostramos
+     * el poster para permitir
+     * un nuevo intento.
+     */
+    pauseBothVideos()
+
+    videoVisibleRef.current = false
+    setVideoVisible(false)
   }
 
   const showPauseControl =
@@ -469,10 +502,8 @@ function CatalogCard({
       style={{
         background:
           "linear-gradient(145deg, oklch(0.115 0.012 85 / 0.96), oklch(0.075 0 0 / 0.98))",
-
         border:
           "1px solid oklch(0.78 0.12 85 / 0.28)",
-
         boxShadow:
           "0 0 0 1px oklch(0.78 0.12 85 / 0.025), 0 0 24px oklch(0.78 0.12 85 / 0.065), 0 14px 36px oklch(0 0 0 / 0.42), inset 0 1px 0 oklch(1 0 0 / 0.035)",
       }}
@@ -534,6 +565,9 @@ function CatalogCard({
                   }
                   onPause={
                     handleVideoPause
+                  }
+                  onError={
+                    handleVideoError
                   }
                   onEnded={() => {
                     pauseBothVideos()
@@ -691,7 +725,6 @@ function CatalogCard({
         <h3 className="mb-2 text-lg font-medium tracking-wide text-foreground">
           {item.title}
         </h3>
-
         <p className="text-sm leading-relaxed text-muted-foreground">
           {item.description}
         </p>

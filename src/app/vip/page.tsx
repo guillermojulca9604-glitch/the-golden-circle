@@ -1,3 +1,4 @@
+
 import { redirect } from "next/navigation"
 
 import { VipHome } from "./components/home/vip-home"
@@ -409,12 +410,19 @@ export default async function VipPage() {
       initialTelegramUsername={
         telegramUsername
       }
+      initialTelegramMaintenance={
+        telegramServiceState.maintenance
+      }
+      telegramMaintenanceMessage={
+        telegramServiceState.message
+      }
     >
       <VipHome
         accountName={profileName}
         continueWatching={null}
         latestVideos={[]}
         popularVideos={[]}
+        initialTelegramLinked={telegramLinked}
         initialTelegramMaintenance={
           telegramServiceState
             .maintenance

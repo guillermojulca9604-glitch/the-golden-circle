@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -74,7 +75,7 @@ function CommunityIcon({ className }: IconProps) {
       />
 
       <path
-        d="M21.55 17.95c-.24-1.76-1.39-2.85-3.2-2.85-.82 0-1.52.18-2.1.53"
+        d="M21.55 17.95c-.24-1.76 1.39-2.85-3.2-2.85-.82 0-1.52.18-2.1.53"
         stroke="currentColor"
         strokeWidth="1.15"
         strokeLinecap="round"
@@ -124,11 +125,14 @@ const navigationItems = [
   },
 ]
 
-export function VipSidebar() {
+export function VipSidebar({
+  activeSection,
+  onSectionChange,
+}: {
+  activeSection: VipSection
+  onSectionChange: (section: VipSection) => void
+}) {
   const [collapsed, setCollapsed] = useState(false)
-
-  const [activeSection, setActiveSection] =
-    useState<VipSection>("inicio")
 
   useEffect(() => {
     document.documentElement.style.setProperty(
@@ -244,7 +248,7 @@ export function VipSidebar() {
                   collapsed ? label : undefined
                 }
                 onClick={() => {
-                  setActiveSection(id)
+                  onSectionChange(id)
                 }}
               >
                 <Icon
@@ -254,17 +258,13 @@ export function VipSidebar() {
                 <span
                   className={styles.navigationText}
                 >
-                  <span
-                    className={styles.navigationLabel}
-                  >
+                  <span className={styles.navigationLabel}>
                     {label}
                   </span>
 
                   {sublabel && (
                     <span
-                      className={
-                        styles.navigationSublabel
-                      }
+                      className={styles.navigationSublabel}
                     >
                       {sublabel}
                     </span>

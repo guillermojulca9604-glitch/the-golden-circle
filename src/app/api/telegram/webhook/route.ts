@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-
 import { supabaseAdmin } from "@/lib/supabase/admin"
 
 export const runtime = "nodejs"
@@ -83,38 +82,29 @@ type TokenRow = {
 
 type ExistingLink = {
   user_id: string
-
   telegram_user_id:
     | number
     | string
     | null
-
   telegram_username:
     | string
     | null
-
   membership_id:
     | string
     | null
-
   linked_at:
     | string
     | null
-
   last_changed_at:
     | string
     | null
-
   change_count: number
-
   active_invite_link:
     | string
     | null
-
   active_invite_expires_at:
     | string
     | null
-
   active_invite_message_id:
     | number
     | string
@@ -123,28 +113,22 @@ type ExistingLink = {
 
 type ActiveInviteLink = {
   user_id: string
-
   telegram_user_id:
     | number
     | string
     | null
-
   telegram_username:
     | string
     | null
-
   membership_id:
     | string
     | null
-
   linked_at:
     | string
     | null
-
   active_invite_link:
     | string
     | null
-
   active_invite_expires_at:
     | string
     | null
@@ -202,17 +186,14 @@ async function telegramApi<T>(
       `${TELEGRAM_API}/bot${botToken}/${method}`,
       {
         method: "POST",
-
         headers: {
           "Content-Type":
             "application/json",
         },
-
         body:
           JSON.stringify(
             body
           ),
-
         cache:
           "no-store",
       }
@@ -249,9 +230,7 @@ async function sendMessage(
     Record<string, unknown> = {
       chat_id:
         chatId,
-
       text,
-
       disable_web_page_preview:
         true,
     }
@@ -263,7 +242,6 @@ async function sendMessage(
           {
             text:
               button.text,
-
             url:
               button.url,
           },
@@ -288,7 +266,6 @@ async function deleteIncomingMessage(
       {
         chat_id:
           chatId,
-
         message_id:
           messageId,
       }
@@ -311,7 +288,6 @@ async function deleteInviteMessage(
       {
         chat_id:
           chatId,
-
         message_id:
           messageId,
       }
@@ -338,7 +314,6 @@ async function revokeInviteLink(
       {
         chat_id:
           channelId,
-
         invite_link:
           inviteLink,
       }
@@ -380,7 +355,6 @@ async function removeTelegramAccount(
     {
       chat_id:
         channelId,
-
       user_id:
         telegramUserId,
     }
@@ -396,10 +370,8 @@ async function removeTelegramAccount(
     {
       chat_id:
         channelId,
-
       user_id:
         telegramUserId,
-
       only_if_banned:
         true,
     }
@@ -458,10 +430,8 @@ async function clearActiveInvite(
       .update({
         active_invite_link:
           null,
-
         active_invite_expires_at:
           null,
-
         updated_at:
           nowIso,
       })
@@ -509,25 +479,18 @@ async function rollbackFailedBinding(
       .update({
         telegram_user_id:
           null,
-
         telegram_username:
           null,
-
         membership_id:
           null,
-
         linked_at:
           null,
-
         active_invite_link:
           null,
-
         active_invite_expires_at:
           null,
-
         active_invite_message_id:
           null,
-
         updated_at:
           new Date()
             .toISOString(),
@@ -1033,22 +996,17 @@ async function handleChatMemberUpdate(
       .update({
         telegram_username:
           telegramUsername,
-
         membership_id:
           String(
             membership.id
           ),
-
         linked_at:
           inviteOwner.linked_at ??
           nowIso,
-
         active_invite_link:
           null,
-
         active_invite_expires_at:
           null,
-
         updated_at:
           nowIso,
       })
@@ -1109,7 +1067,6 @@ async function handleLegacyJoinRequest(
     {
       chat_id:
         joinRequest.chat.id,
-
       user_id:
         joinRequest.from.id,
     }
@@ -1307,18 +1264,7 @@ export async function POST(
     if (!token) {
       await sendMessage(
         chatId,
-        [
-          "Acceso exclusivo para miembros de The Golden Circle.",
-          "",
-          "Ingresa a tu cuenta VIP para vincular Telegram.",
-        ].join("\n"),
-        {
-          text:
-            "Ir a la página",
-
-          url:
-            WEBSITE_URL,
-        }
+        "Acceso exclusivo para miembros de The Golden Circle"
       )
 
       return json({
@@ -1369,7 +1315,6 @@ export async function POST(
         {
           text:
             "Ir a la página",
-
           url:
             WEBSITE_URL,
         }
@@ -1414,7 +1359,6 @@ export async function POST(
         {
           text:
             "Ir a la página",
-
           url:
             WEBSITE_URL,
         }
@@ -1472,7 +1416,6 @@ export async function POST(
         {
           text:
             "Ir a la página",
-
           url:
             WEBSITE_URL,
         }
@@ -1534,7 +1477,6 @@ export async function POST(
         {
           text:
             "Ir a la página",
-
           url:
             WEBSITE_URL,
         }
@@ -1615,7 +1557,6 @@ export async function POST(
         {
           text:
             "Ir a la página",
-
           url:
             WEBSITE_URL,
         }
@@ -1721,13 +1662,10 @@ export async function POST(
           .update({
             active_invite_link:
               null,
-
             active_invite_expires_at:
               null,
-
             active_invite_message_id:
               null,
-
             updated_at:
               nowIso,
           })
@@ -1811,13 +1749,11 @@ export async function POST(
         {
           chat_id:
             channelId,
-
           name:
             `vip-${tokenRow.user_id}`.slice(
               0,
               32
             ),
-
           expire_date:
             vipExpiration,
 
@@ -1855,35 +1791,26 @@ export async function POST(
           .update({
             telegram_user_id:
               telegramUserId,
-
             telegram_username:
               telegramUsername,
-
             membership_id:
               String(
                 membership.id
               ),
-
             linked_at:
               nowIso,
-
             last_changed_at:
               currentLink
                 .last_changed_at,
-
             change_count:
               currentLink
                 .change_count,
-
             active_invite_link:
               invite.invite_link,
-
             active_invite_expires_at:
               activeInviteExpiresAt,
-
             active_invite_message_id:
               null,
-
             updated_at:
               nowIso,
           })
@@ -1911,39 +1838,28 @@ export async function POST(
           .insert({
             user_id:
               tokenRow.user_id,
-
             telegram_user_id:
               telegramUserId,
-
             telegram_username:
               telegramUsername,
-
             membership_id:
               String(
                 membership.id
               ),
-
             linked_at:
               nowIso,
-
             last_changed_at:
               null,
-
             change_count:
               0,
-
             active_invite_link:
               invite.invite_link,
-
             active_invite_expires_at:
               activeInviteExpiresAt,
-
             active_invite_message_id:
               null,
-
             created_at:
               nowIso,
-
             updated_at:
               nowIso,
           })
@@ -1978,7 +1894,6 @@ export async function POST(
           {
             text:
               "Entrar a The Golden Circle",
-
             url:
               invite.invite_link,
           }
@@ -2017,7 +1932,6 @@ export async function POST(
         .update({
           active_invite_message_id:
             inviteMessage.message_id,
-
           updated_at:
             new Date()
               .toISOString(),
@@ -2051,7 +1965,6 @@ export async function POST(
         revokeInviteLink(
           invite.invite_link
         ),
-
         deleteInviteMessage(
           chatId,
           inviteMessage.message_id
@@ -2090,7 +2003,6 @@ export async function POST(
           {
             text:
               "Ir a la página",
-
             url:
               WEBSITE_URL,
           }

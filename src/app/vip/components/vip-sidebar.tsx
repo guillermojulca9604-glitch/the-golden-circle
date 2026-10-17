@@ -133,6 +133,32 @@ export function VipSidebar({
   onSectionChange: (section: VipSection) => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
+  const [screenReady, setScreenReady] = useState(false)
+
+  useEffect(() => {
+    const mobileQuery = window.matchMedia(
+      "(max-width: 760px)"
+    )
+
+    const updateForScreen = () => {
+      setCollapsed(mobileQuery.matches)
+      setScreenReady(true)
+    }
+
+    updateForScreen()
+
+    mobileQuery.addEventListener(
+      "change",
+      updateForScreen
+    )
+
+    return () => {
+      mobileQuery.removeEventListener(
+        "change",
+        updateForScreen
+      )
+    }
+  }, [])
 
   useEffect(() => {
     document.documentElement.style.setProperty(
@@ -157,6 +183,8 @@ export function VipSidebar({
     <aside
       className={`${styles.sidebar} ${
         collapsed ? styles.sidebarCollapsed : ""
+      } ${
+        !screenReady ? styles.sidebarBeforeReady : ""
       }`}
       aria-label="Navegación VIP"
     >

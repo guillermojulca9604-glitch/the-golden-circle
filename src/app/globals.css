@@ -1124,8 +1124,14 @@ button,
   max-width: 768px
 ) {
   .hero-section {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100svh;
+    max-height: none;
     padding:
       54px 20px 48px;
+    padding-left: max(20px, env(safe-area-inset-left, 0px));
+    padding-right: max(20px, env(safe-area-inset-right, 0px));
   }
 
   .hero-logo {
@@ -1196,6 +1202,25 @@ button,
     transform:
       translateZ(0)
       scale(1.008);
+  }
+}
+
+@media (
+  max-width: 360px
+) {
+  .hero-title {
+    font-size: clamp(46px, 15vw, 54px);
+  }
+}
+
+/* Portada: tamaño del texto en celulares */
+@media (max-width: 520px) {
+  .hero-the {
+    font-size: clamp(42px, 11.8vw, 46px);
+  }
+
+  .hero-title {
+    font-size: clamp(46px, 14.4vw, 56px);
   }
 }
 

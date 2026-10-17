@@ -1,3 +1,4 @@
+
 .accountMenu {
   position: fixed;
 
@@ -130,7 +131,7 @@
 
   text-shadow:
     0 0 8px
-      oklch(0.78 0.12 85 / 0.12);
+    oklch(0.78 0.12 85 / 0.12);
 
   transform: none;
 
@@ -606,9 +607,45 @@
 
     width:
       min(
-        282px,
+        250px,
         calc(100vw - 28px)
       );
+
+    padding: 13px;
+  }
+
+  .accountHeader {
+    gap: 10px;
+  }
+
+  .accountAvatar {
+    width: 42px;
+    height: 42px;
+
+    flex: 0 0 42px;
+
+    font-size: 17px;
+  }
+
+  .accountName {
+    font-size: 13px;
+  }
+
+  .accountEmail {
+    font-size: 11px;
+  }
+
+  .accountDivider {
+    margin:
+      12px
+      0
+      8px;
+  }
+
+  .accountAction {
+    padding:
+      0
+      10px;
   }
 }
 

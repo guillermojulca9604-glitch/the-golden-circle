@@ -144,7 +144,7 @@ export function EntryGate() {
         aria-labelledby="entry-gate-title"
         aria-describedby="entry-gate-description"
         onCancel={(event) => event.preventDefault()}
-        className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[590px] overflow-y-auto rounded-[22px] border border-[#b98533] bg-[#070503] p-0 text-[#f2e7d2] shadow-[0_0_28px_rgba(190,135,33,0.16)] backdrop:bg-black/75 backdrop:backdrop-blur-[8px]"
+        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] supports-[height:100dvh]:max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[590px] overflow-y-auto rounded-[22px] border border-[#b98533] bg-[#070503] p-0 text-[#f2e7d2] shadow-[0_0_28px_rgba(190,135,33,0.16)] backdrop:bg-black/75 backdrop:backdrop-blur-[8px]"
         style={modalFont}
       >
         <div
@@ -285,10 +285,10 @@ export function EntryGate() {
             event.preventDefault()
             closeTerms()
           }}
-          className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[700px] overflow-hidden rounded-[22px] border border-[#b98533] bg-[#080603] p-0 text-[#f0e4d0] shadow-[0_0_32px_rgba(190,135,33,0.15)] backdrop:bg-black/70 backdrop:backdrop-blur-[8px]"
+          className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] supports-[height:100dvh]:max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[700px] overflow-hidden rounded-[22px] border border-[#b98533] bg-[#080603] p-0 text-[#f0e4d0] shadow-[0_0_32px_rgba(190,135,33,0.15)] backdrop:bg-black/70 backdrop:backdrop-blur-[8px]"
           style={modalFont}
         >
-          <div className="flex max-h-[calc(100dvh-2rem)] min-h-0 flex-col bg-[#080603]/[0.98]">
+          <div className="flex max-h-[calc(100vh-2rem)] supports-[height:100dvh]:max-h-[calc(100dvh-2rem)] min-h-0 flex-col bg-[#080603]/[0.98]">
             <header className="relative shrink-0 px-6 pt-7 pb-4 pr-16 sm:px-9 sm:pt-8 sm:pr-18">
               <h2
                 ref={termsTitleRef}

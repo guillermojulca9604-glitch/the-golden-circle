@@ -1,3 +1,4 @@
+
 import Link from "next/link"
 
 function GoldenLogo() {
@@ -41,10 +42,10 @@ export function HeroSection() {
       <div className="hero-waves absolute inset-0" />
       <div className="hero-vignette absolute inset-0" />
 
-      <div className="hero-login-wrap absolute right-6 top-6 z-30 md:right-10 md:top-8">
+      <div className="hero-login-wrap absolute right-6 top-6 z-30 max-md:right-3 md:right-10 md:top-8">
         <Link
           href="/login"
-          className="hero-login-button"
+          className="hero-login-button max-md:px-3! max-md:py-2! max-md:text-[11px]! max-md:tracking-[0.18em]!"
         >
           <span>
             Iniciar sesión

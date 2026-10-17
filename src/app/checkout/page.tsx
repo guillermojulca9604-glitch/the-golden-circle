@@ -1,3 +1,4 @@
+
 import Link from "next/link"
 import { Source_Serif_4 } from "next/font/google"
 import { redirect } from "next/navigation"
@@ -117,52 +118,52 @@ export default async function CheckoutPage({
   return (
     <main className="min-h-dvh overflow-x-hidden bg-background px-4 pt-11 text-foreground sm:px-6">
       <SessionGuard mode="checkout" />
-      <AuthTopbarSimple />
+      <AuthTopbarSimple compactOnMobile />
 
-      <section className="mx-auto flex min-h-[calc(100dvh-2.75rem)] max-w-5xl items-center py-[clamp(1.5rem,4vh,3rem)]">
+      <section className="mx-auto flex min-h-[calc(100dvh-2.75rem)] max-w-5xl items-center py-[clamp(1.5rem,4vh,3rem)] max-sm:items-start max-sm:py-4">
         <div className="w-full">
-          <div className="mb-[clamp(1.5rem,4vh,2rem)] text-center">
-            <span className="pricing-label mb-3 block">
+          <div className="mb-[clamp(1.5rem,4vh,2rem)] text-center max-sm:mb-4">
+            <span className="pricing-label mb-3 block max-sm:mb-2">
               Checkout
             </span>
 
-            <h1 className="checkout-premium-title text-[clamp(2.25rem,5vw,3.75rem)] font-light leading-none">
+            <h1 className="checkout-premium-title text-[clamp(2.25rem,5vw,3.75rem)] font-light leading-none max-sm:text-[clamp(1.65rem,7vw,2.15rem)] max-sm:leading-tight">
               CONFIRMAR COMPRA
             </h1>
 
-            <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted-foreground max-sm:mt-3">
               Revisa tu membresía antes de
               continuar.
             </p>
           </div>
 
-          <div className="checkout-premium-card rounded-[34px] bg-black p-[clamp(1.5rem,3vw,2rem)]">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-              <div className="space-y-5">
+          <div className="checkout-premium-card rounded-[34px] bg-black p-[clamp(1.5rem,3vw,2rem)] max-sm:p-4">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px] max-sm:gap-4">
+              <div className="space-y-5 max-sm:space-y-4">
                 <div>
                   <p className="checkout-premium-label text-xs uppercase tracking-widest">
                     Membresía
                   </p>
 
-                  <h2 className="mt-3 text-3xl font-light">
+                  <h2 className="mt-3 text-3xl font-light max-sm:mt-2 max-sm:text-2xl">
                     {selectedPlan.label}
                   </h2>
 
-                  <p className="mt-3 text-sm text-foreground/60">
+                  <p className="mt-3 text-sm text-foreground/60 max-sm:mt-2">
                     {selectedPlan.description}
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-gold/15 bg-black/40 p-[clamp(1.25rem,3vw,1.5rem)]">
+                <div className="rounded-2xl border border-gold/15 bg-black/40 p-[clamp(1.25rem,3vw,1.5rem)] max-sm:p-4">
                   <p className="checkout-premium-label text-xs uppercase tracking-widest">
                     Acceso a
                   </p>
 
-                  <p className="mt-3 text-2xl text-gold">
+                  <p className="mt-3 text-2xl text-gold max-sm:mt-2 max-sm:text-xl">
                     Comunidad VIP
                   </p>
 
-                  <p className="mt-3 text-sm leading-6 text-foreground/60">
+                  <p className="mt-3 text-sm leading-6 text-foreground/60 max-sm:mt-2">
                     Contenido privado y futuras
                     actualizaciones durante toda
                     tu membresía.
@@ -177,13 +178,13 @@ export default async function CheckoutPage({
                 </Link>
               </div>
 
-              <aside className="rounded-2xl border border-gold/15 bg-black/40 p-[clamp(1.25rem,3vw,1.5rem)]">
+              <aside className="rounded-2xl border border-gold/15 bg-black/40 p-[clamp(1.25rem,3vw,1.5rem)] max-sm:p-4">
                 <p className="mb-3 text-xs uppercase tracking-[0.3em] text-gold/70">
                   Total
                 </p>
 
                 <div
-                  className={`${priceFont.className} mb-6 flex items-baseline gap-1.5 text-gold/90`}
+                  className={`${priceFont.className} mb-6 flex items-baseline gap-1.5 text-gold/90 max-sm:mb-4`}
                   style={{
                     fontVariantNumeric:
                       "lining-nums tabular-nums",
@@ -202,7 +203,7 @@ export default async function CheckoutPage({
                   plan={plan}
                 />
 
-                <p className="mt-5 text-xs leading-6 text-foreground/55">
+                <p className="mt-5 text-xs leading-6 text-foreground/55 max-sm:mt-4">
                   Serás redirigido a Mercado
                   Pago para completar la
                   operación.

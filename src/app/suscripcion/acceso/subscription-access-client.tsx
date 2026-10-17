@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -27,17 +28,17 @@ export function SubscriptionAccessClient({
     )}`
 
   return (
-    <main className="flex min-h-dvh items-center bg-background px-6 py-20 font-serif text-foreground">
-      <div className="featured-card mx-auto w-full max-w-md rounded-[34px] bg-black p-8 text-center md:p-10">
-        <span className="mb-5 block text-xs uppercase tracking-[0.45em] text-gold">
+    <main className="flex min-h-dvh items-center bg-background px-6 py-20 font-serif text-foreground max-sm:px-4 max-sm:py-4">
+      <div className="featured-card mx-auto w-full max-w-md rounded-[34px] bg-black p-8 text-center md:p-10 max-sm:p-5 max-sm:[&_.telegram-button]:gap-2! max-sm:[&_.telegram-button]:px-3! max-sm:[&_.telegram-button]:text-sm! max-sm:[&_.telegram-button]:whitespace-nowrap!">
+        <span className="mb-5 block text-xs uppercase tracking-[0.45em] text-gold max-sm:mb-3">
           The Golden Circle
         </span>
 
-        <h1 className="mb-4 text-5xl font-normal leading-tight">
+        <h1 className="mb-4 text-5xl font-normal leading-tight max-sm:mb-2 max-sm:whitespace-nowrap max-sm:text-[clamp(1.85rem,8vw,2.25rem)]">
           Crear cuenta
         </h1>
 
-        <p className="mb-8 text-sm leading-relaxed text-muted-foreground">
+        <p className="mb-8 text-sm leading-relaxed text-muted-foreground max-sm:mb-5">
           Regístrate para continuar.
         </p>
 
@@ -60,7 +61,7 @@ export function SubscriptionAccessClient({
 
         <Link
           href={loginPath}
-          className="mt-7 block text-sm text-gold/70 transition hover:text-gold"
+          className="mt-7 block text-sm text-gold/70 transition hover:text-gold max-sm:mt-5"
         >
           ¿Ya tienes una cuenta? Inicia sesión
         </Link>

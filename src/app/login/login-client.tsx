@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -38,6 +39,7 @@ export function LoginClient({
         font-serif
         text-foreground
         sm:px-6
+        max-sm:[@media(max-height:700px)]:py-2
       "
     >
       <div
@@ -52,6 +54,7 @@ export function LoginClient({
           p-[clamp(1.5rem,4vh,2.5rem)]
           text-center
           [&_.telegram-button:active]:scale-[0.98]
+          max-sm:[@media(max-height:700px)]:p-4
         "
       >
         <span
@@ -62,6 +65,7 @@ export function LoginClient({
             uppercase
             tracking-[0.45em]
             text-gold
+            max-sm:[@media(max-height:700px)]:mb-2
           "
         >
           The Golden Circle
@@ -73,6 +77,7 @@ export function LoginClient({
             text-[clamp(2.5rem,6vh,3rem)]
             font-normal
             leading-tight
+            max-sm:[@media(max-height:700px)]:mb-1
           "
         >
           Acceso privado
@@ -84,6 +89,7 @@ export function LoginClient({
             text-sm
             leading-relaxed
             text-foreground/60
+            max-sm:[@media(max-height:700px)]:mb-3
           "
         >
           Inicia sesión para continuar.
@@ -117,6 +123,7 @@ export function LoginClient({
             flex
             items-center
             gap-3
+            max-sm:[@media(max-height:700px)]:my-2
           "
           aria-hidden="true"
         >

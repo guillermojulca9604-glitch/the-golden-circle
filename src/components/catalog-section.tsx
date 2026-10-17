@@ -112,7 +112,7 @@ const catalogItems: CatalogItem[] = [
     type: "image",
     thumbnail:
       "/photo_2026-05-17_12-49-24.jpg",
-    imageBlur: 9,
+    imageBlur: 10,
     title: "Novedades",
     description:
       "Lo más reciente de la colección",

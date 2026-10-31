@@ -1,3 +1,4 @@
+
 "use client"
 
 import type {
@@ -60,7 +61,7 @@ function EyeIcon() {
       className="block h-5 w-5"
     >
       <path
-        d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"
+        d="M2.5 12s3.5-6 9.5-6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"
         stroke="currentColor"
         strokeWidth="1.7"
         strokeLinecap="round"
@@ -240,9 +241,7 @@ export function LoginForm({
 
       setLoading(true)
 
-      setMessage(
-        "Procesando..."
-      )
+      setMessage("")
 
       if (
         activeMode ===
@@ -453,7 +452,7 @@ export function LoginForm({
         className="telegram-button w-full cursor-pointer rounded-xl px-6 py-4 active:scale-[0.98] disabled:cursor-pointer disabled:opacity-70"
       >
         {loading
-          ? "Procesando..."
+          ? "Procesando"
           : activeMode ===
               "login"
             ? "Iniciar sesión"

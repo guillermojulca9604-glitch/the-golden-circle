@@ -481,9 +481,9 @@ export function ActivateAccessButton({
 
   const buttonLabel =
     checkingReturn
-      ? "Verificando pago..."
+      ? "Verificando pago"
       : loading
-        ? "Preparando pago..."
+        ? "Preparando pago"
         : "Activar acceso"
 
   return (

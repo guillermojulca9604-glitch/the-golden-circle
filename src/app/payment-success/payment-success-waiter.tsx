@@ -83,7 +83,7 @@ export function PaymentSuccessWaiter({
     progressMessage,
     setProgressMessage,
   ] = useState(
-    "Preparando la confirmación..."
+    "Preparando la confirmación"
   )
 
   const [
@@ -273,7 +273,7 @@ export function PaymentSuccessWaiter({
        */
       advanceTarget(
         100,
-        "Acceso confirmado. Entrando al área VIP..."
+        "Acceso confirmado. Entrando al área VIP"
       )
 
       setAccessReady(true)
@@ -295,7 +295,7 @@ export function PaymentSuccessWaiter({
          */
         advanceTarget(
           12,
-          "Consultando la operación..."
+          "Consultando la operación"
         )
 
         try {
@@ -424,7 +424,7 @@ export function PaymentSuccessWaiter({
          */
         advanceTarget(
           12,
-          "Comprobando tu membresía..."
+          "Comprobando tu membresía."
         )
 
         try {

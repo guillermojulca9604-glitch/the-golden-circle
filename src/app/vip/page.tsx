@@ -7,15 +7,6 @@ import { VipBackground } from "./components/vip-background"
 import { supabaseAdmin } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 
-const CHANGE_COOLDOWN_DAYS = 7
-
-const CHANGE_COOLDOWN_MS =
-  CHANGE_COOLDOWN_DAYS *
-  24 *
-  60 *
-  60 *
-  1000
-
 const DEFAULT_TELEGRAM_MAINTENANCE_MESSAGE =
   "The Golden Circle se encuentra temporalmente en mantenimiento."
 
@@ -100,44 +91,6 @@ function userHasEmailPasswordProvider(
   )
 }
 
-function createChangeLimit(
-  changedAt: string | null
-): ChangeLimit {
-  if (!changedAt) {
-    return {
-      canChange: true,
-      nextChangeAt: null,
-    }
-  }
-
-  const changedAtTime =
-    new Date(changedAt).getTime()
-
-  if (
-    Number.isNaN(changedAtTime)
-  ) {
-    return {
-      canChange: true,
-      nextChangeAt: null,
-    }
-  }
-
-  const nextChangeDate =
-    new Date(
-      changedAtTime +
-        CHANGE_COOLDOWN_MS
-    )
-
-  return {
-    canChange:
-      nextChangeDate.getTime() <=
-      Date.now(),
-
-    nextChangeAt:
-      nextChangeDate.toISOString(),
-  }
-}
-
 export default async function VipPage() {
   const supabase =
     await createClient()
@@ -220,24 +173,10 @@ export default async function VipPage() {
    * de que la página aparezca.
    */
   const [
-    storedLimitsResult,
     telegramLinkResult,
     telegramServiceStateResult,
   ] =
     await Promise.all([
-      supabaseAdmin
-        .from(
-          "user_account_change_limits"
-        )
-        .select(
-          "username_changed_at, password_changed_at"
-        )
-        .eq(
-          "user_id",
-          user.id
-        )
-        .maybeSingle(),
-
       supabaseAdmin
         .from(
           "telegram_links"
@@ -264,18 +203,6 @@ export default async function VipPage() {
         )
         .maybeSingle(),
     ])
-
-  const {
-    data: storedLimits,
-    error: limitsError,
-  } =
-    storedLimitsResult
-
-  if (limitsError) {
-    throw new Error(
-      "No se pudieron consultar los límites de la cuenta."
-    )
-  }
 
   const {
     data: telegramLink,
@@ -364,28 +291,20 @@ export default async function VipPage() {
       : null
 
   const accountLimits: AccountLimits = {
-    username:
-      createChangeLimit(
-        storedLimits
-          ?.username_changed_at ??
-          null
-      ),
+    username: {
+      canChange: true,
+      nextChangeAt: null,
+    },
 
-    password:
-      createChangeLimit(
-        storedLimits
-          ?.password_changed_at ??
-          null
-      ),
+    password: {
+      canChange: true,
+      nextChangeAt: null,
+    },
   }
 
   const hasPassword =
     userHasEmailPasswordProvider(
       user
-    ) ||
-    Boolean(
-      storedLimits
-        ?.password_changed_at
     )
 
   return (

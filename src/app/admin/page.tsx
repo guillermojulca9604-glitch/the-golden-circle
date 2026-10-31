@@ -27,21 +27,45 @@ type TelegramServiceState = {
 type PaymentPlanRow = {
   id: string
   plan: string
+  amount_pen: number | string | null
 }
 
 const MONEY_FORMATTER = new Intl.NumberFormat("es-PE", {
   style: "currency",
   currency: "PEN",
   minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
+  maximumFractionDigits: 2,
   useGrouping: true,
 })
 
-function getPlanAmountInCents(plan: string): number | null {
-  if (plan === "monthly") return 3000
-  if (plan === "quarterly") return 8000
+/*
+ * Obtener el importe real registrado
+ * para cada pago aprobado.
+ *
+ * No utilizar precios fijos
+ * por tipo de plan.
+ */
+function getPaymentAmountInCents(
+  amountPen: number | string | null
+): number | null {
+  if (
+    amountPen === null ||
+    amountPen === undefined ||
+    amountPen === ""
+  ) {
+    return null
+  }
 
-  return null
+  const amount = Number(amountPen)
+
+  if (
+    !Number.isFinite(amount) ||
+    amount <= 0
+  ) {
+    return null
+  }
+
+  return Math.round(amount * 100)
 }
 
 function SummaryIcon({
@@ -192,12 +216,12 @@ async function getPaymentStatistics() {
   let offset = 0
   let totalCount = 0
   let totalCents = 0
-  let unknownPlans = 0
+  let unknownAmounts = 0
 
   while (true) {
     const { data, error } = await supabaseAdmin
       .from("payment_attempts")
-      .select("id, plan")
+      .select("id, plan, amount_pen")
       .eq("status", "approved")
       .order("created_at", { ascending: true })
       .order("id", { ascending: true })
@@ -220,10 +244,12 @@ async function getPaymentStatistics() {
     totalCount += payments.length
 
     for (const payment of payments) {
-      const amount = getPlanAmountInCents(payment.plan)
+      const amount = getPaymentAmountInCents(
+        payment.amount_pen
+      )
 
       if (amount === null) {
-        unknownPlans++
+        unknownAmounts++
         continue
       }
 
@@ -240,7 +266,7 @@ async function getPaymentStatistics() {
   return {
     count: totalCount,
     total:
-      unknownPlans === 0
+      unknownAmounts === 0
         ? totalCents / 100
         : null,
   }

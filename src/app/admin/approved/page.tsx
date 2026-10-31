@@ -8,6 +8,7 @@ type Payment = {
   id: string
   email: string
   plan: string
+  amount_pen: number | string | null
   created_at: string
 }
 
@@ -44,7 +45,7 @@ const MONEY_FORMATTER = new Intl.NumberFormat("es-PE", {
   style: "currency",
   currency: "PEN",
   minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
+  maximumFractionDigits: 2,
   useGrouping: true,
 })
 
@@ -62,17 +63,33 @@ function formatDate(value: string) {
   return DATE_FORMATTER.format(date)
 }
 
-function getPlanAmount(plan: string): number | null {
-  if (plan === "monthly") return 30
-  if (plan === "quarterly") return 80
+/*
+ * Mostrar el importe registrado
+ * para cada operación de pago.
+ *
+ * No utilizar precios fijos.
+ * No utilizar el precio actual
+ * configurado en el administrador.
+ */
+function formatAmount(
+  amountPen: number | string | null
+) {
+  if (
+    amountPen === null ||
+    amountPen === undefined ||
+    amountPen === ""
+  ) {
+    return "—"
+  }
 
-  return null
-}
+  const amount = Number(amountPen)
 
-function formatAmount(plan: string) {
-  const amount = getPlanAmount(plan)
-
-  if (amount === null) return "—"
+  if (
+    !Number.isFinite(amount) ||
+    amount <= 0
+  ) {
+    return "—"
+  }
 
   return MONEY_FORMATTER.format(amount)
 }
@@ -147,6 +164,7 @@ export default async function ApprovedPage() {
       id,
       email,
       plan,
+      amount_pen,
       created_at
     `)
     .eq("status", "approved")
@@ -264,7 +282,7 @@ export default async function ApprovedPage() {
                             </td>
 
                             <td className="whitespace-nowrap px-5 py-4 text-sm font-medium text-gold">
-                              {formatAmount(payment.plan)}
+                              {formatAmount(payment.amount_pen)}
                             </td>
 
                             <td className="px-5 py-4 text-right">

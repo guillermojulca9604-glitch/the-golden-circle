@@ -1,7 +1,3 @@
-import {
-  activateMembership,
-  moveMembershipToTrash,
-} from "../proofs/actions"
 
 import {
   supabaseAdmin,
@@ -143,10 +139,6 @@ export default async function DisabledPage() {
                 <th className="px-5 py-4 font-medium">
                   Motivo
                 </th>
-
-                <th className="px-5 py-4 text-right font-medium">
-                  Acciones
-                </th>
               </tr>
             </thead>
 
@@ -198,65 +190,6 @@ export default async function DisabledPage() {
                         }
                       </p>
                     </td>
-
-                    <td className="px-5 py-4">
-                      <div className="flex items-start justify-end gap-2">
-                        <form
-                          action={
-                            activateMembership
-                          }
-                        >
-                          <input
-                            type="hidden"
-                            name="membershipId"
-                            value={
-                              membership.id
-                            }
-                          />
-
-                          <button
-                            type="submit"
-                            className="admin-action-button min-h-10 rounded-xl border border-gold/30 bg-black px-4 text-xs text-gold hover:border-gold/50 hover:bg-gold/10"
-                          >
-                            Activar
-                          </button>
-                        </form>
-
-                        <details className="group relative">
-                          <summary className="flex min-h-10 cursor-pointer list-none items-center justify-center rounded-xl border border-red-500/25 bg-red-500/[0.035] px-4 text-xs text-red-300 transition-colors hover:border-red-500/45 hover:bg-red-500/[0.08] focus-visible:border-red-500/60 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
-                            Mover a Papelera
-                          </summary>
-
-                          <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-[290px] rounded-xl border border-red-500/20 bg-[#0b0706] p-3 shadow-[0_20px_60px_rgba(0,0,0,0.72)]">
-                            <p className="text-xs leading-5 text-red-200/80">
-                              La membresía desaparecerá de VIP vencidos, pero podrá restaurarse desde la Papelera.
-                            </p>
-
-                            <form
-                              action={
-                                moveMembershipToTrash
-                              }
-                              className="mt-3"
-                            >
-                              <input
-                                type="hidden"
-                                name="membershipId"
-                                value={
-                                  membership.id
-                                }
-                              />
-
-                              <button
-                                type="submit"
-                                className="min-h-10 w-full rounded-lg border border-red-500/35 bg-red-500/[0.09] px-4 text-xs font-medium text-red-300 transition-colors hover:border-red-500/55 hover:bg-red-500/[0.15] focus-visible:border-red-500/70 focus-visible:outline-none"
-                              >
-                                Confirmar envío
-                              </button>
-                            </form>
-                          </div>
-                        </details>
-                      </div>
-                    </td>
                   </tr>
                 )
               )}
@@ -264,7 +197,7 @@ export default async function DisabledPage() {
               {!memberships.length && (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={4}
                     className="px-5 py-10 text-center text-sm text-muted-foreground"
                   >
                     No hay VIP vencidos.

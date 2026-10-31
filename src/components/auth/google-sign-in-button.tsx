@@ -566,7 +566,7 @@ export function GoogleSignInButton({
 
         <span>
           {loading
-            ? "Conectando con Google..."
+            ? "Conectando con Google"
             : label}
         </span>
       </button>

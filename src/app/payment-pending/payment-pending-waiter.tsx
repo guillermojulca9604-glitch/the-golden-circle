@@ -1,3 +1,4 @@
+
 "use client"
 
 import {
@@ -101,7 +102,7 @@ export function PaymentPendingWaiter() {
 
   return (
     <p className="mt-6 text-xs leading-6 text-muted-foreground">
-      Verificando pago...{" "}
+      Verificando pago{" "}
       {seconds}s
     </p>
   )

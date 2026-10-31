@@ -85,9 +85,7 @@ export function AuthTopbarSimple({
               : ""
           }`}
         >
-          {loggingOut
-            ? "Cerrando..."
-            : "Cerrar sesión"}
+          Cerrar sesión
         </button>
       </div>
     </header>

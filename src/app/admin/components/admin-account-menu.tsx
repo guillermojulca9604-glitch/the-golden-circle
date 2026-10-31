@@ -1,3 +1,4 @@
+
 "use client"
 
 import {
@@ -753,9 +754,7 @@ export function AdminAccountMenu({
             >
               <LogoutIcon />
 
-              {loggingOut
-                ? "Cerrando sesión..."
-                : "Cerrar sesión"}
+              Cerrar sesión
             </button>
 
             {logoutError && (
@@ -936,9 +935,7 @@ export function AdminAccountMenu({
                   disabled={saving}
                   className="min-h-11 rounded-xl border border-gold/50 bg-gold/[0.12] px-5 text-sm font-medium text-gold transition-colors hover:border-gold/70 hover:bg-gold/[0.18] focus-visible:border-gold/80 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-55"
                 >
-                  {saving
-                    ? "Guardando..."
-                    : "Guardar contraseña"}
+                  Guardar contraseña
                 </button>
               </div>
             </form>

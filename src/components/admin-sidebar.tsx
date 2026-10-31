@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -89,9 +90,7 @@ export function AdminSidebar() {
         disabled={loggingOut}
         className="admin-sidebar-link mt-auto w-full text-left disabled:pointer-events-none disabled:opacity-50"
       >
-        {loggingOut
-          ? "Cerrando..."
-          : "Cerrar sesión"}
+        Cerrar sesión
       </button>
     </aside>
   )

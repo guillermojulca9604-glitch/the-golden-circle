@@ -75,8 +75,7 @@ export function HeroSection() {
         <div className="gold-line hero-line" />
 
         <p className="hero-subtitle">
-          Página oficial de información,
-          novedades y contacto
+          oficial / telegram
         </p>
       </div>
     </section>

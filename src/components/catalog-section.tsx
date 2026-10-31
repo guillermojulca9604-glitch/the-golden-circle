@@ -70,7 +70,7 @@ const catalogItems: CatalogItem[] = [
     id: 3,
     type: "image",
     thumbnail:
-      "/signal-2026-02-03-094246.jpeg",
+      "/photo_2026-10-30_19-44-56.jpg",
     imageBlur: 9,
     title: "Galería Premium",
     description:
@@ -80,7 +80,7 @@ const catalogItems: CatalogItem[] = [
     id: 4,
     type: "image",
     thumbnail:
-      "/photo_2026-05-17_12-53-50.jpg",
+      "photo_2026-05-17_12-49-24.jpg",
     imageBlur: 7,
     title: "Colección Especial",
     description:
@@ -111,7 +111,7 @@ const catalogItems: CatalogItem[] = [
     id: 6,
     type: "image",
     thumbnail:
-      "/photo_2026-05-17_12-49-24.jpg",
+      "/photo_2026-05-17_12-49-21.jpg",
     imageBlur: 10,
     title: "Novedades",
     description:

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 
 import { AuthTopbarSimple } from "@/components/auth-topbar-simple"
 import { SessionGuard } from "@/components/session-guard"
+import { getVipPricingSettings } from "@/lib/mercadopago/plan-prices"
 import { supabaseAdmin } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { ActivateAccessButton } from "./activate-access-button"
@@ -30,20 +31,17 @@ const plans: Record<
   Plan,
   {
     label: string
-    price: string
     description: string
   }
 > = {
   monthly: {
     label: "Mensual",
-    price: "S/ 30",
     description:
       "Descubre una nueva experiencia.",
   },
 
   quarterly: {
     label: "Trimestral",
-    price: "S/ 80",
     description:
       "Descubre una nueva experiencia.",
   },
@@ -106,8 +104,19 @@ export default async function CheckoutPage({
     redirect("/vip")
   }
 
-  const selectedPlan =
-    plans[plan]
+  /*
+   * Obtener el precio vigente desde Supabase.
+   * Si la promoción está activa, se usa
+   * el precio promocional.
+   * Si está pausada, se usa el normal.
+   */
+  const vipPricing =
+    await getVipPricingSettings()
+
+  const selectedPlan = {
+    ...plans[plan],
+    price: `S/ ${vipPricing.effective[plan]}`,
+  }
 
   const [
     currency,
@@ -178,36 +187,45 @@ export default async function CheckoutPage({
                 </Link>
               </div>
 
-              <aside className="rounded-2xl border border-gold/15 bg-black/40 p-[clamp(1.25rem,3vw,1.5rem)] max-sm:p-4">
-                <p className="mb-3 text-xs uppercase tracking-[0.3em] text-gold/70">
-                  Total
-                </p>
+              {/*
+               * VIÑETA TOTAL
+               *
+               * Contenido centrado verticalmente.
+               * Espacio equilibrado arriba y abajo.
+               * Se conservan los estilos y funciones.
+               */}
+              <aside className="flex min-h-[320px] flex-col justify-center rounded-2xl border border-gold/15 bg-black/40 p-[clamp(1.25rem,3vw,1.5rem)] max-sm:min-h-0 max-sm:p-4">
+                <div className="w-full">
+                  <p className="mb-3 text-xs uppercase tracking-[0.3em] text-gold/70">
+                    Total
+                  </p>
 
-                <div
-                  className={`${priceFont.className} mb-6 flex items-baseline gap-1.5 text-gold/90 max-sm:mb-4`}
-                  style={{
-                    fontVariantNumeric:
-                      "lining-nums tabular-nums",
-                  }}
-                >
-                  <span className="text-xl font-light leading-none">
-                    {currency}
-                  </span>
+                  <div
+                    className={`${priceFont.className} mb-6 flex items-baseline gap-1.5 text-gold/90 max-sm:mb-4`}
+                    style={{
+                      fontVariantNumeric:
+                        "lining-nums tabular-nums",
+                    }}
+                  >
+                    <span className="text-xl font-light leading-none">
+                      {currency}
+                    </span>
 
-                  <span className="text-5xl font-light leading-none tracking-[-0.015em]">
-                    {amount}
-                  </span>
+                    <span className="text-5xl font-light leading-none tracking-[-0.015em]">
+                      {amount}
+                    </span>
+                  </div>
+
+                  <ActivateAccessButton
+                    plan={plan}
+                  />
+
+                  <p className="mt-5 text-xs leading-6 text-foreground/55 max-sm:mt-4">
+                    Serás redirigido a Mercado
+                    Pago para completar la
+                    operación.
+                  </p>
                 </div>
-
-                <ActivateAccessButton
-                  plan={plan}
-                />
-
-                <p className="mt-5 text-xs leading-6 text-foreground/55 max-sm:mt-4">
-                  Serás redirigido a Mercado
-                  Pago para completar la
-                  operación.
-                </p>
               </aside>
             </div>
           </div>

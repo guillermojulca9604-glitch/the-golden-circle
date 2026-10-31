@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server"
 
 import {
@@ -7,6 +8,7 @@ import {
   PAYMENT_PLANS,
   reconcileRecentApprovedPaymentForUser,
 } from "@/lib/mercadopago/reconcile-payment"
+import { getVipPricingSettings } from "@/lib/mercadopago/plan-prices"
 import { supabaseAdmin } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 
@@ -76,8 +78,18 @@ export async function POST(
   const planId =
     requestedPlan
 
-  const plan =
-    PAYMENT_PLANS[planId]
+  /*
+   * Obtener el precio dinámico
+   * configurado desde el administrador.
+   */
+  const vipPricing =
+    await getVipPricingSettings()
+
+  const plan = {
+    ...PAYMENT_PLANS[planId],
+    price:
+      vipPricing.effective[planId],
+  }
 
   /*
    * Un usuario con membresía activa
@@ -161,6 +173,8 @@ export async function POST(
         user_id: user.id,
         email: user.email,
         plan: planId,
+        amount_pen:
+          plan.price,
         status: "pending",
         expires_at:
           addMinutes(20),

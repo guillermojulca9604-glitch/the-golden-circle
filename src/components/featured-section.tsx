@@ -140,14 +140,14 @@ export function FeaturedSection() {
                     fontVariantNumeric:
                       "lining-nums tabular-nums",
                   }}
-                  aria-label="+1.5 mil suscriptores"
+                  aria-label="+1.2 mil suscriptores / telegram"
                 >
                   <span className="text-lg font-light leading-none tracking-[-0.015em] text-gold/85 max-md:text-base">
-                    +1.5 mil
+                    +1.2 mil
                   </span>
 
                   <span className="text-sm font-light leading-none tracking-[0.02em] text-muted-foreground max-md:text-xs">
-                    suscriptores
+                    suscriptores / telegram
                   </span>
                 </div>
               </div>

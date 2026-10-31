@@ -1,3 +1,4 @@
+
 import { supabaseAdmin } from "@/lib/supabase/admin"
 
 export const PAYMENT_PLANS = {
@@ -29,6 +30,7 @@ type PaymentAttempt = {
   email: string
   plan: unknown
   status: string
+  amount_pen: number | string | null
 }
 
 type ExternalReference = {
@@ -309,7 +311,7 @@ function extractSearchResults(
 
   if (
     typeof responseValue !==
-      "object" ||
+    "object" ||
     responseValue === null
   ) {
     return []
@@ -573,7 +575,7 @@ async function activateApprovedPayment(
     await supabaseAdmin
       .from("payment_attempts")
       .select(
-        "id, user_id, email, plan, status"
+        "id, user_id, email, plan, status, amount_pen"
       )
       .eq(
         "id",
@@ -618,6 +620,18 @@ async function activateApprovedPayment(
       attemptRow.plan
     ]
 
+  /*
+   * Para compras nuevas validamos el importe
+   * registrado al crear la preferencia.
+   * Para operaciones anteriores sin amount_pen,
+   * conservamos el precio original del plan.
+   */
+  const expectedAmount =
+    attemptRow.amount_pen === null ||
+    attemptRow.amount_pen === undefined
+      ? plan.price
+      : Number(attemptRow.amount_pen)
+
   const paidAmount =
     Number(
       payment.transaction_amount
@@ -626,12 +640,14 @@ async function activateApprovedPayment(
   if (
     payment.currency_id !==
       "PEN" ||
+    !Number.isFinite(expectedAmount) ||
+    expectedAmount <= 0 ||
     !Number.isFinite(
       paidAmount
     ) ||
     Math.abs(
       paidAmount -
-        plan.price
+        expectedAmount
     ) > 0.001
   ) {
     return unavailableResult(
@@ -942,7 +958,7 @@ export async function reconcileRecentApprovedPaymentForUser(
     await supabaseAdmin
       .from("payment_attempts")
       .select(
-        "id, user_id, email, plan, status, created_at"
+        "id, user_id, email, plan, status, amount_pen, created_at"
       )
       .eq(
         "user_id",

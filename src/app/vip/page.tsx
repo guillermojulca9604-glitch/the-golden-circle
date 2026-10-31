@@ -208,10 +208,6 @@ export default async function VipPage() {
   const profileName =
     readProfileName(metadata)
 
-  if (!profileName) {
-    redirect("/vip/profile")
-  }
-
   const accountEmail =
     user.email?.trim() ?? ""
 
